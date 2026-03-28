@@ -21,7 +21,8 @@ export default function App() {
     endFast, 
     resetToIdle, 
     deleteRecord,
-    setMode 
+    manualLogFast,
+    setTargetHours 
   } = useFasting();
 
   const renderContent = () => {
@@ -38,11 +39,16 @@ export default function App() {
           />
         );
       case 'history':
-        return <History history={history} onDelete={deleteRecord} />;
+        return <History history={history} onDelete={deleteRecord} onManualLog={manualLogFast} />;
       case 'stats':
         return <Stats history={history} />;
       case 'settings':
-        return <Settings currentModeId={state.modeId} onModeChange={setMode} />;
+        return (
+          <Settings 
+            targetHours={state.targetHours} 
+            onHoursChange={setTargetHours} 
+          />
+        );
     }
   };
 

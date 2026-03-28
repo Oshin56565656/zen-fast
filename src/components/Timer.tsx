@@ -1,12 +1,12 @@
 import React, { useState, useEffect, FC } from 'react';
 import { motion } from 'motion/react';
-import { Play, Pause, Square, Utensils, Zap } from 'lucide-react';
-import { CurrentFastState, FASTING_MODES } from '../types';
+import { Play, Pause, Square, Zap } from 'lucide-react';
+import { CurrentFastState } from '../types';
 import { formatDuration, cn } from '../lib/utils';
 
 interface TimerProps {
   state: CurrentFastState;
-  onStart: (modeId: string) => void;
+  onStart: () => void;
   onPause: () => void;
   onResume: () => void;
   onEnd: () => void;
@@ -15,8 +15,9 @@ interface TimerProps {
 
 export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd, onReset }) => {
   const [elapsed, setElapsed] = useState(0);
-  const mode = FASTING_MODES.find(m => m.id === state.modeId) || FASTING_MODES[0];
-  const targetSeconds = state.status === 'fasting' ? mode.fastHours * 3600 : mode.eatHours * 3600;
+  const [displayMode, setDisplayMode] = useState<'elapsed' | 'remaining'>('elapsed');
+  
+  const targetSeconds = state.targetHours * 3600;
 
   useEffect(() => {
     let interval: number;
@@ -49,26 +50,11 @@ export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd
   const isIdle = state.status === 'idle';
 
   const timeRemaining = Math.max(targetSeconds - elapsed, 0);
-  const displayTime = isEating ? formatDuration(timeRemaining) : formatDuration(elapsed);
-
-  const motivationalMessages = [
-    "Your body is healing itself.",
-    "Stay hydrated, keep going!",
-    "Autophagy is kicking in.",
-    "You are stronger than your cravings.",
-    "Focus on your goals, not your hunger.",
-    "Almost there, stay focused!",
-  ];
-
-  const [messageIndex, setMessageIndex] = useState(0);
-  useEffect(() => {
-    if (isFasting) {
-      const interval = setInterval(() => {
-        setMessageIndex(prev => (prev + 1) % motivationalMessages.length);
-      }, 10000);
-      return () => clearInterval(interval);
-    }
-  }, [isFasting]);
+  const displayTime = isEating 
+    ? formatDuration(timeRemaining) 
+    : displayMode === 'elapsed' 
+      ? formatDuration(elapsed) 
+      : formatDuration(timeRemaining);
 
   return (
     <div className="flex flex-col items-center justify-center p-8 space-y-8">
@@ -102,32 +88,26 @@ export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd
 
         <div className="text-center z-10">
           <p className="text-sm font-medium text-white/40 uppercase tracking-widest mb-1">
-            {isFasting ? 'Fasting Time' : isEating ? 'Eating Window Left' : 'Ready to start?'}
+            {isFasting 
+              ? (displayMode === 'elapsed' ? 'Fasting Time' : 'Time Remaining') 
+              : isEating ? 'Eating Window Left' : 'Ready to start?'}
           </p>
-          <h2 className="text-5xl font-bold font-mono tabular-nums">
+          <button 
+            onClick={() => setDisplayMode(prev => prev === 'elapsed' ? 'remaining' : 'elapsed')}
+            className="text-5xl font-bold font-mono tabular-nums hover:text-primary transition-colors"
+          >
             {displayTime}
-          </h2>
+          </button>
           <p className="text-sm text-white/40 mt-2">
-            Goal: {isFasting ? mode.fastHours : mode.eatHours}h
+            Goal: {state.targetHours}h
           </p>
         </div>
       </div>
 
-      {isFasting && (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          key={messageIndex}
-          className="text-center text-primary/80 italic text-sm font-medium h-4"
-        >
-          "{motivationalMessages[messageIndex]}"
-        </motion.p>
-      )}
-
       <div className="flex items-center space-x-4">
         {isIdle && (
           <button
-            onClick={() => onStart(state.modeId)}
+            onClick={onStart}
             className="bg-primary hover:bg-primary/90 text-white p-6 rounded-full shadow-lg shadow-primary/20 transition-all active:scale-95"
           >
             <Play size={32} fill="currentColor" />
@@ -172,11 +152,11 @@ export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd
       </div>
 
       <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
-        <div className="bg-card p-4 rounded-2xl border border-white/5">
-          <p className="text-xs text-white/40 mb-1">Mode</p>
-          <p className="font-bold text-lg">{mode.name}</p>
+        <div className="bg-card p-4 rounded-2xl border border-white/5 text-center">
+          <p className="text-xs text-white/40 mb-1">Target</p>
+          <p className="font-bold text-lg">{state.targetHours}h</p>
         </div>
-        <div className="bg-card p-4 rounded-2xl border border-white/5">
+        <div className="bg-card p-4 rounded-2xl border border-white/5 text-center">
           <p className="text-xs text-white/40 mb-1">Status</p>
           <p className={cn(
             "font-bold text-lg capitalize",

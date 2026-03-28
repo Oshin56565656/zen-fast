@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { CurrentFastState, FastRecord, FASTING_MODES } from '../types';
+import { CurrentFastState, FastRecord } from '../types';
 
 const STORAGE_KEY_STATE = 'fasttrack_state';
 const STORAGE_KEY_HISTORY = 'fasttrack_history';
@@ -11,7 +11,7 @@ export function useFasting() {
       startTime: null,
       endTime: null,
       status: 'idle',
-      modeId: '16-8',
+      targetHours: 16,
       pausedAt: null,
       totalPausedTime: 0
     };
@@ -30,15 +30,15 @@ export function useFasting() {
     localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(history));
   }, [history]);
 
-  const startFast = (modeId: string) => {
-    setState({
+  const startFast = () => {
+    setState(prev => ({
+      ...prev,
       startTime: Date.now(),
       endTime: null,
       status: 'fasting',
-      modeId,
       pausedAt: null,
       totalPausedTime: 0
-    });
+    }));
   };
 
   const pauseFast = () => {
@@ -64,8 +64,7 @@ export function useFasting() {
     const durationMs = now - effectiveStartTime;
     const durationSec = Math.floor(durationMs / 1000);
     
-    const mode = FASTING_MODES.find(m => m.id === state.modeId) || FASTING_MODES[0];
-    const targetSec = mode.fastHours * 3600;
+    const targetSec = state.targetHours * 3600;
 
     const newRecord: FastRecord = {
       id: crypto.randomUUID(),
@@ -73,22 +72,20 @@ export function useFasting() {
       endTime: now,
       duration: durationSec,
       targetDuration: targetSec,
-      modeId: state.modeId,
-      modeName: mode.name,
       completed: durationSec >= targetSec
     };
 
     setHistory(prev => [newRecord, ...prev]);
     
     // Switch to eating mode
-    setState({
+    setState(prev => ({
+      ...prev,
       startTime: null,
       endTime: now,
       status: 'eating',
-      modeId: state.modeId,
       pausedAt: null,
       totalPausedTime: 0
-    });
+    }));
   };
 
   const startEating = () => {
@@ -96,18 +93,38 @@ export function useFasting() {
   };
 
   const resetToIdle = () => {
-    setState({
+    setState(prev => ({
+      ...prev,
       startTime: null,
       endTime: null,
       status: 'idle',
-      modeId: state.modeId,
       pausedAt: null,
       totalPausedTime: 0
-    });
+    }));
   };
 
   const deleteRecord = (id: string) => {
     setHistory(prev => prev.filter(r => r.id !== id));
+  };
+
+  const manualLogFast = (startTime: number, endTime: number, targetHours: number) => {
+    const durationSec = Math.floor((endTime - startTime) / 1000);
+    const targetSec = targetHours * 3600;
+
+    const newRecord: FastRecord = {
+      id: crypto.randomUUID(),
+      startTime,
+      endTime,
+      duration: durationSec,
+      targetDuration: targetSec,
+      completed: durationSec >= targetSec
+    };
+
+    setHistory(prev => [newRecord, ...prev]);
+  };
+
+  const setTargetHours = (hours: number) => {
+    setState(prev => ({ ...prev, targetHours: hours }));
   };
 
   return {
@@ -120,6 +137,7 @@ export function useFasting() {
     startEating,
     resetToIdle,
     deleteRecord,
-    setMode: (modeId: string) => setState(prev => ({ ...prev, modeId }))
+    manualLogFast,
+    setTargetHours
   };
 }
