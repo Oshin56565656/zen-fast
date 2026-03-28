@@ -1,11 +1,13 @@
 import { ReactNode, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Timer as TimerIcon, History as HistoryIcon, BarChart3, Settings as SettingsIcon } from 'lucide-react';
+import { Timer as TimerIcon, History as HistoryIcon, BarChart3, Settings as SettingsIcon, LogOut } from 'lucide-react';
 import { Timer } from './components/Timer';
 import { History } from './components/History';
 import { Stats } from './components/Stats';
 import { Settings } from './components/Settings';
+import { Auth } from './components/Auth';
 import { useFasting } from './hooks/useFasting';
+import { auth, signOut } from './firebase';
 import { cn } from './lib/utils';
 
 type Tab = 'timer' | 'history' | 'stats' | 'settings';
@@ -13,6 +15,8 @@ type Tab = 'timer' | 'history' | 'stats' | 'settings';
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('timer');
   const { 
+    user,
+    isAuthReady,
     state, 
     history, 
     startFast, 
@@ -24,6 +28,26 @@ export default function App() {
     manualLogFast,
     setTargetHours 
   } = useFasting();
+
+  if (!isAuthReady) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Auth />;
+  }
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   const renderContent = () => {
     switch (activeTab) {
@@ -44,10 +68,21 @@ export default function App() {
         return <Stats history={history} />;
       case 'settings':
         return (
-          <Settings 
-            targetHours={state.targetHours} 
-            onHoursChange={setTargetHours} 
-          />
+          <div className="space-y-6">
+            <Settings 
+              targetHours={state.targetHours} 
+              onHoursChange={setTargetHours} 
+            />
+            <div className="px-6">
+              <button
+                onClick={handleSignOut}
+                className="w-full flex items-center justify-center space-x-2 bg-red-500/10 text-red-500 py-4 rounded-2xl font-bold hover:bg-red-500/20 transition-all active:scale-95"
+              >
+                <LogOut size={20} />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
         );
     }
   };

@@ -1,0 +1,42 @@
+{
+  "entities": {
+    "UserFastState": {
+      "title": "User Fast State",
+      "description": "The current fasting state of a user.",
+      "type": "object",
+      "properties": {
+        "startTime": { "type": "number", "description": "Timestamp of when the fast started." },
+        "endTime": { "type": "number", "description": "Timestamp of when the fast ended." },
+        "status": { "type": "string", "enum": ["idle", "fasting", "eating"], "description": "Current status." },
+        "targetHours": { "type": "number", "description": "Target duration in hours." },
+        "pausedAt": { "type": "number", "description": "Timestamp of when the fast was paused." },
+        "totalPausedTime": { "type": "number", "description": "Total time the fast has been paused in ms." }
+      },
+      "required": ["status", "targetHours", "totalPausedTime"]
+    },
+    "FastRecord": {
+      "title": "Fast Record",
+      "description": "A completed fasting session.",
+      "type": "object",
+      "properties": {
+        "startTime": { "type": "number", "description": "Timestamp of start." },
+        "endTime": { "type": "number", "description": "Timestamp of end." },
+        "duration": { "type": "number", "description": "Total duration in seconds." },
+        "targetDuration": { "type": "number", "description": "Target duration in seconds." },
+        "completed": { "type": "boolean", "description": "Whether the goal was met." },
+        "createdAt": { "type": "object", "description": "Firestore server timestamp." }
+      },
+      "required": ["startTime", "endTime", "duration", "targetDuration", "completed", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/settings/currentFast": {
+      "schema": "UserFastState",
+      "description": "Stores the user's current fasting state."
+    },
+    "/users/{userId}/history/{recordId}": {
+      "schema": "FastRecord",
+      "description": "Stores the user's completed fasts."
+    }
+  }
+}

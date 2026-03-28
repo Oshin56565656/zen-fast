@@ -1,0 +1,103 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users/{userId}/settings/currentFast
+    // Fields:
+    //   - startTime: number (optional)
+    //   - endTime: number (optional)
+    //   - status: string (required, ['idle', 'fasting', 'eating'])
+    //   - targetHours: number (required, 1-48)
+    //   - pausedAt: number (optional)
+    //   - totalPausedTime: number (required)
+    //
+    // Collection: users/{userId}/history/{recordId}
+    // Fields:
+    //   - startTime: number (required)
+    //   - endTime: number (required)
+    //   - duration: number (required)
+    //   - targetDuration: number (required)
+    //   - completed: bool (required)
+    //   - createdAt: timestamp (required)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+          (request.auth.token.email == "oshinashok56565656@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidFastState(data) {
+      return hasRequiredFields(['status', 'targetHours', 'totalPausedTime']) &&
+             hasOnlyAllowedFields(['startTime', 'endTime', 'status', 'targetHours', 'pausedAt', 'totalPausedTime']) &&
+             data.status in ['idle', 'fasting', 'eating'] &&
+             data.targetHours is number && data.targetHours >= 1 && data.targetHours <= 48 &&
+             data.totalPausedTime is number;
+    }
+
+    function isValidFastRecord(data) {
+      return hasRequiredFields(['startTime', 'endTime', 'duration', 'targetDuration', 'completed', 'createdAt']) &&
+             hasOnlyAllowedFields(['startTime', 'endTime', 'duration', 'targetDuration', 'completed', 'createdAt']) &&
+             data.startTime is number &&
+             data.endTime is number &&
+             data.duration is number &&
+             data.targetDuration is number &&
+             data.completed is bool &&
+             data.createdAt is timestamp;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId) || isAdmin();
+
+      match /settings/currentFast {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if (isOwner(userId) || isAdmin()) && isValidFastState(request.resource.data);
+      }
+
+      match /history/{recordId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if (isOwner(userId) || isAdmin()) && isValidFastRecord(request.resource.data);
+        allow update: if (isOwner(userId) || isAdmin()) && isValidFastRecord(request.resource.data);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
