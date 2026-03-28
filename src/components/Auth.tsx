@@ -108,29 +108,18 @@ export const Auth: FC = () => {
           <span>Continue with Google</span>
         </motion.button>
 
-        <motion.button
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          onClick={() => handleSignIn('redirect')}
-          className="w-full flex items-center justify-center space-x-3 bg-white/5 text-white px-8 py-4 rounded-2xl font-bold hover:bg-white/10 transition-all active:scale-95"
-        >
-          <ArrowRight size={20} />
-          <span>Sign In with Redirect</span>
-        </motion.button>
-
         {isIframe && (
           <motion.a
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
+            transition={{ delay: 0.4 }}
             href={window.location.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center space-x-2 text-primary text-xs font-bold py-2 hover:underline"
+            className="flex items-center justify-center space-x-2 text-white/20 text-[10px] font-bold py-2 hover:text-primary transition-colors uppercase tracking-widest"
           >
-            <ExternalLink size={14} />
-            <span>Open in new tab (Recommended for Mobile)</span>
+            <ExternalLink size={12} />
+            <span>Open in new tab</span>
           </motion.a>
         )}
       </div>
@@ -138,21 +127,12 @@ export const Auth: FC = () => {
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.6 }}
-        className="mt-12 space-y-4"
+        transition={{ delay: 0.5 }}
+        className="mt-12"
       >
-        <p className="text-[10px] text-white/20 uppercase tracking-widest">
+        <p className="text-[10px] text-white/10 uppercase tracking-[0.2em] font-medium">
           Securely powered by Firebase
         </p>
-        
-        <div className="bg-white/5 p-4 rounded-2xl text-left max-w-xs mx-auto">
-          <p className="text-[10px] text-white/40 font-bold uppercase mb-2 tracking-wider">Troubleshooting Mobile Login:</p>
-          <ul className="text-[10px] text-white/30 space-y-1 list-disc pl-4">
-            <li>Try <strong>Sign In with Redirect</strong> if the popup fails.</li>
-            <li>Use the <strong>Open in new tab</strong> link above.</li>
-            <li>Ensure you are not in "Incognito" or "Private" mode.</li>
-          </ul>
-        </div>
       </motion.div>
     </div>
   );
