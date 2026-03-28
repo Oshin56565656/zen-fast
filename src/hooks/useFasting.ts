@@ -48,8 +48,16 @@ export function useFasting() {
   useEffect(() => {
     if (!user) return;
 
+    const userDocRef = doc(db, 'users', user.uid);
     const stateDocRef = doc(db, 'users', user.uid, 'settings', 'currentFast');
     
+    // Ensure user document exists for security rules
+    setDoc(userDocRef, { 
+      email: user.email, 
+      lastLogin: Timestamp.now(),
+      role: 'client' // Default role
+    }, { merge: true }).catch(err => handleFirestoreError(err, 'write', `users/${user.uid}`));
+
     const unsubscribe = onSnapshot(stateDocRef, (snapshot) => {
       if (snapshot.exists()) {
         setState(snapshot.data() as CurrentFastState);
@@ -64,7 +72,7 @@ export function useFasting() {
           pausedAt: null,
           totalPausedTime: 0
         };
-        setDoc(stateDocRef, initialState);
+        setDoc(stateDocRef, initialState).catch(err => handleFirestoreError(err, 'write', `users/${user.uid}/settings/currentFast`));
         setState(initialState);
       }
     }, (error) => {
@@ -93,12 +101,24 @@ export function useFasting() {
       if (records.length === 0) {
         const localHistory = localStorage.getItem(STORAGE_KEY_HISTORY);
         if (localHistory) {
-          const parsedHistory = JSON.parse(localHistory) as FastRecord[];
-          parsedHistory.forEach(async (record) => {
-            const { id, ...data } = record;
-            await setDoc(doc(historyRef, id), data);
-          });
-          localStorage.removeItem(STORAGE_KEY_HISTORY);
+          try {
+            const parsedHistory = JSON.parse(localHistory) as FastRecord[];
+            parsedHistory.forEach(async (record) => {
+              const { id, ...data } = record;
+              // Ensure createdAt exists for rules
+              const migrationData = {
+                ...data,
+                createdAt: data.createdAt || Timestamp.now()
+              };
+              const docRef = id ? doc(historyRef, id) : doc(historyRef);
+              await setDoc(docRef, migrationData).catch(err => 
+                handleFirestoreError(err, 'write', `users/${user.uid}/history/${id || 'new'}`)
+              );
+            });
+            localStorage.removeItem(STORAGE_KEY_HISTORY);
+          } catch (e) {
+            console.error('Migration failed:', e);
+          }
         }
       }
     }, (error) => {
@@ -115,11 +135,21 @@ export function useFasting() {
         userId: auth.currentUser?.uid,
         email: auth.currentUser?.email,
         emailVerified: auth.currentUser?.emailVerified,
+        isAnonymous: auth.currentUser?.isAnonymous,
+        tenantId: auth.currentUser?.tenantId,
+        providerInfo: auth.currentUser?.providerData.map(provider => ({
+          providerId: provider.providerId,
+          displayName: provider.displayName,
+          email: provider.email,
+          photoUrl: provider.photoURL
+        })) || []
       },
       operationType,
       path
     };
     console.error('Firestore Error: ', JSON.stringify(errInfo));
+    // We don't throw here to avoid crashing the whole app, 
+    // but we log it clearly for the agent to see.
   };
 
   const updateState = useCallback(async (updates: Partial<CurrentFastState>) => {

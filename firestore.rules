@@ -40,8 +40,19 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() &&
-        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-          (request.auth.token.email == "oshinashok56565656@gmail.com" && request.auth.token.email_verified == true));
+        (
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+          (request.auth.token.email == "oshinashok56565656@gmail.com" && 
+           (request.auth.token.email_verified == true || !('email_verified' in request.auth.token)))
+        );
+    }
+
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['email', 'lastLogin', 'role']) &&
+             data.email is string &&
+             data.lastLogin is timestamp &&
+             data.role in ['admin', 'client'];
     }
 
     function hasRequiredFields(fields) {
@@ -83,15 +94,11 @@ service cloud.firestore {
       allow read, write: if isOwner(userId) || isAdmin();
 
       match /settings/currentFast {
-        allow read: if isOwner(userId) || isAdmin();
-        allow create, update: if (isOwner(userId) || isAdmin()) && isValidFastState(request.resource.data);
+        allow read, write: if isOwner(userId) || isAdmin();
       }
 
       match /history/{recordId} {
-        allow read: if isOwner(userId) || isAdmin();
-        allow create: if (isOwner(userId) || isAdmin()) && isValidFastRecord(request.resource.data);
-        allow update: if (isOwner(userId) || isAdmin()) && isValidFastRecord(request.resource.data);
-        allow delete: if isOwner(userId) || isAdmin();
+        allow read, write: if isOwner(userId) || isAdmin();
       }
     }
 

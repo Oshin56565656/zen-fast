@@ -7,6 +7,7 @@ export interface FastRecord {
   duration: number; // in seconds
   targetDuration: number; // in seconds
   completed: boolean;
+  createdAt?: any; // Firestore timestamp
 }
 
 export interface CurrentFastState {
