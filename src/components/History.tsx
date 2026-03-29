@@ -2,8 +2,8 @@ import React, { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CheckCircle2, XCircle, Trash2, Calendar, Plus, X } from 'lucide-react';
 import { FastRecord } from '../types';
-import { formatDurationShort } from '../lib/utils';
-import { format, subHours, startOfHour } from 'date-fns';
+import { formatDurationShort, formatTime, formatDate } from '../lib/utils';
+import { format, subHours } from 'date-fns';
 
 interface HistoryProps {
   history: FastRecord[];
@@ -133,7 +133,7 @@ export const History: FC<HistoryProps> = ({ history, onDelete, onManualLog }) =>
               <div>
                 <p className="font-bold">Fast</p>
                 <p className="text-xs text-white/40">
-                  {format(record.startTime, 'MMM d, h:mm a')}
+                  {formatDate(record.startTime)}, {formatTime(record.startTime)}
                 </p>
               </div>
             </div>

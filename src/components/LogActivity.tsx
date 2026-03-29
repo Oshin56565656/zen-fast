@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Zap } from 'lucide-react';
 import { MealRecord, WorkoutRecord } from '../types';
+import { formatTime, formatDate } from '../lib/utils';
 import { format } from 'date-fns';
 
 interface LogActivityProps {
@@ -175,7 +176,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                     </div>
                     <div>
                       <p className="font-bold text-white capitalize">{meal.scale} Meal</p>
-                      <p className="text-xs text-white/40">{format(meal.time, 'MMM d, h:mm a')}</p>
+                      <p className="text-xs text-white/40">{formatDate(meal.time)}, {formatTime(meal.time)}</p>
                     </div>
                   </div>
                   <button
@@ -199,7 +200,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                     </div>
                     <div>
                       <p className="font-bold text-white capitalize">{workout.intensity} Intensity</p>
-                      <p className="text-xs text-white/40">{workout.duration} mins • {format(workout.time, 'MMM d, h:mm a')}</p>
+                      <p className="text-xs text-white/40">{workout.duration} mins • {formatDate(workout.time)}, {formatTime(workout.time)}</p>
                     </div>
                   </div>
                   <button

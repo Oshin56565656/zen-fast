@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, Type } from "@google/genai";
 import { FastRecord, MealRecord, WorkoutRecord } from "../types";
 
 const getAIInstance = () => {
@@ -18,39 +18,59 @@ const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, errorMessage: st
   ]);
 };
 
-export async function getFastingInsights(history: FastRecord[], meals: MealRecord[], workouts: WorkoutRecord[]) {
+export async function getFastingInsights(
+  history: FastRecord[], 
+  meals: MealRecord[], 
+  workouts: WorkoutRecord[],
+  userLocalTime: string
+) {
   if (history.length === 0 && meals.length === 0 && workouts.length === 0) {
-    return "Start logging your fasts, meals, and workouts to get personalized insights!";
+    return null;
   }
 
   const ai = getAIInstance();
+  const now = new Date();
+  
   const historyData = history.slice(0, 10).map(h => ({
-    startTime: new Date(h.startTime).toLocaleString(),
-    duration: (h.duration / 3600).toFixed(1) + " hours",
-    target: (h.targetDuration / 3600).toFixed(1) + " hours",
-    completed: h.completed
+    startTime: new Date(h.startTime).toISOString(),
+    endTime: h.endTime ? new Date(h.endTime).toISOString() : null,
+    durationHours: (h.duration / 3600).toFixed(1),
+    targetHours: (h.targetDuration / 3600).toFixed(1),
+    completed: h.completed,
+    relativeTime: `${Math.round((now.getTime() - h.startTime) / 3600000)} hours ago`
   }));
 
   const mealData = meals.slice(0, 10).map(m => ({
-    time: new Date(m.time).toLocaleString(),
-    scale: m.scale
+    time: new Date(m.time).toISOString(),
+    scale: m.scale,
+    relativeTime: `${Math.round((now.getTime() - m.time) / 60000)} minutes ago`
   }));
 
   const workoutData = workouts.slice(0, 10).map(w => ({
-    time: new Date(w.time).toLocaleString(),
-    duration: w.duration + " mins",
-    intensity: w.intensity
+    time: new Date(w.time).toISOString(),
+    durationMins: w.duration,
+    intensity: w.intensity,
+    relativeTime: `${Math.round((now.getTime() - w.time) / 60000)} minutes ago`
   }));
 
   const prompt = `
+    User's Current Local Time: ${userLocalTime}
+    Current UTC Time: ${now.toISOString()}
+    
     Analyze this user's health data and provide 3-4 concise, personalized insights.
-    Focus on the relationship between fasting, meal sizes, and workout intensity.
+    Focus on the relationship between fasting windows, meal timing/size, and workout timing/intensity.
+    
+    CRITICAL: 
+    1. Use "User's Current Local Time" as the primary reference for "morning", "night", etc.
+    2. Use "relativeTime" fields to understand how long ago events happened.
+    3. Only use the data provided in the lists below. Do NOT infer or assume meal times.
+    4. ALWAYS use 12-hour format (e.g., "10:00 am") when mentioning specific times in your response.
     
     Fasting History: ${JSON.stringify(historyData)}
     Recent Meals: ${JSON.stringify(mealData)}
     Recent Workouts: ${JSON.stringify(workoutData)}
     
-    Keep it encouraging, professional, and scientifically grounded.
+    Structure the response as a list of insights.
   `;
 
   try {
@@ -59,19 +79,31 @@ export async function getFastingInsights(history: FastRecord[], meals: MealRecor
         model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
-          systemInstruction: "You are an expert fasting coach. Provide data-driven insights based on the user's history."
+          systemInstruction: "You are an expert fasting coach. Provide data-driven, structured insights based on the user's history. Be precise about timing relationships. IMPORTANT: Never hallucinate or infer meal or workout data that is not explicitly provided in the user's logs. ALWAYS use 12-hour time format (e.g., 10:00 am) in your responses.",
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                category: { type: Type.STRING, description: "Category (e.g., Timing, Nutrition, Performance)" },
+                title: { type: Type.STRING, description: "Short title" },
+                content: { type: Type.STRING, description: "Detailed insight" },
+                impact: { type: Type.STRING, enum: ["positive", "neutral", "improvement"] }
+              },
+              required: ["category", "title", "content", "impact"]
+            }
+          }
         }
       }),
-      15000, // 15 second timeout
-      "AI Coach is taking a bit longer than usual. Please try again in a moment."
+      20000,
+      "AI Coach is analyzing your data..."
     );
-    return response.text;
+    
+    return JSON.parse(response.text);
   } catch (error) {
     console.error("AI Insights Error:", error);
-    if (error instanceof Error && error.message.includes("timeout")) {
-      return "The connection timed out. Your mobile network might be slow, please try refreshing.";
-    }
-    return "Unable to generate insights at this time. Keep up the great work!";
+    return null;
   }
 }
 
