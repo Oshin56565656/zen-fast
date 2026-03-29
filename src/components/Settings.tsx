@@ -9,9 +9,20 @@ interface SettingsProps {
 
 export const Settings: FC<SettingsProps> = ({ targetHours, onHoursChange }) => {
   const [hasKey, setHasKey] = useState(false);
+  const [manualKey, setManualKey] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [showManual, setShowManual] = useState(false);
 
   useEffect(() => {
     const checkKey = async () => {
+      // Check localStorage first
+      const local = localStorage.getItem('FT_GEMINI_API_KEY');
+      if (local) {
+        setHasKey(true);
+        setManualKey(local);
+        return;
+      }
+
       // @ts-ignore
       if (typeof window !== 'undefined' && window.aistudio) {
         // @ts-ignore
@@ -22,17 +33,31 @@ export const Settings: FC<SettingsProps> = ({ targetHours, onHoursChange }) => {
     checkKey();
   }, []);
 
+  const handleSaveManualKey = () => {
+    if (!manualKey.trim()) return;
+    setIsSaving(true);
+    localStorage.setItem('FT_GEMINI_API_KEY', manualKey.trim());
+    setHasKey(true);
+    setTimeout(() => {
+      setIsSaving(false);
+      setShowManual(false);
+    }, 800);
+  };
+
   const handleSelectKey = async () => {
     try {
       // @ts-ignore
       if (typeof window !== 'undefined' && window.aistudio) {
         // @ts-ignore
         await window.aistudio.openSelectKey();
-        // Assume success and update state
         setHasKey(true);
+      } else {
+        // Fallback to showing manual input if platform selector is missing
+        setShowManual(true);
       }
     } catch (error) {
       console.error('Error selecting API key:', error);
+      setShowManual(true);
     }
   };
 
@@ -107,15 +132,47 @@ export const Settings: FC<SettingsProps> = ({ targetHours, onHoursChange }) => {
             <Sparkles size={16} />
             <span>{hasKey ? "Change API Key" : "Connect AI Coach"}</span>
           </button>
+
+          {showManual && (
+            <div className="space-y-3 pt-2 border-t border-white/5 animate-in fade-in slide-in-from-top-2">
+              <p className="text-[10px] text-white/40 font-medium uppercase tracking-wider">Paste API Key Manually</p>
+              <div className="flex space-x-2">
+                <input
+                  type="password"
+                  value={manualKey}
+                  onChange={(e) => setManualKey(e.target.value)}
+                  placeholder="AIzaSy..."
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-primary/50 transition-colors"
+                />
+                <button
+                  onClick={handleSaveManualKey}
+                  disabled={isSaving}
+                  className="bg-primary text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-primary/90 disabled:opacity-50 transition-all"
+                >
+                  {isSaving ? "Saving..." : "Save"}
+                </button>
+              </div>
+            </div>
+          )}
           
-          <a 
-            href="https://ai.google.dev/gemini-api/docs/billing" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="block text-center text-[10px] text-white/20 hover:text-white/40 underline underline-offset-4"
-          >
-            How to get a free API key?
-          </a>
+          <div className="flex justify-between items-center">
+            <a 
+              href="https://ai.google.dev/gemini-api/docs/billing" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-[10px] text-white/20 hover:text-white/40 underline underline-offset-4"
+            >
+              How to get a free API key?
+            </a>
+            {!showManual && (
+              <button 
+                onClick={() => setShowManual(true)}
+                className="text-[10px] text-white/20 hover:text-white/40"
+              >
+                Enter manually
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
