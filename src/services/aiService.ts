@@ -2,9 +2,9 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { FastRecord, MealRecord, WorkoutRecord } from "../types";
 
 const getAIInstance = () => {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
   if (!apiKey) {
-    console.warn("GEMINI_API_KEY is not defined in the environment.");
+    console.warn("GEMINI_API_KEY or API_KEY is not defined in the environment.");
   }
   return new GoogleGenAI({ apiKey: apiKey || "" });
 };

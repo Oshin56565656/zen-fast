@@ -21,15 +21,48 @@ interface Insight {
 const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts }) => {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hasKey, setHasKey] = useState<boolean>(true);
+
+  useEffect(() => {
+    const checkKey = async () => {
+      // @ts-ignore
+      if (typeof window !== 'undefined' && window.aistudio) {
+        // @ts-ignore
+        const selected = await window.aistudio.hasSelectedApiKey();
+        setHasKey(selected || !!process.env.GEMINI_API_KEY || !!process.env.API_KEY);
+      }
+    };
+    checkKey();
+  }, []);
+
+  const handleSelectKey = async () => {
+    // @ts-ignore
+    if (window.aistudio) {
+      // @ts-ignore
+      await window.aistudio.openSelectKey();
+      setHasKey(true);
+    }
+  };
 
   const fetchInsights = async () => {
+    setError(null);
     setLoading(true);
     try {
       const userLocalTime = new Date().toLocaleString();
       const result = await getFastingInsights(history, meals, workouts, userLocalTime);
+      if (!result) {
+        setError("Could not generate insights. Please check your connection or API key.");
+      }
       setInsights(Array.isArray(result) ? result : []);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching insights:', error);
+      if (error.message?.includes("Requested entity was not found")) {
+        setHasKey(false);
+        setError("API Key error. Please re-select your key.");
+      } else {
+        setError(error.message || "An unexpected error occurred.");
+      }
       setInsights([]);
     } finally {
       setLoading(false);
@@ -95,7 +128,31 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts }) => {
 
       <div className="space-y-4">
         <AnimatePresence mode="wait">
-          {loading ? (
+          {!hasKey ? (
+            <motion.div
+              key="no-key"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="bg-primary/5 p-8 rounded-3xl border border-primary/20 text-center space-y-4"
+            >
+              <Sparkles className="text-primary mx-auto" size={40} />
+              <div className="space-y-2">
+                <h3 className="text-lg font-bold text-white">AI Features Require an API Key</h3>
+                <p className="text-white/60 text-sm max-w-xs mx-auto">
+                  To use the AI Coach in the shared version, you need to select a Gemini API key.
+                </p>
+              </div>
+              <button
+                onClick={handleSelectKey}
+                className="bg-primary text-white px-6 py-3 rounded-xl font-bold hover:bg-primary/90 transition-all active:scale-95"
+              >
+                Select API Key
+              </button>
+              <p className="text-[10px] text-white/20">
+                Don't have one? Get it at <a href="https://ai.google.dev/gemini-api/docs/billing" target="_blank" className="underline">ai.google.dev</a>
+              </p>
+            </motion.div>
+          ) : loading ? (
             <motion.div
               key="loading"
               initial={{ opacity: 0 }}
@@ -105,6 +162,22 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts }) => {
             >
               <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               <p className="text-white/40 text-sm font-medium animate-pulse">Analyzing your fasting patterns...</p>
+            </motion.div>
+          ) : error ? (
+            <motion.div
+              key="error"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="bg-red-500/5 p-8 rounded-3xl border border-red-500/20 text-center space-y-3"
+            >
+              <p className="text-red-500 font-bold">Analysis Failed</p>
+              <p className="text-white/60 text-sm">{error}</p>
+              <button
+                onClick={fetchInsights}
+                className="text-primary text-sm font-bold hover:underline"
+              >
+                Try Again
+              </button>
             </motion.div>
           ) : insights.length > 0 ? (
             <motion.div
