@@ -1,5 +1,6 @@
-import React, { FC } from 'react';
+import React, { FC, useState, useEffect } from 'react';
 import { cn } from '../lib/utils';
+import { Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface SettingsProps {
   targetHours: number;
@@ -7,6 +8,34 @@ interface SettingsProps {
 }
 
 export const Settings: FC<SettingsProps> = ({ targetHours, onHoursChange }) => {
+  const [hasKey, setHasKey] = useState(false);
+
+  useEffect(() => {
+    const checkKey = async () => {
+      // @ts-ignore
+      if (typeof window !== 'undefined' && window.aistudio) {
+        // @ts-ignore
+        const selected = await window.aistudio.hasSelectedApiKey();
+        setHasKey(selected || !!process.env.GEMINI_API_KEY || !!process.env.API_KEY);
+      }
+    };
+    checkKey();
+  }, []);
+
+  const handleSelectKey = async () => {
+    try {
+      // @ts-ignore
+      if (typeof window !== 'undefined' && window.aistudio) {
+        // @ts-ignore
+        await window.aistudio.openSelectKey();
+        // Assume success and update state
+        setHasKey(true);
+      }
+    } catch (error) {
+      console.error('Error selecting API key:', error);
+    }
+  };
+
   return (
     <div className="p-6 space-y-8">
       <h2 className="text-xl font-bold">Settings</h2>
@@ -34,6 +63,59 @@ export const Settings: FC<SettingsProps> = ({ targetHours, onHoursChange }) => {
             <span>24 Hours</span>
             <span>48 Hours</span>
           </div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">AI Integration</h3>
+        <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className={cn(
+                "w-10 h-10 rounded-xl flex items-center justify-center",
+                hasKey ? "bg-green-500/10 text-green-500" : "bg-primary/10 text-primary"
+              )}>
+                <Sparkles size={20} />
+              </div>
+              <div>
+                <p className="font-bold text-sm">Gemini AI Coach</p>
+                <p className="text-xs text-white/40">
+                  {hasKey ? "Connected and ready" : "Not connected"}
+                </p>
+              </div>
+            </div>
+            {hasKey ? (
+              <CheckCircle2 className="text-green-500" size={20} />
+            ) : (
+              <AlertCircle className="text-primary" size={20} />
+            )}
+          </div>
+
+          <p className="text-xs text-white/60 leading-relaxed">
+            Connect your Gemini API key to get personalized insights, biological stage analysis, and smart motivation.
+          </p>
+
+          <button
+            onClick={handleSelectKey}
+            className={cn(
+              "w-full py-3 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center space-x-2",
+              hasKey 
+                ? "bg-white/5 text-white/60 hover:bg-white/10" 
+                : "bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20"
+            )}
+          >
+            <Sparkles size={16} />
+            <span>{hasKey ? "Change API Key" : "Connect AI Coach"}</span>
+          </button>
+          
+          <a 
+            href="https://ai.google.dev/gemini-api/docs/billing" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="block text-center text-[10px] text-white/20 hover:text-white/40 underline underline-offset-4"
+          >
+            How to get a free API key?
+          </a>
         </div>
       </div>
 

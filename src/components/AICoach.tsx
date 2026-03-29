@@ -51,9 +51,6 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts }) => {
     try {
       const userLocalTime = new Date().toLocaleString();
       const result = await getFastingInsights(history, meals, workouts, userLocalTime);
-      if (!result) {
-        setError("Could not generate insights. Please check your connection or API key.");
-      }
       setInsights(Array.isArray(result) ? result : []);
     } catch (error: any) {
       console.error('Error fetching insights:', error);

@@ -25,7 +25,7 @@ export async function getFastingInsights(
   userLocalTime: string
 ) {
   if (history.length === 0 && meals.length === 0 && workouts.length === 0) {
-    return null;
+    return [];
   }
 
   const ai = getAIInstance();
@@ -96,14 +96,23 @@ export async function getFastingInsights(
           }
         }
       }),
-      20000,
-      "AI Coach is analyzing your data..."
+      45000, // Increase to 45 seconds
+      "The AI analysis is taking longer than expected. Please try again in a moment."
     );
     
-    return JSON.parse(response.text);
+    if (!response.text) {
+      throw new Error("The AI returned an empty response. Please try again.");
+    }
+
+    try {
+      return JSON.parse(response.text);
+    } catch (e) {
+      console.error("JSON Parse Error:", response.text);
+      throw new Error("The AI response was not in the expected format. Please try again.");
+    }
   } catch (error) {
     console.error("AI Insights Error:", error);
-    return null;
+    throw error; // Re-throw to let the UI handle the error state
   }
 }
 
@@ -125,10 +134,10 @@ export async function getSmartMotivation(hoursPassed: number, targetHours: numbe
           systemInstruction: "You are an encouraging fasting coach. Provide short, scientifically-backed motivational tips."
         }
       }),
-      10000, // 10 second timeout
-      "Motivation is on the way..."
+      15000, // 15 second timeout
+      "Motivation is taking a moment..."
     );
-    return response.text;
+    return response.text || "You're doing great! Every hour counts toward your health goals.";
   } catch (error) {
     console.error("AI Motivation Error:", error);
     return "You're doing great! Every hour counts toward your health goals.";
