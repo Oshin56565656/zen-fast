@@ -69,11 +69,20 @@ export function useFasting() {
     }
   }, [state.status]);
 
-  const sendNotification = (title: string, options?: NotificationOptions) => {
+  const sendNotification = async (title: string, options?: NotificationOptions) => {
     try {
       if (!("Notification" in window)) return;
       
       if (Notification.permission === "granted") {
+        // Try Service Worker first (required for Android Chrome)
+        if ('serviceWorker' in navigator) {
+          const registration = await navigator.serviceWorker.ready;
+          if (registration) {
+            registration.showNotification(title, options);
+            return;
+          }
+        }
+        // Fallback to standard Notification
         new Notification(title, options);
       }
     } catch (e) {
@@ -420,10 +429,12 @@ export function useFasting() {
 
   const testNotification = async () => {
     await requestPermission();
-    sendNotification("Test Notification! 🔔", {
+    await sendNotification("Test Notification! 🔔", {
       body: "If you see this, notifications are working correctly.",
       icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
     });
+    // Add a small alert for feedback on mobile
+    alert("Test notification triggered! If you don't see it, please check your Android notification settings for Chrome.");
   };
 
   return {
