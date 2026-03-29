@@ -38,13 +38,6 @@ export function useFasting() {
   const [workouts, setWorkouts] = useState<WorkoutRecord[]>([]);
   const [hasNotifiedTarget, setHasNotifiedTarget] = useState(false);
 
-  // Request notification permission on mount
-  useEffect(() => {
-    if ("Notification" in window && Notification.permission === "default") {
-      Notification.requestPermission();
-    }
-  }, []);
-
   // Monitor fasting progress for target reached notification
   useEffect(() => {
     if (state.status !== 'fasting' || !state.startTime || hasNotifiedTarget) return;
@@ -57,7 +50,7 @@ export function useFasting() {
       if (elapsedMs >= targetMs && !hasNotifiedTarget) {
         sendNotification("Fast Goal Reached! 🎉", {
           body: `You've completed your ${state.targetHours}h fast. Great job!`,
-          icon: "/favicon.ico"
+          icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
         });
         setHasNotifiedTarget(true);
       }
@@ -77,8 +70,24 @@ export function useFasting() {
   }, [state.status]);
 
   const sendNotification = (title: string, options?: NotificationOptions) => {
-    if ("Notification" in window && Notification.permission === "granted") {
-      new Notification(title, options);
+    try {
+      if (!("Notification" in window)) return;
+      
+      if (Notification.permission === "granted") {
+        new Notification(title, options);
+      }
+    } catch (e) {
+      console.warn("Notification failed:", e);
+    }
+  };
+
+  const requestPermission = async () => {
+    if ("Notification" in window && Notification.permission === "default") {
+      try {
+        await Notification.requestPermission();
+      } catch (e) {
+        console.warn("Permission request failed:", e);
+      }
     }
   };
 
@@ -243,7 +252,10 @@ export function useFasting() {
     }
   }, [user]);
 
-  const startFast = () => {
+  const startFast = async () => {
+    console.log("Starting fast...");
+    if ("vibrate" in navigator) navigator.vibrate(50);
+    await requestPermission();
     sendNotification("Fast Started! ⏱️", {
       body: `Your ${state.targetHours}h fast has begun. Good luck!`,
     });
@@ -258,6 +270,7 @@ export function useFasting() {
 
   const pauseFast = () => {
     if (state.status !== 'fasting' || state.pausedAt) return;
+    if ("vibrate" in navigator) navigator.vibrate(30);
     sendNotification("Fast Paused ⏸️", {
       body: "Your timer has been paused.",
     });
@@ -266,6 +279,7 @@ export function useFasting() {
 
   const resumeFast = () => {
     if (state.status !== 'fasting' || !state.pausedAt) return;
+    if ("vibrate" in navigator) navigator.vibrate(30);
     sendNotification("Fast Resumed ▶️", {
       body: "Your timer is running again.",
     });
@@ -278,6 +292,7 @@ export function useFasting() {
 
   const endFast = async () => {
     if (state.status !== 'fasting' || !state.startTime || !user) return;
+    if ("vibrate" in navigator) navigator.vibrate([50, 30, 50]);
     
     const now = Date.now();
     const effectiveStartTime = state.startTime + state.totalPausedTime;
