@@ -418,6 +418,14 @@ export function useFasting() {
     }
   };
 
+  const testNotification = async () => {
+    await requestPermission();
+    sendNotification("Test Notification! 🔔", {
+      body: "If you see this, notifications are working correctly.",
+      icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
+    });
+  };
+
   return {
     user,
     isAuthReady,
@@ -436,6 +444,7 @@ export function useFasting() {
     logMeal,
     logWorkout,
     deleteMeal,
-    deleteWorkout
+    deleteWorkout,
+    testNotification
   };
 }

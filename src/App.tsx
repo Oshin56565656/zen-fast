@@ -34,7 +34,8 @@ export default function App() {
     logMeal,
     logWorkout,
     deleteMeal,
-    deleteWorkout
+    deleteWorkout,
+    testNotification
   } = useFasting();
 
   if (!isAuthReady) {
@@ -93,6 +94,7 @@ export default function App() {
             <Settings 
               targetHours={state.targetHours} 
               onHoursChange={setTargetHours} 
+              onTestNotification={testNotification}
             />
             <div className="px-6">
               <button

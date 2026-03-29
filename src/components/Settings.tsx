@@ -1,18 +1,27 @@
 import React, { FC, useState, useEffect } from 'react';
 import { cn } from '../lib/utils';
-import { Sparkles, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info } from 'lucide-react';
 
 interface SettingsProps {
   targetHours: number;
   onHoursChange: (hours: number) => void;
+  onTestNotification?: () => void;
 }
 
-export const Settings: FC<SettingsProps> = ({ targetHours, onHoursChange }) => {
+export const Settings: FC<SettingsProps> = ({ targetHours, onHoursChange, onTestNotification }) => {
   const [hasKey, setHasKey] = useState(false);
   const [manualKey, setManualKey] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showManual, setShowManual] = useState(false);
+  const [notificationStatus, setNotificationStatus] = useState<NotificationPermission | 'unsupported'>('default');
 
+  useEffect(() => {
+    if (!("Notification" in window)) {
+      setNotificationStatus('unsupported');
+    } else {
+      setNotificationStatus(Notification.permission);
+    }
+  }, []);
   useEffect(() => {
     const checkKey = async () => {
       // Check localStorage first
@@ -61,6 +70,15 @@ export const Settings: FC<SettingsProps> = ({ targetHours, onHoursChange }) => {
     }
   };
 
+  const handleTestNotification = async () => {
+    if (onTestNotification) {
+      await onTestNotification();
+      if ("Notification" in window) {
+        setNotificationStatus(Notification.permission);
+      }
+    }
+  };
+
   return (
     <div className="p-6 space-y-8">
       <h2 className="text-xl font-bold">Settings</h2>
@@ -88,6 +106,76 @@ export const Settings: FC<SettingsProps> = ({ targetHours, onHoursChange }) => {
             <span>24 Hours</span>
             <span>48 Hours</span>
           </div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">Notifications</h3>
+        <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className={cn(
+                "w-10 h-10 rounded-xl flex items-center justify-center",
+                notificationStatus === 'granted' ? "bg-green-500/10 text-green-500" : "bg-white/5 text-white/40"
+              )}>
+                {notificationStatus === 'granted' ? <Bell size={20} /> : <BellOff size={20} />}
+              </div>
+              <div>
+                <p className="font-bold text-sm">Push Notifications</p>
+                <p className="text-xs text-white/40 capitalize">
+                  {notificationStatus === 'unsupported' ? "Not supported on this browser" : notificationStatus}
+                </p>
+              </div>
+            </div>
+            {notificationStatus === 'granted' ? (
+              <CheckCircle2 className="text-green-500" size={20} />
+            ) : (
+              <AlertCircle className="text-white/20" size={20} />
+            )}
+          </div>
+
+          {notificationStatus === 'unsupported' ? (
+            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-start space-x-3">
+              <AlertCircle className="text-red-500 shrink-0 mt-0.5" size={14} />
+              <p className="text-[10px] text-red-500/80 leading-relaxed">
+                Your browser doesn't support web notifications. Try using Chrome or Safari.
+              </p>
+            </div>
+          ) : notificationStatus !== 'granted' ? (
+            <div className="space-y-3">
+              <div className="p-3 bg-primary/10 border border-primary/20 rounded-xl flex items-start space-x-3">
+                <Info className="text-primary shrink-0 mt-0.5" size={14} />
+                <div className="space-y-1">
+                  <p className="text-[10px] text-primary font-bold uppercase tracking-wider">Mobile Users</p>
+                  <p className="text-[10px] text-primary/80 leading-relaxed">
+                    <strong>iOS:</strong> Add to Home Screen first.<br />
+                    <strong>Android:</strong> Ensure notifications are enabled in Chrome settings.
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-3 bg-green-500/5 border border-green-500/10 rounded-xl flex items-start space-x-3">
+              <Info className="text-green-500 shrink-0 mt-0.5" size={14} />
+              <div className="space-y-1">
+                <p className="text-[10px] text-green-500 font-bold uppercase tracking-wider">Android Troubleshooting</p>
+                <p className="text-[10px] text-green-500/80 leading-relaxed">
+                  If notifications still don't appear: <br />
+                  1. Check <strong>Android Settings &gt; Apps &gt; Chrome &gt; Notifications</strong>.<br />
+                  2. Disable <strong>Battery Optimization</strong> for Chrome.<br />
+                  3. Ensure you are <strong>not</strong> in Incognito/Private mode.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <button
+            onClick={handleTestNotification}
+            className="w-full py-3 bg-white/5 hover:bg-white/10 text-white/80 rounded-xl font-bold text-sm transition-all active:scale-95 flex items-center justify-center space-x-2"
+          >
+            <Bell size={16} />
+            <span>Send Test Notification</span>
+          </button>
         </div>
       </div>
 
