@@ -267,6 +267,7 @@ export function useFasting() {
     await requestPermission();
     sendNotification("Fast Started! ⏱️", {
       body: `Your ${state.targetHours}h fast has begun. Good luck!`,
+      icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
     });
     updateState({
       startTime: Date.now(),
@@ -282,6 +283,7 @@ export function useFasting() {
     if ("vibrate" in navigator) navigator.vibrate(30);
     sendNotification("Fast Paused ⏸️", {
       body: "Your timer has been paused.",
+      icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
     });
     updateState({ pausedAt: Date.now() });
   };
@@ -291,6 +293,7 @@ export function useFasting() {
     if ("vibrate" in navigator) navigator.vibrate(30);
     sendNotification("Fast Resumed ▶️", {
       body: "Your timer is running again.",
+      icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
     });
     const pauseDuration = Date.now() - state.pausedAt;
     updateState({
@@ -324,6 +327,7 @@ export function useFasting() {
       
       sendNotification("Fast Ended! 🥗", {
         body: `You fasted for ${Math.floor(durationSec / 3600)}h ${Math.floor((durationSec % 3600) / 60)}m. Time to refuel!`,
+        icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
       });
 
       await updateState({
