@@ -36,6 +36,51 @@ export function useFasting() {
   const [history, setHistory] = useState<FastRecord[]>([]);
   const [meals, setMeals] = useState<MealRecord[]>([]);
   const [workouts, setWorkouts] = useState<WorkoutRecord[]>([]);
+  const [hasNotifiedTarget, setHasNotifiedTarget] = useState(false);
+
+  // Request notification permission on mount
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
+  }, []);
+
+  // Monitor fasting progress for target reached notification
+  useEffect(() => {
+    if (state.status !== 'fasting' || !state.startTime || hasNotifiedTarget) return;
+
+    const checkTarget = () => {
+      const effectiveStartTime = state.startTime! + state.totalPausedTime;
+      const elapsedMs = Date.now() - effectiveStartTime;
+      const targetMs = state.targetHours * 3600 * 1000;
+
+      if (elapsedMs >= targetMs && !hasNotifiedTarget) {
+        sendNotification("Fast Goal Reached! 🎉", {
+          body: `You've completed your ${state.targetHours}h fast. Great job!`,
+          icon: "/favicon.ico"
+        });
+        setHasNotifiedTarget(true);
+      }
+    };
+
+    const interval = setInterval(checkTarget, 60000); // Check every minute
+    checkTarget(); // Check immediately
+
+    return () => clearInterval(interval);
+  }, [state.status, state.startTime, state.totalPausedTime, state.targetHours, hasNotifiedTarget]);
+
+  // Reset notification flag when fast ends or status changes
+  useEffect(() => {
+    if (state.status !== 'fasting') {
+      setHasNotifiedTarget(false);
+    }
+  }, [state.status]);
+
+  const sendNotification = (title: string, options?: NotificationOptions) => {
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification(title, options);
+    }
+  };
 
   // Auth listener
   useEffect(() => {
@@ -199,6 +244,9 @@ export function useFasting() {
   }, [user]);
 
   const startFast = () => {
+    sendNotification("Fast Started! ⏱️", {
+      body: `Your ${state.targetHours}h fast has begun. Good luck!`,
+    });
     updateState({
       startTime: Date.now(),
       endTime: null,
@@ -210,11 +258,17 @@ export function useFasting() {
 
   const pauseFast = () => {
     if (state.status !== 'fasting' || state.pausedAt) return;
+    sendNotification("Fast Paused ⏸️", {
+      body: "Your timer has been paused.",
+    });
     updateState({ pausedAt: Date.now() });
   };
 
   const resumeFast = () => {
     if (state.status !== 'fasting' || !state.pausedAt) return;
+    sendNotification("Fast Resumed ▶️", {
+      body: "Your timer is running again.",
+    });
     const pauseDuration = Date.now() - state.pausedAt;
     updateState({
       pausedAt: null,
@@ -244,6 +298,10 @@ export function useFasting() {
     try {
       await addDoc(collection(db, 'users', user.uid, 'history'), newRecord);
       
+      sendNotification("Fast Ended! 🥗", {
+        body: `You fasted for ${Math.floor(durationSec / 3600)}h ${Math.floor((durationSec % 3600) / 60)}m. Time to refuel!`,
+      });
+
       await updateState({
         startTime: null,
         endTime: now,

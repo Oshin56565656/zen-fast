@@ -66,11 +66,8 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts }) => {
     }
   };
 
-  useEffect(() => {
-    if ((history.length > 0 || meals.length > 0 || workouts.length > 0) && insights.length === 0 && !loading) {
-      fetchInsights();
-    }
-  }, [history, meals, workouts, insights.length, loading]);
+  // Removed automatic fetch on mount to respect user preference
+  // Insights are now only fetched via the manual refresh button
 
   return (
     <div className="space-y-6">
