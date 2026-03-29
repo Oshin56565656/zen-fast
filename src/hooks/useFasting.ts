@@ -305,7 +305,7 @@ export function useFasting() {
       await updateState({
         startTime: null,
         endTime: now,
-        status: 'eating',
+        status: 'idle',
         pausedAt: null,
         totalPausedTime: 0
       });

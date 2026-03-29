@@ -56,11 +56,6 @@ export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd
         const effectiveStart = state.startTime! + state.totalPausedTime;
         setElapsed(Math.floor((now - effectiveStart) / 1000));
       }, 1000);
-    } else if (state.status === 'eating' && state.endTime) {
-      interval = window.setInterval(() => {
-        const now = Date.now();
-        setElapsed(Math.floor((now - state.endTime!) / 1000));
-      }, 1000);
     } else if (state.pausedAt && state.startTime) {
       const effectiveStart = state.startTime! + state.totalPausedTime;
       setElapsed(Math.floor((state.pausedAt - effectiveStart) / 1000));
@@ -75,13 +70,10 @@ export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd
   const strokeDashoffset = strokeDasharray - (strokeDasharray * progress) / 100;
 
   const isFasting = state.status === 'fasting';
-  const isEating = state.status === 'eating';
   const isIdle = state.status === 'idle';
 
   const timeRemaining = Math.max(targetSeconds - elapsed, 0);
-  const displayTime = isEating 
-    ? formatDuration(timeRemaining) 
-    : displayMode === 'elapsed' 
+  const displayTime = displayMode === 'elapsed' 
       ? formatDuration(elapsed) 
       : formatDuration(timeRemaining);
 
@@ -105,7 +97,7 @@ export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd
             cy="144"
             r="120"
             fill="transparent"
-            stroke={isFasting ? "#f97316" : isEating ? "#22c55e" : "#3f3f46"}
+            stroke={isFasting ? "#f97316" : "#3f3f46"}
             strokeWidth="12"
             strokeDasharray={strokeDasharray}
             initial={{ strokeDashoffset: strokeDasharray }}
@@ -119,7 +111,7 @@ export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd
           <p className="text-sm font-medium text-white/40 uppercase tracking-widest mb-1">
             {isFasting 
               ? (displayMode === 'elapsed' ? 'Fasting Time' : 'Time Remaining') 
-              : isEating ? 'Eating Window Left' : 'Ready to start?'}
+              : 'Ready to start?'}
           </p>
           <button 
             onClick={() => setDisplayMode(prev => prev === 'elapsed' ? 'remaining' : 'elapsed')}
@@ -168,16 +160,6 @@ export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd
             </button>
           </>
         )}
-
-        {isEating && (
-          <button
-            onClick={onReset}
-            className="bg-accent hover:bg-accent/90 text-white px-8 py-4 rounded-full font-bold flex items-center space-x-2 shadow-lg shadow-accent/20 transition-all active:scale-95"
-          >
-            <Zap size={20} fill="currentColor" />
-            <span>Start New Fast</span>
-          </button>
-        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
@@ -189,7 +171,7 @@ export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd
           <p className="text-xs text-white/40 mb-1">Status</p>
           <p className={cn(
             "font-bold text-lg capitalize",
-            isFasting ? "text-primary" : isEating ? "text-accent" : "text-white/60"
+            isFasting ? "text-primary" : "text-white/60"
           )}>
             {state.status}
           </p>
