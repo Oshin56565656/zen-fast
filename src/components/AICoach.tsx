@@ -27,10 +27,10 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts }) => {
   };
 
   useEffect(() => {
-    if ((history.length > 0 || meals.length > 0 || workouts.length > 0) && !insights) {
+    if ((history.length > 0 || meals.length > 0 || workouts.length > 0) && !insights && !loading) {
       fetchInsights();
     }
-  }, [history, meals, workouts]);
+  }, [history, meals, workouts, insights, loading]);
 
   return (
     <div className="space-y-6">

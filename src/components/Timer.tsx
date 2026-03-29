@@ -26,22 +26,27 @@ export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd
   useEffect(() => {
     const hoursPassed = elapsed / 3600;
     // Fetch motivation every 2 hours or at the start
-    if (state.status === 'fasting' && !state.pausedAt && (hoursPassed >= lastMotivationHour + 2 || (hoursPassed > 0 && lastMotivationHour === -1))) {
+    if (state.status === 'fasting' && !state.pausedAt && !loadingMotivation && (hoursPassed >= lastMotivationHour + 2 || (hoursPassed > 0 && lastMotivationHour === -1))) {
       const fetchMotivation = async () => {
         setLoadingMotivation(true);
+        // Set this immediately to prevent re-triggering while loading
+        const currentHour = Math.floor(hoursPassed);
+        setLastMotivationHour(currentHour);
+        
         try {
           const msg = await getSmartMotivation(hoursPassed, state.targetHours);
           setMotivation(msg);
-          setLastMotivationHour(Math.floor(hoursPassed));
         } catch (error) {
           console.error('Error fetching motivation:', error);
+          // Reset if it failed so it can try again later
+          setLastMotivationHour(prev => prev - 1);
         } finally {
           setLoadingMotivation(false);
         }
       };
       fetchMotivation();
     }
-  }, [elapsed, state.status, state.pausedAt, state.targetHours, lastMotivationHour]);
+  }, [elapsed, state.status, state.pausedAt, state.targetHours, lastMotivationHour, loadingMotivation]);
 
   useEffect(() => {
     let interval: number;
