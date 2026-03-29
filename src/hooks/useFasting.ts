@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { CurrentFastState, FastRecord } from '../types';
+import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord } from '../types';
 import { 
   auth, 
   db, 
@@ -34,6 +34,8 @@ export function useFasting() {
   });
 
   const [history, setHistory] = useState<FastRecord[]>([]);
+  const [meals, setMeals] = useState<MealRecord[]>([]);
+  const [workouts, setWorkouts] = useState<WorkoutRecord[]>([]);
 
   // Auth listener
   useEffect(() => {
@@ -125,6 +127,40 @@ export function useFasting() {
       handleFirestoreError(error, 'list', `users/${user.uid}/history`);
     });
 
+    return () => unsubscribe();
+  }, [user]);
+
+  // Sync meals with Firestore
+  useEffect(() => {
+    if (!user) return;
+    const mealsRef = collection(db, 'users', user.uid, 'meals');
+    const q = query(mealsRef);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const records: MealRecord[] = [];
+      snapshot.forEach((doc) => {
+        records.push({ id: doc.id, ...doc.data() } as MealRecord);
+      });
+      setMeals(records.sort((a, b) => b.time - a.time));
+    }, (error) => {
+      handleFirestoreError(error, 'list', `users/${user.uid}/meals`);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  // Sync workouts with Firestore
+  useEffect(() => {
+    if (!user) return;
+    const workoutsRef = collection(db, 'users', user.uid, 'workouts');
+    const q = query(workoutsRef);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const records: WorkoutRecord[] = [];
+      snapshot.forEach((doc) => {
+        records.push({ id: doc.id, ...doc.data() } as WorkoutRecord);
+      });
+      setWorkouts(records.sort((a, b) => b.time - a.time));
+    }, (error) => {
+      handleFirestoreError(error, 'list', `users/${user.uid}/workouts`);
+    });
     return () => unsubscribe();
   }, [user]);
 
@@ -264,11 +300,58 @@ export function useFasting() {
     updateState({ targetHours: hours });
   };
 
+  const logMeal = async (time: number, scale: 'snack' | 'normal' | 'large') => {
+    if (!user) return;
+    try {
+      await addDoc(collection(db, 'users', user.uid, 'meals'), {
+        time,
+        scale,
+        createdAt: Timestamp.now()
+      });
+    } catch (error) {
+      handleFirestoreError(error, 'write', `users/${user.uid}/meals`);
+    }
+  };
+
+  const logWorkout = async (time: number, duration: number, intensity: 'low' | 'moderate' | 'high') => {
+    if (!user) return;
+    try {
+      await addDoc(collection(db, 'users', user.uid, 'workouts'), {
+        time,
+        duration,
+        intensity,
+        createdAt: Timestamp.now()
+      });
+    } catch (error) {
+      handleFirestoreError(error, 'write', `users/${user.uid}/workouts`);
+    }
+  };
+
+  const deleteMeal = async (id: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'meals', id));
+    } catch (error) {
+      handleFirestoreError(error, 'delete', `users/${user.uid}/meals/${id}`);
+    }
+  };
+
+  const deleteWorkout = async (id: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'workouts', id));
+    } catch (error) {
+      handleFirestoreError(error, 'delete', `users/${user.uid}/workouts/${id}`);
+    }
+  };
+
   return {
     user,
     isAuthReady,
     state,
     history,
+    meals,
+    workouts,
     startFast,
     pauseFast,
     resumeFast,
@@ -276,6 +359,10 @@ export function useFasting() {
     resetToIdle,
     deleteRecord,
     manualLogFast,
-    setTargetHours
+    setTargetHours,
+    logMeal,
+    logWorkout,
+    deleteMeal,
+    deleteWorkout
   };
 }

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, FC } from 'react';
 import { motion } from 'motion/react';
-import { Play, Pause, Square, Zap } from 'lucide-react';
+import { Play, Pause, Square, Zap, Sparkles } from 'lucide-react';
 import { CurrentFastState } from '../types';
 import { formatDuration, cn } from '../lib/utils';
+import { getSmartMotivation } from '../services/aiService';
 
 interface TimerProps {
   state: CurrentFastState;
@@ -16,8 +17,31 @@ interface TimerProps {
 export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd, onReset }) => {
   const [elapsed, setElapsed] = useState(0);
   const [displayMode, setDisplayMode] = useState<'elapsed' | 'remaining'>('elapsed');
+  const [motivation, setMotivation] = useState<string>('');
+  const [loadingMotivation, setLoadingMotivation] = useState(false);
+  const [lastMotivationHour, setLastMotivationHour] = useState(-1);
   
   const targetSeconds = state.targetHours * 3600;
+
+  useEffect(() => {
+    const hoursPassed = elapsed / 3600;
+    // Fetch motivation every 2 hours or at the start
+    if (state.status === 'fasting' && !state.pausedAt && (hoursPassed >= lastMotivationHour + 2 || (hoursPassed > 0 && lastMotivationHour === -1))) {
+      const fetchMotivation = async () => {
+        setLoadingMotivation(true);
+        try {
+          const msg = await getSmartMotivation(hoursPassed, state.targetHours);
+          setMotivation(msg);
+          setLastMotivationHour(Math.floor(hoursPassed));
+        } catch (error) {
+          console.error('Error fetching motivation:', error);
+        } finally {
+          setLoadingMotivation(false);
+        }
+      };
+      fetchMotivation();
+    }
+  }, [elapsed, state.status, state.pausedAt, state.targetHours, lastMotivationHour]);
 
   useEffect(() => {
     let interval: number;
@@ -166,6 +190,28 @@ export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd
           </p>
         </div>
       </div>
+
+      {isFasting && (motivation || loadingMotivation) && (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-sm bg-primary/5 border border-primary/10 p-4 rounded-2xl relative overflow-hidden"
+        >
+          <div className="flex items-start space-x-3">
+            <Sparkles className="text-primary shrink-0 mt-1" size={18} />
+            <div className="space-y-1">
+              <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Coach Insight</p>
+              {loadingMotivation ? (
+                <div className="h-4 w-32 bg-primary/10 animate-pulse rounded" />
+              ) : (
+                <p className="text-xs text-white/70 leading-relaxed italic">
+                  {motivation}
+                </p>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 };

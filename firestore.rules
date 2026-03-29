@@ -24,6 +24,19 @@ service cloud.firestore {
     //   - completed: bool (required)
     //   - createdAt: timestamp (required)
     //
+    // Collection: users/{userId}/meals/{mealId}
+    // Fields:
+    //   - time: number (required)
+    //   - scale: string (required, ['snack', 'normal', 'large'])
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: users/{userId}/workouts/{workoutId}
+    // Fields:
+    //   - time: number (required)
+    //   - duration: number (required)
+    //   - intensity: string (required, ['low', 'moderate', 'high'])
+    //   - createdAt: timestamp (required)
+    //
     // ===============================================================
 
     // ===============================================================
@@ -98,6 +111,14 @@ service cloud.firestore {
       }
 
       match /history/{recordId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+
+      match /meals/{mealId} {
+        allow read, write: if isOwner(userId) || isAdmin();
+      }
+
+      match /workouts/{workoutId} {
         allow read, write: if isOwner(userId) || isAdmin();
       }
     }

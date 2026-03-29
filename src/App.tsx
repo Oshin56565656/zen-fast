@@ -1,16 +1,18 @@
 import { ReactNode, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Timer as TimerIcon, History as HistoryIcon, BarChart3, Settings as SettingsIcon, LogOut } from 'lucide-react';
+import { Timer as TimerIcon, History as HistoryIcon, BarChart3, Settings as SettingsIcon, LogOut, Sparkles, PlusCircle } from 'lucide-react';
 import { Timer } from './components/Timer';
 import { History } from './components/History';
 import { Stats } from './components/Stats';
 import { Settings } from './components/Settings';
 import { Auth } from './components/Auth';
+import AICoach from './components/AICoach';
+import LogActivity from './components/LogActivity';
 import { useFasting } from './hooks/useFasting';
 import { auth, signOut } from './firebase';
 import { cn } from './lib/utils';
 
-type Tab = 'timer' | 'history' | 'stats' | 'settings';
+type Tab = 'timer' | 'history' | 'stats' | 'coach' | 'log' | 'settings';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('timer');
@@ -19,6 +21,8 @@ export default function App() {
     isAuthReady,
     state, 
     history, 
+    meals,
+    workouts,
     startFast, 
     pauseFast, 
     resumeFast, 
@@ -26,7 +30,11 @@ export default function App() {
     resetToIdle, 
     deleteRecord,
     manualLogFast,
-    setTargetHours 
+    setTargetHours,
+    logMeal,
+    logWorkout,
+    deleteMeal,
+    deleteWorkout
   } = useFasting();
 
   if (!isAuthReady) {
@@ -66,6 +74,19 @@ export default function App() {
         return <History history={history} onDelete={deleteRecord} onManualLog={manualLogFast} />;
       case 'stats':
         return <Stats history={history} />;
+      case 'coach':
+        return <AICoach history={history} meals={meals} workouts={workouts} />;
+      case 'log':
+        return (
+          <LogActivity 
+            meals={meals} 
+            workouts={workouts} 
+            onLogMeal={logMeal} 
+            onLogWorkout={logWorkout} 
+            onDeleteMeal={deleteMeal}
+            onDeleteWorkout={deleteWorkout}
+          />
+        );
       case 'settings':
         return (
           <div className="space-y-6">
@@ -138,6 +159,18 @@ export default function App() {
           onClick={() => setActiveTab('stats')} 
           icon={<BarChart3 size={24} />} 
           label="Stats" 
+        />
+        <NavButton 
+          active={activeTab === 'coach'} 
+          onClick={() => setActiveTab('coach')} 
+          icon={<Sparkles size={24} />} 
+          label="Coach" 
+        />
+        <NavButton 
+          active={activeTab === 'log'} 
+          onClick={() => setActiveTab('log')} 
+          icon={<PlusCircle size={24} />} 
+          label="Log" 
         />
         <NavButton 
           active={activeTab === 'settings'} 

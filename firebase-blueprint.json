@@ -27,6 +27,29 @@
         "createdAt": { "type": "object", "description": "Firestore server timestamp." }
       },
       "required": ["startTime", "endTime", "duration", "targetDuration", "completed", "createdAt"]
+    },
+    "MealRecord": {
+      "title": "Meal Record",
+      "description": "A log of a meal consumed.",
+      "type": "object",
+      "properties": {
+        "time": { "type": "number", "description": "Timestamp of the meal." },
+        "scale": { "type": "string", "enum": ["snack", "normal", "large"], "description": "Size of the meal." },
+        "createdAt": { "type": "object", "description": "Firestore server timestamp." }
+      },
+      "required": ["time", "scale", "createdAt"]
+    },
+    "WorkoutRecord": {
+      "title": "Workout Record",
+      "description": "A log of a workout session.",
+      "type": "object",
+      "properties": {
+        "time": { "type": "number", "description": "Timestamp of the workout." },
+        "duration": { "type": "number", "description": "Duration in minutes." },
+        "intensity": { "type": "string", "enum": ["low", "moderate", "high"], "description": "Intensity level." },
+        "createdAt": { "type": "object", "description": "Firestore server timestamp." }
+      },
+      "required": ["time", "duration", "intensity", "createdAt"]
     }
   },
   "firestore": {
@@ -37,6 +60,14 @@
     "/users/{userId}/history/{recordId}": {
       "schema": "FastRecord",
       "description": "Stores the user's completed fasts."
+    },
+    "/users/{userId}/meals/{mealId}": {
+      "schema": "MealRecord",
+      "description": "Stores the user's meal logs."
+    },
+    "/users/{userId}/workouts/{workoutId}": {
+      "schema": "WorkoutRecord",
+      "description": "Stores the user's workout logs."
     }
   }
 }
