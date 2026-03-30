@@ -65,7 +65,10 @@ export async function getFastingInsights(
     Current UTC Time: ${now.toISOString()}
     
     Analyze this user's health data and provide 3-4 concise, personalized insights.
-    Focus on the relationship between fasting windows, meal timing/size, and workout timing/intensity.
+    Focus on:
+    1. The relationship between fasting windows and energy levels.
+    2. Specific recommendations for the BEST TIME and INTENSITY for their next workout based on their most recent meal(s) and current fasting state.
+    3. How their meal choices (descriptions) affect their metabolic health.
     
     CRITICAL: 
     1. Use "User's Current Local Time" as the primary reference for "morning", "night", etc.
@@ -86,7 +89,7 @@ export async function getFastingInsights(
         model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
-          systemInstruction: "You are an expert fasting coach. Provide data-driven, structured insights based on the user's history. Be precise about timing relationships. IMPORTANT: Never hallucinate or infer meal or workout data that is not explicitly provided in the user's logs. ALWAYS use 12-hour time format (e.g., 10:00 am) in your responses.",
+          systemInstruction: "You are an expert fasting and fitness coach. Provide data-driven, structured insights based on the user's history. Be precise about timing relationships. Specifically, recommend the optimal workout time and intensity based on the user's last meal and current fasting state. IMPORTANT: Never hallucinate or infer meal or workout data that is not explicitly provided in the user's logs. ALWAYS use 12-hour time format (e.g., 10:00 am) in your responses.",
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.ARRAY,
