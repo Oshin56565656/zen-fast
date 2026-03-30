@@ -2,7 +2,7 @@ import React, { FC, ReactNode } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { FastRecord } from '../types';
 import { format, subDays, startOfDay, isSameDay } from 'date-fns';
-import { Zap, Trophy, Clock, Flame } from 'lucide-react';
+import { Trophy, Clock, Flame, Target } from 'lucide-react';
 
 interface StatsProps {
   history: FastRecord[];
@@ -17,15 +17,9 @@ export const Stats: FC<StatsProps> = ({ history }) => {
     ? Math.max(...history.map(h => h.duration)) 
     : 0;
 
-  // Calculate streak
-  let streak = 0;
-  const today = startOfDay(new Date());
-  for (let i = 0; i < 30; i++) {
-    const day = subDays(today, i);
-    const hasFast = history.some(h => isSameDay(new Date(h.startTime), day));
-    if (hasFast) streak++;
-    else if (i > 0) break; // Only break if it's not today (allow missing today if not finished)
-  }
+  const successRate = totalFasts > 0 
+    ? Math.round((history.filter(h => h.completed).length / totalFasts) * 100) 
+    : 0;
 
   // Chart data for last 7 days
   const last7Days = Array.from({ length: 7 }).map((_, i) => {
@@ -43,7 +37,7 @@ export const Stats: FC<StatsProps> = ({ history }) => {
       <h2 className="text-xl font-bold">Statistics</h2>
 
       <div className="grid grid-cols-2 gap-4">
-        <StatCard icon={<Zap className="text-primary" />} label="Streak" value={`${streak} Days`} />
+        <StatCard icon={<Target className="text-primary" />} label="Success Rate" value={`${successRate}%`} />
         <StatCard icon={<Trophy className="text-yellow-500" />} label="Longest" value={`${(longestFast / 3600).toFixed(1)}h`} />
         <StatCard icon={<Clock className="text-secondary" />} label="Average" value={`${(avgDuration / 3600).toFixed(1)}h`} />
         <StatCard icon={<Flame className="text-orange-500" />} label="Total" value={totalFasts.toString()} />

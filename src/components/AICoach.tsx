@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, TrendingUp, Target, RefreshCw, Utensils, Dumbbell } from 'lucide-react';
-import { getFastingInsights } from '../services/aiService';
+import { Sparkles, TrendingUp, Target, RefreshCw, Utensils, Dumbbell, Send, MessageCircle } from 'lucide-react';
+import { getFastingInsights, chatWithCoach } from '../services/aiService';
 import { FastRecord, MealRecord, WorkoutRecord } from '../types';
 import { cn } from '../lib/utils';
 
@@ -19,6 +19,72 @@ interface Insight {
   content: string;
   impact: 'positive' | 'neutral' | 'improvement';
 }
+
+const ChatBox: React.FC<{ insight: Insight }> = ({ insight }) => {
+  const [messages, setMessages] = useState<{ role: 'user' | 'model'; text: string }[]>([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const sendMessage = async () => {
+    if (!input.trim() || loading) return;
+    
+    const userMsg = input.trim();
+    setInput('');
+    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    setLoading(true);
+
+    try {
+      const response = await chatWithCoach(insight, userMsg, messages);
+      setMessages(prev => [...prev, { role: 'model', text: response }]);
+    } catch (error) {
+      console.error('Chat error:', error);
+      setMessages(prev => [...prev, { role: 'model', text: "Sorry, I'm having trouble connecting. Please try again." }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 pt-4 border-t border-white/5 space-y-4">
+      <div className="space-y-3 max-h-48 overflow-y-auto pr-2 scrollbar-hide">
+        {messages.length === 0 && (
+          <p className="text-[10px] text-white/20 italic">Ask the coach for more details about this insight...</p>
+        )}
+        {messages.map((msg, i) => (
+          <div key={i} className={cn(
+            "p-3 rounded-2xl text-xs leading-relaxed",
+            msg.role === 'user' ? "bg-primary/20 text-white ml-auto max-w-[85%]" : "bg-white/10 text-white/70 mr-auto max-w-[85%]"
+          )}>
+            {msg.text}
+          </div>
+        ))}
+        {loading && (
+          <div className="bg-white/5 p-3 rounded-2xl text-xs text-white/40 mr-auto max-w-[80%] animate-pulse">
+            Coach is thinking...
+          </div>
+        )}
+      </div>
+      <div className="flex space-x-2">
+        <input 
+          type="text" 
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+          placeholder="Ask a question..."
+          className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-primary transition-colors"
+        />
+        <button 
+          onClick={sendMessage}
+          disabled={loading || !input.trim()}
+          className="bg-primary text-white p-3 rounded-xl disabled:opacity-50 transition-all active:scale-90"
+          aria-label="Send Message"
+        >
+          <Send size={20} />
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, height, weight }) => {
   const [insights, setInsights] = useState<Insight[]>([]);
@@ -81,45 +147,11 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, height, wei
         <button 
           onClick={fetchInsights}
           disabled={loading}
-          className="p-2 hover:bg-white/5 rounded-full transition-colors disabled:opacity-50"
+          className="p-3 hover:bg-white/10 bg-white/5 rounded-full transition-all disabled:opacity-50 active:scale-90"
+          aria-label="Refresh Insights"
         >
-          <RefreshCw className={`text-white/40 ${loading ? 'animate-spin' : ''}`} size={20} />
+          <RefreshCw className={`text-white/60 ${loading ? 'animate-spin' : ''}`} size={24} />
         </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-          <div className="flex items-center space-x-2 text-white/40 mb-2">
-            <Target size={16} />
-            <span className="text-xs font-bold uppercase tracking-widest">Success Rate</span>
-          </div>
-          <p className="text-2xl font-bold text-white">
-            {history.length > 0 
-              ? Math.round((history.filter(h => h.completed).length / history.length) * 100) 
-              : 0}%
-          </p>
-        </div>
-        <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-          <div className="flex items-center space-x-2 text-white/40 mb-2">
-            <TrendingUp size={16} />
-            <span className="text-xs font-bold uppercase tracking-widest">Total Fasts</span>
-          </div>
-          <p className="text-2xl font-bold text-white">{history.length}</p>
-        </div>
-        <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-          <div className="flex items-center space-x-2 text-white/40 mb-2">
-            <Utensils size={16} />
-            <span className="text-xs font-bold uppercase tracking-widest">Meals Logged</span>
-          </div>
-          <p className="text-2xl font-bold text-white">{meals.length}</p>
-        </div>
-        <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
-          <div className="flex items-center space-x-2 text-white/40 mb-2">
-            <Dumbbell size={16} />
-            <span className="text-xs font-bold uppercase tracking-widest">Workouts</span>
-          </div>
-          <p className="text-2xl font-bold text-white">{workouts.length}</p>
-        </div>
       </div>
 
       <div className="space-y-4">
@@ -204,7 +236,10 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, height, wei
                   <p className="text-white/70 text-sm leading-relaxed">
                     {insight.content}
                   </p>
-                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                  
+                  <ChatBox insight={insight} />
+
+                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
                     <Sparkles size={60} />
                   </div>
                 </div>
@@ -221,12 +256,6 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, height, wei
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
-      
-      <div className="bg-primary/10 p-4 rounded-2xl border border-primary/20">
-        <p className="text-xs text-primary/80 leading-relaxed italic">
-          "Fasting is not just about not eating. It's about giving your body the time it needs to heal and regenerate."
-        </p>
       </div>
     </div>
   );

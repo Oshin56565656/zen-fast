@@ -156,3 +156,44 @@ export async function getSmartMotivation(hoursPassed: number, targetHours: numbe
     return "You're doing great! Every hour counts toward your health goals.";
   }
 }
+
+export async function chatWithCoach(
+  insight: { title: string; content: string; category: string },
+  userMessage: string,
+  chatHistory: { role: 'user' | 'model'; text: string }[]
+) {
+  const ai = getAIInstance();
+  
+  const historyParts = chatHistory.map(msg => ({
+    role: msg.role,
+    parts: [{ text: msg.text }]
+  }));
+
+  const contents = [
+    {
+      role: 'user',
+      parts: [{ text: `Context Insight:
+Category: ${insight.category}
+Title: ${insight.title}
+Content: ${insight.content}
+
+User Question: ${userMessage}` }]
+    },
+    ...historyParts
+  ];
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: contents,
+      config: {
+        systemInstruction: "You are an expert fasting and fitness coach. A user is asking you a question about a specific insight you previously provided. Answer their question concisely and accurately based on the context of that insight. Be supportive and data-driven. Keep responses under 3 sentences if possible."
+      }
+    });
+
+    return response.text || "I'm sorry, I couldn't generate a response. Please try again.";
+  } catch (error) {
+    console.error("AI Chat Error:", error);
+    throw error;
+  }
+}
