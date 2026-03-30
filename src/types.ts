@@ -23,6 +23,7 @@ export interface MealRecord {
   id: string;
   time: number;
   scale: 'snack' | 'normal' | 'large';
+  description?: string;
   createdAt?: any;
 }
 

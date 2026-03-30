@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 interface LogActivityProps {
   meals: MealRecord[];
   workouts: WorkoutRecord[];
-  onLogMeal: (time: number, scale: 'snack' | 'normal' | 'large') => void;
+  onLogMeal: (time: number, scale: 'snack' | 'normal' | 'large', description?: string) => void;
   onLogWorkout: (time: number, duration: number, intensity: 'low' | 'moderate' | 'high') => void;
   onDeleteMeal: (id: string) => void;
   onDeleteWorkout: (id: string) => void;
@@ -27,6 +27,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
   // Meal Form State
   const [mealScale, setMealScale] = useState<'snack' | 'normal' | 'large'>('normal');
   const [mealTime, setMealTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+  const [mealDescription, setMealDescription] = useState('');
 
   // Workout Form State
   const [workoutIntensity, setWorkoutIntensity] = useState<'low' | 'moderate' | 'high'>('moderate');
@@ -35,7 +36,8 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
   const handleLogMeal = (e: React.FormEvent) => {
     e.preventDefault();
-    onLogMeal(new Date(mealTime).getTime(), mealScale);
+    onLogMeal(new Date(mealTime).getTime(), mealScale, mealDescription);
+    setMealDescription('');
   };
 
   const handleLogWorkout = (e: React.FormEvent) => {
@@ -101,6 +103,16 @@ const LogActivity: React.FC<LogActivityProps> = ({
                 </button>
               ))}
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">What did you eat?</label>
+            <textarea
+              value={mealDescription}
+              onChange={(e) => setMealDescription(e.target.value)}
+              placeholder="e.g. Grilled chicken salad with avocado..."
+              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors min-h-[100px] resize-none"
+            />
           </div>
 
           <button
@@ -176,6 +188,9 @@ const LogActivity: React.FC<LogActivityProps> = ({
                     </div>
                     <div>
                       <p className="font-bold text-white capitalize">{meal.scale} Meal</p>
+                      {meal.description && (
+                        <p className="text-sm text-white/60 line-clamp-1">{meal.description}</p>
+                      )}
                       <p className="text-xs text-white/40">{formatDate(meal.time)}, {formatTime(meal.time)}</p>
                     </div>
                   </div>

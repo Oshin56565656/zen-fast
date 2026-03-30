@@ -49,6 +49,7 @@ export async function getFastingInsights(
   const mealData = meals.slice(0, 10).map(m => ({
     time: new Date(m.time).toISOString(),
     scale: m.scale,
+    description: m.description || 'No description provided',
     relativeTime: `${Math.round((now.getTime() - m.time) / 60000)} minutes ago`
   }));
 

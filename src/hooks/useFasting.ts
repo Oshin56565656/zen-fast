@@ -386,12 +386,13 @@ export function useFasting() {
     updateState({ targetHours: hours });
   };
 
-  const logMeal = async (time: number, scale: 'snack' | 'normal' | 'large') => {
+  const logMeal = async (time: number, scale: 'snack' | 'normal' | 'large', description?: string) => {
     if (!user) return;
     try {
       await addDoc(collection(db, 'users', user.uid, 'meals'), {
         time,
         scale,
+        description: description || '',
         createdAt: Timestamp.now()
       });
     } catch (error) {
