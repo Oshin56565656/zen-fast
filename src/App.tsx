@@ -35,6 +35,8 @@ export default function App() {
     logWorkout,
     deleteMeal,
     deleteWorkout,
+    setHeight,
+    setWeight,
     testNotification
   } = useFasting();
 
@@ -76,7 +78,15 @@ export default function App() {
       case 'stats':
         return <Stats history={history} />;
       case 'coach':
-        return <AICoach history={history} meals={meals} workouts={workouts} />;
+        return (
+          <AICoach 
+            history={history} 
+            meals={meals} 
+            workouts={workouts} 
+            height={state.height}
+            weight={state.weight}
+          />
+        );
       case 'log':
         return (
           <LogActivity 
@@ -94,6 +104,10 @@ export default function App() {
             <Settings 
               targetHours={state.targetHours} 
               onHoursChange={setTargetHours} 
+              height={state.height}
+              weight={state.weight}
+              onHeightChange={setHeight}
+              onWeightChange={setWeight}
               onTestNotification={testNotification}
             />
             <div className="px-6">

@@ -9,6 +9,8 @@ interface AICoachProps {
   history: FastRecord[];
   meals: MealRecord[];
   workouts: WorkoutRecord[];
+  height?: number;
+  weight?: number;
 }
 
 interface Insight {
@@ -18,7 +20,7 @@ interface Insight {
   impact: 'positive' | 'neutral' | 'improvement';
 }
 
-const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts }) => {
+const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, height, weight }) => {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +52,7 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts }) => {
     setLoading(true);
     try {
       const userLocalTime = new Date().toLocaleString();
-      const result = await getFastingInsights(history, meals, workouts, userLocalTime);
+      const result = await getFastingInsights(history, meals, workouts, userLocalTime, height, weight);
       setInsights(Array.isArray(result) ? result : []);
     } catch (error: any) {
       console.error('Error fetching insights:', error);

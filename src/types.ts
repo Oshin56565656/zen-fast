@@ -17,6 +17,8 @@ export interface CurrentFastState {
   targetHours: number;
   pausedAt: number | null;
   totalPausedTime: number; // in milliseconds
+  height?: number; // in cm
+  weight?: number; // in kg
 }
 
 export interface MealRecord {

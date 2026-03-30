@@ -14,6 +14,8 @@ service cloud.firestore {
     //   - targetHours: number (required, 1-48)
     //   - pausedAt: number (optional)
     //   - totalPausedTime: number (required)
+    //   - height: number (optional)
+    //   - weight: number (optional)
     //
     // Collection: users/{userId}/history/{recordId}
     // Fields:
@@ -28,6 +30,7 @@ service cloud.firestore {
     // Fields:
     //   - time: number (required)
     //   - scale: string (required, ['snack', 'normal', 'large'])
+    //   - description: string (optional)
     //   - createdAt: timestamp (required)
     //
     // Collection: users/{userId}/workouts/{workoutId}
@@ -82,10 +85,12 @@ service cloud.firestore {
 
     function isValidFastState(data) {
       return hasRequiredFields(['status', 'targetHours', 'totalPausedTime']) &&
-             hasOnlyAllowedFields(['startTime', 'endTime', 'status', 'targetHours', 'pausedAt', 'totalPausedTime']) &&
+             hasOnlyAllowedFields(['startTime', 'endTime', 'status', 'targetHours', 'pausedAt', 'totalPausedTime', 'height', 'weight']) &&
              data.status in ['idle', 'fasting', 'eating'] &&
              data.targetHours is number && data.targetHours >= 1 && data.targetHours <= 48 &&
-             data.totalPausedTime is number;
+             data.totalPausedTime is number &&
+             (!('height' in data) || data.height is number) &&
+             (!('weight' in data) || data.weight is number);
     }
 
     function isValidFastRecord(data) {

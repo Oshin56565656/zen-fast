@@ -5,10 +5,22 @@ import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info } from 'lucide
 interface SettingsProps {
   targetHours: number;
   onHoursChange: (hours: number) => void;
+  height?: number;
+  weight?: number;
+  onHeightChange: (height: number) => void;
+  onWeightChange: (weight: number) => void;
   onTestNotification?: () => void;
 }
 
-export const Settings: FC<SettingsProps> = ({ targetHours, onHoursChange, onTestNotification }) => {
+export const Settings: FC<SettingsProps> = ({ 
+  targetHours, 
+  onHoursChange, 
+  height, 
+  weight, 
+  onHeightChange, 
+  onWeightChange, 
+  onTestNotification 
+}) => {
   const [hasKey, setHasKey] = useState(false);
   const [manualKey, setManualKey] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -105,6 +117,32 @@ export const Settings: FC<SettingsProps> = ({ targetHours, onHoursChange, onTest
             <span>1 Hour</span>
             <span>24 Hours</span>
             <span>48 Hours</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">Body Metrics</h3>
+        <div className="bg-card p-6 rounded-2xl border border-white/5 grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Height (cm)</label>
+            <input
+              type="number"
+              value={height || ''}
+              onChange={(e) => onHeightChange(parseFloat(e.target.value))}
+              placeholder="175"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Weight (kg)</label>
+            <input
+              type="number"
+              value={weight || ''}
+              onChange={(e) => onWeightChange(parseFloat(e.target.value))}
+              placeholder="70"
+              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
+            />
           </div>
         </div>
       </div>

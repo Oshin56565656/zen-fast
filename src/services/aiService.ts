@@ -28,7 +28,9 @@ export async function getFastingInsights(
   history: FastRecord[], 
   meals: MealRecord[], 
   workouts: WorkoutRecord[],
-  userLocalTime: string
+  userLocalTime: string,
+  height?: number,
+  weight?: number
 ) {
   if (history.length === 0 && meals.length === 0 && workouts.length === 0) {
     return [];
@@ -63,6 +65,7 @@ export async function getFastingInsights(
   const prompt = `
     User's Current Local Time: ${userLocalTime}
     Current UTC Time: ${now.toISOString()}
+    User Profile: ${height ? `Height: ${height}cm` : 'Height: Not provided'}, ${weight ? `Weight: ${weight}kg` : 'Weight: Not provided'}
     
     Analyze this user's health data and provide 3-4 concise, personalized insights.
     Focus on:
@@ -89,7 +92,7 @@ export async function getFastingInsights(
         model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
-          systemInstruction: "You are an expert fasting and fitness coach. Provide data-driven, structured insights based on the user's history. Be precise about timing relationships. Specifically, recommend the optimal workout time and intensity based on the user's last meal and current fasting state. IMPORTANT: Never hallucinate or infer meal or workout data that is not explicitly provided in the user's logs. ALWAYS use 12-hour time format (e.g., 10:00 am) in your responses.",
+          systemInstruction: "You are an expert fasting and fitness coach. Provide data-driven, structured insights based on the user's history and physical profile (height/weight if provided). Be precise about timing relationships. Specifically, recommend the optimal workout time and intensity based on the user's last meal, current fasting state, and body metrics. IMPORTANT: Never hallucinate or infer meal or workout data that is not explicitly provided in the user's logs. ALWAYS use 12-hour time format (e.g., 10:00 am) in your responses.",
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.ARRAY,

@@ -461,6 +461,8 @@ export function useFasting() {
     logWorkout,
     deleteMeal,
     deleteWorkout,
+    setHeight: (height: number) => updateState({ height }),
+    setWeight: (weight: number) => updateState({ weight }),
     testNotification
   };
 }
