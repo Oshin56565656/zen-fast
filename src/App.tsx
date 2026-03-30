@@ -23,6 +23,7 @@ export default function App() {
     history, 
     meals,
     workouts,
+    sleep,
     startFast, 
     pauseFast, 
     resumeFast, 
@@ -33,8 +34,10 @@ export default function App() {
     setTargetHours,
     logMeal,
     logWorkout,
+    logSleep,
     deleteMeal,
     deleteWorkout,
+    deleteSleep,
     setHeight,
     setWeight,
     testNotification
@@ -83,6 +86,7 @@ export default function App() {
             history={history} 
             meals={meals} 
             workouts={workouts} 
+            sleep={sleep}
             height={state.height}
             weight={state.weight}
           />
@@ -92,10 +96,13 @@ export default function App() {
           <LogActivity 
             meals={meals} 
             workouts={workouts} 
+            sleep={sleep}
             onLogMeal={logMeal} 
             onLogWorkout={logWorkout} 
+            onLogSleep={logSleep}
             onDeleteMeal={deleteMeal}
             onDeleteWorkout={deleteWorkout}
+            onDeleteSleep={deleteSleep}
           />
         );
       case 'settings':

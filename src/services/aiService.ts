@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { FastRecord, MealRecord, WorkoutRecord } from "../types";
+import { FastRecord, MealRecord, WorkoutRecord, SleepRecord } from "../types";
 
 const getAIInstance = () => {
   let apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
@@ -28,11 +28,12 @@ export async function getFastingInsights(
   history: FastRecord[], 
   meals: MealRecord[], 
   workouts: WorkoutRecord[],
+  sleep: SleepRecord[],
   userLocalTime: string,
   height?: number,
   weight?: number
 ) {
-  if (history.length === 0 && meals.length === 0 && workouts.length === 0) {
+  if (history.length === 0 && meals.length === 0 && workouts.length === 0 && sleep.length === 0) {
     return [];
   }
 
@@ -62,6 +63,13 @@ export async function getFastingInsights(
     relativeTime: `${Math.round((now.getTime() - w.time) / 60000)} minutes ago`
   }));
 
+  const sleepData = sleep.slice(0, 7).map(s => ({
+    time: new Date(s.time).toISOString(),
+    durationHours: s.duration,
+    quality: s.quality,
+    relativeTime: `${Math.round((now.getTime() - s.time) / 3600000)} hours ago`
+  }));
+
   const prompt = `
     User's Current Local Time: ${userLocalTime}
     Current UTC Time: ${now.toISOString()}
@@ -69,9 +77,10 @@ export async function getFastingInsights(
     
     Analyze this user's health data and provide 3-4 concise, personalized insights.
     Focus on:
-    1. The relationship between fasting windows and energy levels.
-    2. Specific recommendations for the BEST TIME and INTENSITY for their next workout based on their most recent meal(s) and current fasting state.
-    3. How their meal choices (descriptions) affect their metabolic health.
+    1. The relationship between fasting windows, sleep quality, and energy levels.
+    2. Specific recommendations for the BEST TIME and INTENSITY for their next workout based on their most recent meal(s), current fasting state, and sleep quality.
+    3. How their sleep patterns (duration and quality) are affecting their fasting performance and metabolic health.
+    4. How their meal choices (descriptions) affect their metabolic health and potentially their sleep.
     
     CRITICAL: 
     1. Use "User's Current Local Time" as the primary reference for "morning", "night", etc.
@@ -82,6 +91,7 @@ export async function getFastingInsights(
     Fasting History: ${JSON.stringify(historyData)}
     Recent Meals: ${JSON.stringify(mealData)}
     Recent Workouts: ${JSON.stringify(workoutData)}
+    Recent Sleep: ${JSON.stringify(sleepData)}
     
     Structure the response as a list of insights.
   `;

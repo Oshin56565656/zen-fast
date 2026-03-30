@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord } from '../types';
+import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord } from '../types';
 import { 
   auth, 
   db, 
@@ -36,6 +36,7 @@ export function useFasting() {
   const [history, setHistory] = useState<FastRecord[]>([]);
   const [meals, setMeals] = useState<MealRecord[]>([]);
   const [workouts, setWorkouts] = useState<WorkoutRecord[]>([]);
+  const [sleep, setSleep] = useState<SleepRecord[]>([]);
   const [hasNotifiedTarget, setHasNotifiedTarget] = useState(false);
 
   // Monitor fasting progress for target reached notification
@@ -223,6 +224,23 @@ export function useFasting() {
       setWorkouts(records.sort((a, b) => b.time - a.time));
     }, (error) => {
       handleFirestoreError(error, 'list', `users/${user.uid}/workouts`);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  // Sync sleep with Firestore
+  useEffect(() => {
+    if (!user) return;
+    const sleepRef = collection(db, 'users', user.uid, 'sleep');
+    const q = query(sleepRef);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const records: SleepRecord[] = [];
+      snapshot.forEach((doc) => {
+        records.push({ id: doc.id, ...doc.data() } as SleepRecord);
+      });
+      setSleep(records.sort((a, b) => b.time - a.time));
+    }, (error) => {
+      handleFirestoreError(error, 'list', `users/${user.uid}/sleep`);
     });
     return () => unsubscribe();
   }, [user]);
@@ -432,6 +450,29 @@ export function useFasting() {
     }
   };
 
+  const logSleep = async (time: number, duration: number, quality: 'poor' | 'fair' | 'good' | 'excellent') => {
+    if (!user) return;
+    try {
+      await addDoc(collection(db, 'users', user.uid, 'sleep'), {
+        time,
+        duration,
+        quality,
+        createdAt: Timestamp.now()
+      });
+    } catch (error) {
+      handleFirestoreError(error, 'write', `users/${user.uid}/sleep`);
+    }
+  };
+
+  const deleteSleep = async (id: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'sleep', id));
+    } catch (error) {
+      handleFirestoreError(error, 'delete', `users/${user.uid}/sleep/${id}`);
+    }
+  };
+
   const testNotification = async () => {
     await requestPermission();
     await sendNotification("Test Notification! 🔔", {
@@ -449,6 +490,7 @@ export function useFasting() {
     history,
     meals,
     workouts,
+    sleep,
     startFast,
     pauseFast,
     resumeFast,
@@ -459,8 +501,10 @@ export function useFasting() {
     setTargetHours,
     logMeal,
     logWorkout,
+    logSleep,
     deleteMeal,
     deleteWorkout,
+    deleteSleep,
     setHeight: (height: number) => updateState({ height }),
     setWeight: (weight: number) => updateState({ weight }),
     testNotification

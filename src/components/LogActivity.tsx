@@ -1,28 +1,34 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Zap } from 'lucide-react';
-import { MealRecord, WorkoutRecord } from '../types';
+import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Zap, Moon } from 'lucide-react';
+import { MealRecord, WorkoutRecord, SleepRecord } from '../types';
 import { formatTime, formatDate } from '../lib/utils';
 import { format } from 'date-fns';
 
 interface LogActivityProps {
   meals: MealRecord[];
   workouts: WorkoutRecord[];
+  sleep: SleepRecord[];
   onLogMeal: (time: number, scale: 'snack' | 'normal' | 'large', description?: string) => void;
   onLogWorkout: (time: number, duration: number, intensity: 'low' | 'moderate' | 'high') => void;
+  onLogSleep: (time: number, duration: number, quality: 'poor' | 'fair' | 'good' | 'excellent') => void;
   onDeleteMeal: (id: string) => void;
   onDeleteWorkout: (id: string) => void;
+  onDeleteSleep: (id: string) => void;
 }
 
 const LogActivity: React.FC<LogActivityProps> = ({
   meals,
   workouts,
+  sleep,
   onLogMeal,
   onLogWorkout,
+  onLogSleep,
   onDeleteMeal,
-  onDeleteWorkout
+  onDeleteWorkout,
+  onDeleteSleep
 }) => {
-  const [activeType, setActiveType] = useState<'meal' | 'workout'>('meal');
+  const [activeType, setActiveType] = useState<'meal' | 'workout' | 'sleep'>('meal');
   
   // Meal Form State
   const [mealScale, setMealScale] = useState<'snack' | 'normal' | 'large'>('normal');
@@ -34,6 +40,11 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const [workoutDuration, setWorkoutDuration] = useState(30);
   const [workoutTime, setWorkoutTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
 
+  // Sleep Form State
+  const [sleepQuality, setSleepQuality] = useState<'poor' | 'fair' | 'good' | 'excellent'>('good');
+  const [sleepDuration, setSleepDuration] = useState(8);
+  const [sleepTime, setSleepTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+
   const handleLogMeal = (e: React.FormEvent) => {
     e.preventDefault();
     onLogMeal(new Date(mealTime).getTime(), mealScale, mealDescription);
@@ -43,6 +54,11 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const handleLogWorkout = (e: React.FormEvent) => {
     e.preventDefault();
     onLogWorkout(new Date(workoutTime).getTime(), workoutDuration, workoutIntensity);
+  };
+
+  const handleLogSleep = (e: React.FormEvent) => {
+    e.preventDefault();
+    onLogSleep(new Date(sleepTime).getTime(), sleepDuration, sleepQuality);
   };
 
   return (
@@ -65,6 +81,15 @@ const LogActivity: React.FC<LogActivityProps> = ({
         >
           <Dumbbell size={18} />
           <span className="font-bold">Workout</span>
+        </button>
+        <button
+          onClick={() => setActiveType('sleep')}
+          className={`flex-1 flex items-center justify-center space-x-2 py-3 rounded-xl transition-all ${
+            activeType === 'sleep' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
+          }`}
+        >
+          <Moon size={18} />
+          <span className="font-bold">Sleep</span>
         </button>
       </div>
 
@@ -121,6 +146,57 @@ const LogActivity: React.FC<LogActivityProps> = ({
           >
             <Plus size={20} />
             <span>Log Meal</span>
+          </button>
+        </motion.form>
+      ) : activeType === 'sleep' ? (
+        <motion.form
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          onSubmit={handleLogSleep}
+          className="bg-card p-6 rounded-3xl border border-white/5 space-y-6"
+        >
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Wake Up Time</label>
+            <input
+              type="datetime-local"
+              value={sleepTime}
+              onChange={(e) => setSleepTime(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Duration (hours)</label>
+              <input
+                type="number"
+                step="0.5"
+                value={sleepDuration}
+                onChange={(e) => setSleepDuration(Number(e.target.value))}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Quality</label>
+              <select
+                value={sleepQuality}
+                onChange={(e) => setSleepQuality(e.target.value as any)}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors appearance-none"
+              >
+                <option value="poor">Poor</option>
+                <option value="fair">Fair</option>
+                <option value="good">Good</option>
+                <option value="excellent">Excellent</option>
+              </select>
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full bg-primary text-white py-4 rounded-2xl font-bold flex items-center justify-center space-x-2 hover:bg-primary/90 transition-all active:scale-95"
+          >
+            <Plus size={20} />
+            <span>Log Sleep</span>
           </button>
         </motion.form>
       ) : (
@@ -205,7 +281,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
             ) : (
               <p className="text-center text-white/20 py-8 italic">No meals logged yet</p>
             )
-          ) : (
+          ) : activeType === 'workout' ? (
             workouts.length > 0 ? (
               workouts.map((workout) => (
                 <div key={workout.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
@@ -228,6 +304,30 @@ const LogActivity: React.FC<LogActivityProps> = ({
               ))
             ) : (
               <p className="text-center text-white/20 py-8 italic">No workouts logged yet</p>
+            )
+          ) : (
+            sleep.length > 0 ? (
+              sleep.map((s) => (
+                <div key={s.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-500">
+                      <Moon size={20} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-white capitalize">{s.quality} Sleep</p>
+                      <p className="text-xs text-white/40">{s.duration} hours • Woke up {formatDate(s.time)}, {formatTime(s.time)}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onDeleteSleep(s.id)}
+                    className="p-2 text-white/20 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-white/20 py-8 italic">No sleep logs yet</p>
             )
           )}
         </div>

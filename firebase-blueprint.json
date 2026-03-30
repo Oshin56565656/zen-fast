@@ -50,6 +50,18 @@
         "createdAt": { "type": "object", "description": "Firestore server timestamp." }
       },
       "required": ["time", "duration", "intensity", "createdAt"]
+    },
+    "SleepRecord": {
+      "title": "Sleep Record",
+      "description": "A log of a sleep session.",
+      "type": "object",
+      "properties": {
+        "time": { "type": "number", "description": "Timestamp of waking up." },
+        "duration": { "type": "number", "description": "Duration in hours." },
+        "quality": { "type": "string", "enum": ["poor", "fair", "good", "excellent"], "description": "Quality of sleep." },
+        "createdAt": { "type": "object", "description": "Firestore server timestamp." }
+      },
+      "required": ["time", "duration", "quality", "createdAt"]
     }
   },
   "firestore": {
@@ -68,6 +80,10 @@
     "/users/{userId}/workouts/{workoutId}": {
       "schema": "WorkoutRecord",
       "description": "Stores the user's workout logs."
+    },
+    "/users/{userId}/sleep/{sleepId}": {
+      "schema": "SleepRecord",
+      "description": "Stores the user's sleep logs."
     }
   }
 }

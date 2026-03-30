@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, TrendingUp, Target, RefreshCw, Utensils, Dumbbell, Send, MessageCircle } from 'lucide-react';
 import { getFastingInsights, chatWithCoach } from '../services/aiService';
-import { FastRecord, MealRecord, WorkoutRecord } from '../types';
+import { FastRecord, MealRecord, WorkoutRecord, SleepRecord } from '../types';
 import { cn } from '../lib/utils';
 
 interface AICoachProps {
   history: FastRecord[];
   meals: MealRecord[];
   workouts: WorkoutRecord[];
+  sleep: SleepRecord[];
   height?: number;
   weight?: number;
 }
@@ -76,7 +77,7 @@ const ChatBox: React.FC<{ insight: Insight }> = ({ insight }) => {
         <button 
           onClick={sendMessage}
           disabled={loading || !input.trim()}
-          className="bg-primary text-white p-3 rounded-xl disabled:opacity-50 transition-all active:scale-90"
+          className="bg-primary text-white p-4 rounded-xl disabled:opacity-50 transition-all active:scale-90"
           aria-label="Send Message"
         >
           <Send size={20} />
@@ -86,7 +87,7 @@ const ChatBox: React.FC<{ insight: Insight }> = ({ insight }) => {
   );
 };
 
-const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, height, weight }) => {
+const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, height, weight }) => {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -118,7 +119,7 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, height, wei
     setLoading(true);
     try {
       const userLocalTime = new Date().toLocaleString();
-      const result = await getFastingInsights(history, meals, workouts, userLocalTime, height, weight);
+      const result = await getFastingInsights(history, meals, workouts, sleep, userLocalTime, height, weight);
       setInsights(Array.isArray(result) ? result : []);
     } catch (error: any) {
       console.error('Error fetching insights:', error);
@@ -147,7 +148,7 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, height, wei
         <button 
           onClick={fetchInsights}
           disabled={loading}
-          className="p-3 hover:bg-white/10 bg-white/5 rounded-full transition-all disabled:opacity-50 active:scale-90"
+          className="p-4 hover:bg-white/10 bg-white/5 rounded-full transition-all disabled:opacity-50 active:scale-90"
           aria-label="Refresh Insights"
         >
           <RefreshCw className={`text-white/60 ${loading ? 'animate-spin' : ''}`} size={24} />

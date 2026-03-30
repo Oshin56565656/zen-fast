@@ -40,6 +40,13 @@ service cloud.firestore {
     //   - intensity: string (required, ['low', 'moderate', 'high'])
     //   - createdAt: timestamp (required)
     //
+    // Collection: users/{userId}/sleep/{sleepId}
+    // Fields:
+    //   - time: number (required)
+    //   - duration: number (required)
+    //   - quality: string (required, ['poor', 'fair', 'good', 'excellent'])
+    //   - createdAt: timestamp (required)
+    //
     // ===============================================================
 
     // ===============================================================
@@ -57,18 +64,11 @@ service cloud.firestore {
     function isAdmin() {
       return isAuthenticated() &&
         (
-          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
-           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
           (request.auth.token.email == "oshinashok56565656@gmail.com" && 
-           (request.auth.token.email_verified == true || !('email_verified' in request.auth.token)))
+           (request.auth.token.email_verified == true || !('email_verified' in request.auth.token))) ||
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
         );
-    }
-
-    function isValidUser(data) {
-      return hasOnlyAllowedFields(['email', 'lastLogin', 'role']) &&
-             data.email is string &&
-             data.lastLogin is timestamp &&
-             data.role in ['admin', 'client'];
     }
 
     function hasRequiredFields(fields) {
@@ -82,6 +82,13 @@ service cloud.firestore {
     // ===============================================================
     // Domain Validators
     // ===============================================================
+
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['email', 'lastLogin', 'role']) &&
+             data.email is string &&
+             data.lastLogin is timestamp &&
+             data.role in ['admin', 'client'];
+    }
 
     function isValidFastState(data) {
       return hasRequiredFields(['status', 'targetHours', 'totalPausedTime']) &&
@@ -104,27 +111,75 @@ service cloud.firestore {
              data.createdAt is timestamp;
     }
 
+    function isValidSleep(data) {
+      return hasRequiredFields(['time', 'duration', 'quality', 'createdAt']) &&
+             hasOnlyAllowedFields(['time', 'duration', 'quality', 'createdAt']) &&
+             data.time is number &&
+             data.duration is number &&
+             data.quality in ['poor', 'fair', 'good', 'excellent'] &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidMeal(data) {
+      return hasRequiredFields(['time', 'scale', 'createdAt']) &&
+             hasOnlyAllowedFields(['time', 'scale', 'description', 'createdAt']) &&
+             data.time is number &&
+             data.scale in ['snack', 'normal', 'large'] &&
+             (!('description' in data) || data.description is string) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidWorkout(data) {
+      return hasRequiredFields(['time', 'duration', 'intensity', 'createdAt']) &&
+             hasOnlyAllowedFields(['time', 'duration', 'intensity', 'createdAt']) &&
+             data.time is number &&
+             data.duration is number &&
+             data.intensity in ['low', 'moderate', 'high'] &&
+             data.createdAt is timestamp;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
 
     match /users/{userId} {
-      allow read, write: if isOwner(userId) || isAdmin();
+      allow read: if request.auth.uid == userId || isAdmin();
+      allow create: if request.auth.uid == userId && isValidUser(request.resource.data) && request.resource.data.role == 'client';
+      allow update: if request.auth.uid == userId && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role;
+      allow delete: if isAdmin();
 
       match /settings/currentFast {
-        allow read, write: if isOwner(userId) || isAdmin();
+        allow read: if request.auth.uid == userId || isAdmin();
+        allow write: if request.auth.uid == userId || isAdmin();
       }
 
       match /history/{recordId} {
-        allow read, write: if isOwner(userId) || isAdmin();
+        allow read: if request.auth.uid == userId || isAdmin();
+        allow create, update: if (request.auth.uid == userId || isAdmin()) && isValidFastRecord(request.resource.data);
+        allow delete: if request.auth.uid == userId || isAdmin();
       }
 
       match /meals/{mealId} {
-        allow read, write: if isOwner(userId) || isAdmin();
+        allow read: if request.auth.uid == userId || isAdmin();
+        allow create, update: if (request.auth.uid == userId || isAdmin()) && isValidMeal(request.resource.data);
+        allow delete: if request.auth.uid == userId || isAdmin();
       }
 
       match /workouts/{workoutId} {
-        allow read, write: if isOwner(userId) || isAdmin();
+        allow read: if request.auth.uid == userId || isAdmin();
+        allow create, update: if (request.auth.uid == userId || isAdmin()) && isValidWorkout(request.resource.data);
+        allow delete: if request.auth.uid == userId || isAdmin();
+      }
+
+      match /sleep/{sleepId} {
+        allow read: if request.auth.uid == userId || isAdmin();
+        allow create, update: if (request.auth.uid == userId || isAdmin()) && isValidSleep(request.resource.data);
+        allow delete: if request.auth.uid == userId || isAdmin();
+      }
+
+      // Catch-all for any other subcollections
+      match /{allSubcollections=**} {
+        allow read, write: if request.auth.uid == userId || isAdmin();
       }
     }
 
