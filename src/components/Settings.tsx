@@ -1,4 +1,5 @@
 import React, { FC, useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
 import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info } from 'lucide-react';
 
@@ -26,6 +27,17 @@ export const Settings: FC<SettingsProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [showManual, setShowManual] = useState(false);
   const [notificationStatus, setNotificationStatus] = useState<NotificationPermission | 'unsupported'>('default');
+
+  const bmi = height && weight ? (weight / ((height / 100) ** 2)) : null;
+  
+  const getBMICategory = (val: number) => {
+    if (val < 18.5) return { label: 'Underweight', color: 'text-blue-400', bg: 'bg-blue-400', position: (val / 40) * 100 };
+    if (val < 25) return { label: 'Normal', color: 'text-green-400', bg: 'bg-green-400', position: (val / 40) * 100 };
+    if (val < 30) return { label: 'Overweight', color: 'text-yellow-400', bg: 'bg-yellow-400', position: (val / 40) * 100 };
+    return { label: 'Obese', color: 'text-red-400', bg: 'bg-red-400', position: Math.min((val / 40) * 100, 100) };
+  };
+
+  const bmiInfo = bmi ? getBMICategory(bmi) : null;
 
   useEffect(() => {
     if (!("Notification" in window)) {
@@ -144,6 +156,43 @@ export const Settings: FC<SettingsProps> = ({
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
             />
           </div>
+
+          {bmi && bmiInfo && (
+            <div className="col-span-2 pt-4 border-t border-white/5 space-y-4">
+              <div className="flex items-end justify-between">
+                <div>
+                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">Your BMI</p>
+                  <p className="text-3xl font-bold text-white">{bmi.toFixed(1)}</p>
+                </div>
+                <div className="text-right">
+                  <p className={cn("text-sm font-bold", bmiInfo.color)}>{bmiInfo.label}</p>
+                  <p className="text-[10px] text-white/20 uppercase tracking-widest font-bold">Category</p>
+                </div>
+              </div>
+
+              <div className="relative h-2 bg-white/5 rounded-full overflow-hidden flex">
+                <div className="h-full bg-blue-400/40" style={{ width: '46.25%' }} /> {/* 18.5 / 40 */}
+                <div className="h-full bg-green-400/40" style={{ width: '16.25%' }} /> {/* (25-18.5) / 40 */}
+                <div className="h-full bg-yellow-400/40" style={{ width: '12.5%' }} /> {/* (30-25) / 40 */}
+                <div className="h-full bg-red-400/40 flex-1" />
+                
+                <motion.div 
+                  initial={{ left: 0 }}
+                  animate={{ left: `${bmiInfo.position}%` }}
+                  className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)] z-10"
+                  style={{ transform: 'translateX(-50%)' }}
+                />
+              </div>
+
+              <div className="flex justify-between text-[8px] text-white/20 font-bold uppercase tracking-tighter">
+                <span>15</span>
+                <span>18.5</span>
+                <span>25</span>
+                <span>30</span>
+                <span>40+</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
