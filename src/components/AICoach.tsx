@@ -19,10 +19,11 @@ interface Insight {
   title: string;
   content: string;
   impact: 'positive' | 'neutral' | 'improvement';
+  messages?: { role: 'user' | 'model'; text: string }[];
 }
 
-const ChatBox: React.FC<{ insight: Insight }> = ({ insight }) => {
-  const [messages, setMessages] = useState<{ role: 'user' | 'model'; text: string }[]>([]);
+const ChatBox: React.FC<{ insight: Insight; onUpdateMessages: (messages: { role: 'user' | 'model'; text: string }[]) => void }> = ({ insight, onUpdateMessages }) => {
+  const [messages, setMessages] = useState<{ role: 'user' | 'model'; text: string }[]>(insight.messages || []);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -31,15 +32,21 @@ const ChatBox: React.FC<{ insight: Insight }> = ({ insight }) => {
     
     const userMsg = input.trim();
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+    const newMessages: { role: 'user' | 'model'; text: string }[] = [...messages, { role: 'user', text: userMsg }];
+    setMessages(newMessages);
+    onUpdateMessages(newMessages);
     setLoading(true);
 
     try {
       const response = await chatWithCoach(insight, userMsg, messages);
-      setMessages(prev => [...prev, { role: 'model', text: response }]);
+      const finalMessages: { role: 'user' | 'model'; text: string }[] = [...newMessages, { role: 'model', text: response }];
+      setMessages(finalMessages);
+      onUpdateMessages(finalMessages);
     } catch (error) {
       console.error('Chat error:', error);
-      setMessages(prev => [...prev, { role: 'model', text: "Sorry, I'm having trouble connecting. Please try again." }]);
+      const errorMessages: { role: 'user' | 'model'; text: string }[] = [...newMessages, { role: 'model', text: "Sorry, I'm having trouble connecting. Please try again." }];
+      setMessages(errorMessages);
+      onUpdateMessages(errorMessages);
     } finally {
       setLoading(false);
     }
@@ -88,10 +95,20 @@ const ChatBox: React.FC<{ insight: Insight }> = ({ insight }) => {
 };
 
 const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, height, weight }) => {
-  const [insights, setInsights] = useState<Insight[]>([]);
+  const [insights, setInsights] = useState<Insight[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('fasttrack_insights');
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [hasKey, setHasKey] = useState<boolean>(true);
+
+  useEffect(() => {
+    localStorage.setItem('fasttrack_insights', JSON.stringify(insights));
+  }, [insights]);
 
   useEffect(() => {
     const checkKey = async () => {
@@ -217,7 +234,7 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, heig
             >
               {insights.map((insight, index) => (
                 <div 
-                  key={index} 
+                  key={`${insight.title}-${index}`} 
                   className="bg-white/5 p-6 rounded-3xl border border-white/10 relative overflow-hidden group hover:bg-white/[0.07] transition-colors"
                 >
                   <div className="flex items-start justify-between mb-3">
@@ -238,7 +255,14 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, heig
                     {insight.content}
                   </p>
                   
-                  <ChatBox insight={insight} />
+                  <ChatBox 
+                    insight={insight} 
+                    onUpdateMessages={(msgs) => {
+                      const newInsights = [...insights];
+                      newInsights[index] = { ...insight, messages: msgs };
+                      setInsights(newInsights);
+                    }}
+                  />
 
                   <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
                     <Sparkles size={60} />

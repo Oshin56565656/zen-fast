@@ -58,6 +58,7 @@ export default function App() {
   const handleSignOut = async () => {
     try {
       await signOut(auth);
+      localStorage.removeItem('fasttrack_insights');
     } catch (error) {
       console.error('Error signing out:', error);
     }
