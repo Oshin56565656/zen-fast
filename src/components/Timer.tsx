@@ -21,7 +21,9 @@ export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd
   const [loadingMotivation, setLoadingMotivation] = useState(false);
   const [lastMotivationHour, setLastMotivationHour] = useState(-1);
   
-  const targetSeconds = state.targetHours * 3600;
+  const targetSeconds = state.targetEndTime && state.startTime 
+    ? Math.max(Math.floor((state.targetEndTime - (state.startTime + state.totalPausedTime)) / 1000), 1)
+    : state.targetHours * 3600;
 
   useEffect(() => {
     const hoursPassed = elapsed / 3600;
@@ -120,7 +122,9 @@ export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd
             {displayTime}
           </button>
           <p className="text-sm text-white/40 mt-2">
-            Goal: {state.targetHours}h
+            Goal: {state.targetEndTime 
+              ? new Date(state.targetEndTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+              : `${state.targetHours}h`}
           </p>
         </div>
       </div>
@@ -165,7 +169,11 @@ export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd
       <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
         <div className="bg-card p-4 rounded-2xl border border-white/5 text-center">
           <p className="text-xs text-white/40 mb-1">Target</p>
-          <p className="font-bold text-lg">{state.targetHours}h</p>
+          <p className="font-bold text-lg">
+            {state.targetEndTime 
+              ? new Date(state.targetEndTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+              : `${state.targetHours}h`}
+          </p>
         </div>
         <div className="bg-card p-4 rounded-2xl border border-white/5 text-center">
           <p className="text-xs text-white/40 mb-1">Status</p>

@@ -32,6 +32,7 @@ export default function App() {
     deleteRecord,
     manualLogFast,
     setTargetHours,
+    setTargetEndTime,
     logMeal,
     logWorkout,
     logSleep,
@@ -112,6 +113,8 @@ export default function App() {
             <Settings 
               targetHours={state.targetHours} 
               onHoursChange={setTargetHours} 
+              targetEndTime={state.targetEndTime}
+              onTargetEndTimeChange={setTargetEndTime}
               height={state.height}
               weight={state.weight}
               onHeightChange={setHeight}

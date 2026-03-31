@@ -6,6 +6,8 @@ import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info } from 'lucide
 interface SettingsProps {
   targetHours: number;
   onHoursChange: (hours: number) => void;
+  targetEndTime?: number | null;
+  onTargetEndTimeChange: (time: number | null) => void;
   height?: number;
   weight?: number;
   onHeightChange: (height: number) => void;
@@ -16,6 +18,8 @@ interface SettingsProps {
 export const Settings: FC<SettingsProps> = ({ 
   targetHours, 
   onHoursChange, 
+  targetEndTime,
+  onTargetEndTimeChange,
   height, 
   weight, 
   onHeightChange, 
@@ -94,6 +98,25 @@ export const Settings: FC<SettingsProps> = ({
     }
   };
 
+  const handleTimeChange = (timeStr: string) => {
+    if (!timeStr) {
+      onTargetEndTimeChange(null);
+      return;
+    }
+    
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const now = new Date();
+    const target = new Date();
+    target.setHours(hours, minutes, 0, 0);
+    
+    // If target time is earlier than now, assume it's for tomorrow
+    if (target.getTime() <= now.getTime()) {
+      target.setDate(target.getDate() + 1);
+    }
+    
+    onTargetEndTimeChange(target.getTime());
+  };
+
   const handleTestNotification = async () => {
     if (onTestNotification) {
       await onTestNotification();
@@ -103,32 +126,90 @@ export const Settings: FC<SettingsProps> = ({
     }
   };
 
+  const formatTimeForInput = (timestamp: number | null | undefined) => {
+    if (!timestamp) return '';
+    const date = new Date(timestamp);
+    const h = date.getHours().toString().padStart(2, '0');
+    const m = date.getMinutes().toString().padStart(2, '0');
+    return `${h}:${m}`;
+  };
+
   return (
     <div className="p-6 space-y-8">
       <h2 className="text-xl font-bold">Settings</h2>
 
       <div className="space-y-4">
         <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">Fasting Goal</h3>
-        <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-6">
-          <div className="text-center">
-            <p className="text-5xl font-bold text-primary">{targetHours}h</p>
-            <p className="text-xs text-white/40 mt-1 uppercase tracking-widest">Target Duration</p>
+        <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-8">
+          {/* Duration Goal */}
+          <div className="space-y-6">
+            <div className="text-center">
+              <p className={cn("text-5xl font-bold transition-colors", !targetEndTime ? "text-primary" : "text-white/20")}>
+                {targetHours}h
+              </p>
+              <p className="text-xs text-white/40 mt-1 uppercase tracking-widest">Target Duration</p>
+            </div>
+            
+            <input
+              type="range"
+              min="1"
+              max="48"
+              step="1"
+              value={targetHours}
+              onChange={(e) => onHoursChange(parseInt(e.target.value))}
+              className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+            />
+            
+            <div className="flex justify-between text-[10px] text-white/20 uppercase font-bold">
+              <span>1 Hour</span>
+              <span>24 Hours</span>
+              <span>48 Hours</span>
+            </div>
           </div>
-          
-          <input
-            type="range"
-            min="1"
-            max="48"
-            step="1"
-            value={targetHours}
-            onChange={(e) => onHoursChange(parseInt(e.target.value))}
-            className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
-          />
-          
-          <div className="flex justify-between text-[10px] text-white/20 uppercase font-bold">
-            <span>1 Hour</span>
-            <span>24 Hours</span>
-            <span>48 Hours</span>
+
+          <div className="flex items-center space-x-4">
+            <div className="h-px bg-white/5 flex-1" />
+            <span className="text-[10px] font-bold text-white/20 uppercase">OR</span>
+            <div className="h-px bg-white/5 flex-1" />
+          </div>
+
+          {/* End Time Goal */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Target End Time</label>
+              {targetEndTime && (
+                <button 
+                  onClick={() => onTargetEndTimeChange(null)}
+                  className="text-[10px] text-primary font-bold uppercase hover:underline"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+            
+            <div className="relative">
+              <input
+                type="time"
+                value={formatTimeForInput(targetEndTime)}
+                onChange={(e) => handleTimeChange(e.target.value)}
+                className={cn(
+                  "w-full bg-white/5 border rounded-xl px-4 py-4 text-xl font-bold text-center transition-all focus:outline-none",
+                  targetEndTime ? "border-primary text-primary" : "border-white/10 text-white/40"
+                )}
+              />
+              {!targetEndTime && (
+                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                  <span className="text-white/20 text-sm font-medium">Set a specific time to finish</span>
+                </div>
+              )}
+            </div>
+            
+            {targetEndTime && (
+              <p className="text-[10px] text-center text-white/40 font-medium">
+                Fast will end at {new Date(targetEndTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                {new Date(targetEndTime).getDate() !== new Date().getDate() ? ' tomorrow' : ''}
+              </p>
+            )}
           </div>
         </div>
       </div>

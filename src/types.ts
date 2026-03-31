@@ -15,6 +15,7 @@ export interface CurrentFastState {
   endTime: number | null;
   status: FastStatus;
   targetHours: number;
+  targetEndTime?: number | null; // Specific time to end the fast
   pausedAt: number | null;
   totalPausedTime: number; // in milliseconds
   height?: number; // in cm

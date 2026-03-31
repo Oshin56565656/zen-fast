@@ -9,6 +9,7 @@
         "endTime": { "type": "number", "description": "Timestamp of when the fast ended." },
         "status": { "type": "string", "enum": ["idle", "fasting", "eating"], "description": "Current status." },
         "targetHours": { "type": "number", "description": "Target duration in hours." },
+        "targetEndTime": { "type": "number", "description": "Specific timestamp to end the fast." },
         "pausedAt": { "type": "number", "description": "Timestamp of when the fast was paused." },
         "totalPausedTime": { "type": "number", "description": "Total time the fast has been paused in ms." }
       },

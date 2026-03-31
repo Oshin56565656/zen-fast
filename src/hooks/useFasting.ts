@@ -29,6 +29,7 @@ export function useFasting() {
     endTime: null,
     status: 'idle',
     targetHours: 16,
+    targetEndTime: null,
     pausedAt: null,
     totalPausedTime: 0
   });
@@ -46,11 +47,25 @@ export function useFasting() {
     const checkTarget = () => {
       const effectiveStartTime = state.startTime! + state.totalPausedTime;
       const elapsedMs = Date.now() - effectiveStartTime;
-      const targetMs = state.targetHours * 3600 * 1000;
+      
+      let isTargetReached = false;
+      let targetLabel = "";
 
-      if (elapsedMs >= targetMs && !hasNotifiedTarget) {
+      if (state.targetEndTime) {
+        // If specific end time is set, check against it
+        // We don't adjust for pauses here because it's a "wall clock" target
+        isTargetReached = Date.now() >= state.targetEndTime;
+        targetLabel = "your target time";
+      } else {
+        // Otherwise use duration
+        const targetMs = state.targetHours * 3600 * 1000;
+        isTargetReached = elapsedMs >= targetMs;
+        targetLabel = `${state.targetHours}h`;
+      }
+
+      if (isTargetReached && !hasNotifiedTarget) {
         sendNotification("Fast Goal Reached! 🎉", {
-          body: `You've completed your ${state.targetHours}h fast. Great job!`,
+          body: `You've reached ${targetLabel}. Great job!`,
           icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
         });
         setHasNotifiedTarget(true);
@@ -67,6 +82,8 @@ export function useFasting() {
   useEffect(() => {
     if (state.status !== 'fasting') {
       setHasNotifiedTarget(false);
+      // Clear target end time when fast ends if it was a one-time thing
+      // Actually, let's keep it until the user resets it or starts a new one
     }
   }, [state.status]);
 
@@ -401,7 +418,11 @@ export function useFasting() {
   };
 
   const setTargetHours = (hours: number) => {
-    updateState({ targetHours: hours });
+    updateState({ targetHours: hours, targetEndTime: null });
+  };
+
+  const setTargetEndTime = (time: number | null) => {
+    updateState({ targetEndTime: time });
   };
 
   const logMeal = async (time: number, scale: 'snack' | 'normal' | 'large', description?: string) => {
@@ -499,6 +520,7 @@ export function useFasting() {
     deleteRecord,
     manualLogFast,
     setTargetHours,
+    setTargetEndTime,
     logMeal,
     logWorkout,
     logSleep,
