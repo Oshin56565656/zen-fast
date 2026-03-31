@@ -113,9 +113,10 @@ service cloud.firestore {
     }
 
     function isValidSleep(data) {
-      return hasRequiredFields(['time', 'duration', 'quality', 'createdAt']) &&
-             hasOnlyAllowedFields(['time', 'duration', 'quality', 'createdAt']) &&
-             data.time is number &&
+      return hasRequiredFields(['bedtime', 'wakeUpTime', 'duration', 'quality', 'createdAt']) &&
+             hasOnlyAllowedFields(['bedtime', 'wakeUpTime', 'duration', 'quality', 'createdAt']) &&
+             data.bedtime is number &&
+             data.wakeUpTime is number &&
              data.duration is number &&
              data.quality in ['poor', 'fair', 'good', 'excellent'] &&
              data.createdAt is timestamp;

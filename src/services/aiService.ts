@@ -85,17 +85,15 @@ export async function getFastingInsights(
     }));
 
   const sleepData = sleep
-    .filter(s => s.time >= fourDaysAgo)
+    .filter(s => s.wakeUpTime >= fourDaysAgo)
     .slice(0, 7)
     .map(s => {
-      const wakeUpTime = s.time;
-      const startTime = wakeUpTime - (s.duration * 60 * 60 * 1000);
       return {
-        wakeUpTime: formatLocalTime(wakeUpTime),
-        sleepStartTime: formatLocalTime(startTime),
-        durationHours: s.duration,
+        bedtime: formatLocalTime(s.bedtime),
+        wakeUpTime: formatLocalTime(s.wakeUpTime),
+        durationHours: s.duration.toFixed(1),
         quality: s.quality,
-        relativeTime: `${Math.round((now.getTime() - wakeUpTime) / 3600000)} hours ago`
+        relativeTime: `${Math.round((now.getTime() - s.wakeUpTime) / 3600000)} hours ago`
       };
     });
 
@@ -109,13 +107,13 @@ export async function getFastingInsights(
     Focus on:
     1. The relationship between fasting windows, sleep quality, and energy levels.
     2. Specific recommendations for the BEST TIME and INTENSITY for their next workout based on their most recent meal(s), current fasting state, and sleep quality.
-    3. How their sleep patterns (duration and quality) are affecting their fasting performance and metabolic health.
+    3. How their sleep patterns (bedtime, wake-up time, duration, and quality) are affecting their fasting performance and metabolic health.
     4. How their meal choices (descriptions) affect their metabolic health and potentially their sleep.
     
     CRITICAL: 
     1. Use "User's Current Local Time" as the primary reference for "morning", "night", etc.
     2. Use "localTime" fields for each record to understand exactly when they happened in the user's day.
-    3. For Sleep: The user logs their WAKE UP TIME. I have provided both "wakeUpTime" and the calculated "sleepStartTime" for your analysis. Use "sleepStartTime" to understand when they actually went to bed.
+    3. For Sleep: The user logs their "bedtime" and "wakeUpTime". Use these to understand their sleep schedule and consistency.
     4. Use "relativeTime" fields to understand how long ago events happened relative to "now".
     5. Only use the data provided in the lists below. Do NOT infer or assume meal times.
     6. ALWAYS use 12-hour format (e.g., "10:00 am") when mentioning specific times in your response.

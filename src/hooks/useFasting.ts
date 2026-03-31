@@ -255,7 +255,7 @@ export function useFasting() {
       snapshot.forEach((doc) => {
         records.push({ id: doc.id, ...doc.data() } as SleepRecord);
       });
-      setSleep(records.sort((a, b) => b.time - a.time));
+      setSleep(records.sort((a, b) => b.wakeUpTime - a.wakeUpTime));
     }, (error) => {
       handleFirestoreError(error, 'list', `users/${user.uid}/sleep`);
     });
@@ -471,11 +471,13 @@ export function useFasting() {
     }
   };
 
-  const logSleep = async (time: number, duration: number, quality: 'poor' | 'fair' | 'good' | 'excellent') => {
+  const logSleep = async (bedtime: number, wakeUpTime: number, quality: 'poor' | 'fair' | 'good' | 'excellent') => {
     if (!user) return;
+    const duration = (wakeUpTime - bedtime) / (1000 * 60 * 60);
     try {
       await addDoc(collection(db, 'users', user.uid, 'sleep'), {
-        time,
+        bedtime,
+        wakeUpTime,
         duration,
         quality,
         createdAt: Timestamp.now()

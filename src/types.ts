@@ -40,8 +40,9 @@ export interface WorkoutRecord {
 
 export interface SleepRecord {
   id: string;
-  time: number; // Time the user woke up
-  duration: number; // in hours
+  bedtime: number;
+  wakeUpTime: number;
+  duration: number; // calculated in hours
   quality: 'poor' | 'fair' | 'good' | 'excellent';
   createdAt?: any;
 }

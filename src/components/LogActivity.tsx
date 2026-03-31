@@ -3,7 +3,7 @@ import { motion } from 'motion/react';
 import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Zap, Moon } from 'lucide-react';
 import { MealRecord, WorkoutRecord, SleepRecord } from '../types';
 import { formatTime, formatDate } from '../lib/utils';
-import { format } from 'date-fns';
+import { format, subHours } from 'date-fns';
 
 interface LogActivityProps {
   meals: MealRecord[];
@@ -11,7 +11,7 @@ interface LogActivityProps {
   sleep: SleepRecord[];
   onLogMeal: (time: number, scale: 'snack' | 'normal' | 'large', description?: string) => void;
   onLogWorkout: (time: number, duration: number, intensity: 'low' | 'moderate' | 'high') => void;
-  onLogSleep: (time: number, duration: number, quality: 'poor' | 'fair' | 'good' | 'excellent') => void;
+  onLogSleep: (bedtime: number, wakeUpTime: number, quality: 'poor' | 'fair' | 'good' | 'excellent') => void;
   onDeleteMeal: (id: string) => void;
   onDeleteWorkout: (id: string) => void;
   onDeleteSleep: (id: string) => void;
@@ -42,8 +42,8 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
   // Sleep Form State
   const [sleepQuality, setSleepQuality] = useState<'poor' | 'fair' | 'good' | 'excellent'>('good');
-  const [sleepDuration, setSleepDuration] = useState(8);
-  const [sleepTime, setSleepTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+  const [bedtime, setBedtime] = useState(format(subHours(new Date(), 8), "yyyy-MM-dd'T'HH:mm"));
+  const [wakeUpTime, setWakeUpTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
 
   const handleLogMeal = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +58,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
   const handleLogSleep = (e: React.FormEvent) => {
     e.preventDefault();
-    onLogSleep(new Date(sleepTime).getTime(), sleepDuration, sleepQuality);
+    onLogSleep(new Date(bedtime).getTime(), new Date(wakeUpTime).getTime(), sleepQuality);
   };
 
   return (
@@ -155,40 +155,39 @@ const LogActivity: React.FC<LogActivityProps> = ({
           onSubmit={handleLogSleep}
           className="bg-card p-6 rounded-3xl border border-white/5 space-y-6"
         >
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Wake Up Time</label>
-            <input
-              type="datetime-local"
-              value={sleepTime}
-              onChange={(e) => setSleepTime(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Duration (hours)</label>
+              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Bedtime</label>
               <input
-                type="number"
-                step="0.5"
-                value={sleepDuration}
-                onChange={(e) => setSleepDuration(Number(e.target.value))}
+                type="datetime-local"
+                value={bedtime}
+                onChange={(e) => setBedtime(e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Quality</label>
-              <select
-                value={sleepQuality}
-                onChange={(e) => setSleepQuality(e.target.value as any)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors appearance-none"
-              >
-                <option value="poor">Poor</option>
-                <option value="fair">Fair</option>
-                <option value="good">Good</option>
-                <option value="excellent">Excellent</option>
-              </select>
+              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Wake Up Time</label>
+              <input
+                type="datetime-local"
+                value={wakeUpTime}
+                onChange={(e) => setWakeUpTime(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
+              />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Quality</label>
+            <select
+              value={sleepQuality}
+              onChange={(e) => setSleepQuality(e.target.value as any)}
+              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors appearance-none"
+            >
+              <option value="poor">Poor</option>
+              <option value="fair">Fair</option>
+              <option value="good">Good</option>
+              <option value="excellent">Excellent</option>
+            </select>
           </div>
 
           <button
@@ -315,7 +314,9 @@ const LogActivity: React.FC<LogActivityProps> = ({
                     </div>
                     <div>
                       <p className="font-bold text-white capitalize">{s.quality} Sleep</p>
-                      <p className="text-xs text-white/40">{s.duration} hours • Woke up {formatDate(s.time)}, {formatTime(s.time)}</p>
+                      <p className="text-xs text-white/40">
+                        {s.duration.toFixed(1)} hours • {formatTime(s.bedtime)} - {formatTime(s.wakeUpTime)}
+                      </p>
                     </div>
                   </div>
                   <button
