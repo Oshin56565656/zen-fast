@@ -133,7 +133,7 @@ export const History: FC<HistoryProps> = ({ history, onDelete, onManualLog }) =>
               <div>
                 <p className="font-bold">Fast</p>
                 <p className="text-xs text-white/40">
-                  {formatDate(record.startTime)}, {formatTime(record.startTime)}
+                  {formatDate(record.startTime)} • {formatTime(record.startTime)} - {formatTime(record.endTime)}
                 </p>
               </div>
             </div>
