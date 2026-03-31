@@ -87,12 +87,17 @@ export async function getFastingInsights(
   const sleepData = sleep
     .filter(s => s.time >= fourDaysAgo)
     .slice(0, 7)
-    .map(s => ({
-      localTime: formatLocalTime(s.time),
-      durationHours: s.duration,
-      quality: s.quality,
-      relativeTime: `${Math.round((now.getTime() - s.time) / 3600000)} hours ago`
-    }));
+    .map(s => {
+      const wakeUpTime = s.time;
+      const startTime = wakeUpTime - (s.duration * 60 * 60 * 1000);
+      return {
+        wakeUpTime: formatLocalTime(wakeUpTime),
+        sleepStartTime: formatLocalTime(startTime),
+        durationHours: s.duration,
+        quality: s.quality,
+        relativeTime: `${Math.round((now.getTime() - wakeUpTime) / 3600000)} hours ago`
+      };
+    });
 
   const prompt = `
     User's Current Local Time: ${userLocalTime}
@@ -110,9 +115,10 @@ export async function getFastingInsights(
     CRITICAL: 
     1. Use "User's Current Local Time" as the primary reference for "morning", "night", etc.
     2. Use "localTime" fields for each record to understand exactly when they happened in the user's day.
-    3. Use "relativeTime" fields to understand how long ago events happened relative to "now".
-    4. Only use the data provided in the lists below. Do NOT infer or assume meal times.
-    5. ALWAYS use 12-hour format (e.g., "10:00 am") when mentioning specific times in your response.
+    3. For Sleep: The user logs their WAKE UP TIME. I have provided both "wakeUpTime" and the calculated "sleepStartTime" for your analysis. Use "sleepStartTime" to understand when they actually went to bed.
+    4. Use "relativeTime" fields to understand how long ago events happened relative to "now".
+    5. Only use the data provided in the lists below. Do NOT infer or assume meal times.
+    6. ALWAYS use 12-hour format (e.g., "10:00 am") when mentioning specific times in your response.
     
     Fasting History: ${JSON.stringify(historyData)}
     Recent Meals: ${JSON.stringify(mealData)}
