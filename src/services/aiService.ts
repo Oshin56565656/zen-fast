@@ -39,40 +39,65 @@ export async function getFastingInsights(
 
   const ai = getAIInstance();
   const now = new Date();
+  const fourDaysAgo = now.getTime() - (4 * 24 * 60 * 60 * 1000);
   
-  const historyData = history.slice(0, 10).map(h => ({
-    startTime: new Date(h.startTime).toISOString(),
-    endTime: h.endTime ? new Date(h.endTime).toISOString() : null,
-    durationHours: (h.duration / 3600).toFixed(1),
-    targetHours: (h.targetDuration / 3600).toFixed(1),
-    completed: h.completed,
-    relativeTime: `${Math.round((now.getTime() - h.startTime) / 3600000)} hours ago`
-  }));
+  const formatLocalTime = (timestamp: number) => {
+    return new Date(timestamp).toLocaleString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: true
+    });
+  };
 
-  const mealData = meals.slice(0, 10).map(m => ({
-    time: new Date(m.time).toISOString(),
-    scale: m.scale,
-    description: m.description || 'No description provided',
-    relativeTime: `${Math.round((now.getTime() - m.time) / 60000)} minutes ago`
-  }));
+  const historyData = history
+    .filter(h => h.startTime >= fourDaysAgo)
+    .slice(0, 10)
+    .map(h => ({
+      localTime: formatLocalTime(h.startTime),
+      endTime: h.endTime ? formatLocalTime(h.endTime) : null,
+      durationHours: (h.duration / 3600).toFixed(1),
+      targetHours: (h.targetDuration / 3600).toFixed(1),
+      completed: h.completed,
+      relativeTime: `${Math.round((now.getTime() - h.startTime) / 3600000)} hours ago`
+    }));
 
-  const workoutData = workouts.slice(0, 10).map(w => ({
-    time: new Date(w.time).toISOString(),
-    durationMins: w.duration,
-    intensity: w.intensity,
-    relativeTime: `${Math.round((now.getTime() - w.time) / 60000)} minutes ago`
-  }));
+  const mealData = meals
+    .filter(m => m.time >= fourDaysAgo)
+    .slice(0, 15)
+    .map(m => ({
+      localTime: formatLocalTime(m.time),
+      scale: m.scale,
+      description: m.description || 'No description provided',
+      relativeTime: `${Math.round((now.getTime() - m.time) / 60000)} minutes ago`
+    }));
 
-  const sleepData = sleep.slice(0, 7).map(s => ({
-    time: new Date(s.time).toISOString(),
-    durationHours: s.duration,
-    quality: s.quality,
-    relativeTime: `${Math.round((now.getTime() - s.time) / 3600000)} hours ago`
-  }));
+  const workoutData = workouts
+    .filter(w => w.time >= fourDaysAgo)
+    .slice(0, 10)
+    .map(w => ({
+      localTime: formatLocalTime(w.time),
+      durationMins: w.duration,
+      intensity: w.intensity,
+      relativeTime: `${Math.round((now.getTime() - w.time) / 60000)} minutes ago`
+    }));
+
+  const sleepData = sleep
+    .filter(s => s.time >= fourDaysAgo)
+    .slice(0, 7)
+    .map(s => ({
+      localTime: formatLocalTime(s.time),
+      durationHours: s.duration,
+      quality: s.quality,
+      relativeTime: `${Math.round((now.getTime() - s.time) / 3600000)} hours ago`
+    }));
 
   const prompt = `
     User's Current Local Time: ${userLocalTime}
     Current UTC Time: ${now.toISOString()}
+    Timezone Offset: ${now.getTimezoneOffset()} minutes
     User Profile: ${height ? `Height: ${height}cm` : 'Height: Not provided'}, ${weight ? `Weight: ${weight}kg` : 'Weight: Not provided'}
     
     Analyze this user's health data and provide 3-4 concise, personalized insights.
@@ -84,9 +109,10 @@ export async function getFastingInsights(
     
     CRITICAL: 
     1. Use "User's Current Local Time" as the primary reference for "morning", "night", etc.
-    2. Use "relativeTime" fields to understand how long ago events happened.
-    3. Only use the data provided in the lists below. Do NOT infer or assume meal times.
-    4. ALWAYS use 12-hour format (e.g., "10:00 am") when mentioning specific times in your response.
+    2. Use "localTime" fields for each record to understand exactly when they happened in the user's day.
+    3. Use "relativeTime" fields to understand how long ago events happened relative to "now".
+    4. Only use the data provided in the lists below. Do NOT infer or assume meal times.
+    5. ALWAYS use 12-hour format (e.g., "10:00 am") when mentioning specific times in your response.
     
     Fasting History: ${JSON.stringify(historyData)}
     Recent Meals: ${JSON.stringify(mealData)}
@@ -179,10 +205,21 @@ export async function chatWithCoach(
     parts: [{ text: msg.text }]
   }));
 
+  const now = new Date();
+  const userLocalTime = now.toLocaleString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true
+  });
+
   const contents = [
     {
       role: 'user',
-      parts: [{ text: `Context Insight:
+      parts: [{ text: `User's Current Local Time: ${userLocalTime}
+Context Insight:
 Category: ${insight.category}
 Title: ${insight.title}
 Content: ${insight.content}
