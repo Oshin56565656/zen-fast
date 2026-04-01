@@ -29,6 +29,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
   onDeleteSleep
 }) => {
   const [activeType, setActiveType] = useState<'meal' | 'workout' | 'sleep'>('meal');
+  const [searchDate, setSearchDate] = useState<string>('');
   
   // Meal Form State
   const [mealScale, setMealScale] = useState<'snack' | 'normal' | 'large'>('normal');
@@ -60,6 +61,24 @@ const LogActivity: React.FC<LogActivityProps> = ({
     e.preventDefault();
     onLogSleep(new Date(bedtime).getTime(), new Date(wakeUpTime).getTime(), sleepQuality);
   };
+
+  const filterByDate = <T extends { time?: number; startTime?: number; bedtime?: number; wakeUpTime?: number }>(logs: T[]) => {
+    if (!searchDate) return logs.slice(0, 6);
+    
+    const targetDate = new Date(searchDate);
+    return logs.filter(log => {
+      const logDate = new Date(log.time || log.startTime || log.bedtime || log.wakeUpTime || 0);
+      return (
+        logDate.getFullYear() === targetDate.getFullYear() &&
+        logDate.getMonth() === targetDate.getMonth() &&
+        logDate.getDate() === targetDate.getDate()
+      );
+    });
+  };
+
+  const filteredMeals = filterByDate(meals) as MealRecord[];
+  const filteredWorkouts = filterByDate(workouts) as WorkoutRecord[];
+  const filteredSleep = filterByDate(sleep) as SleepRecord[];
 
   return (
     <div className="space-y-8 p-6 pb-24">
@@ -250,12 +269,30 @@ const LogActivity: React.FC<LogActivityProps> = ({
       )}
 
       <div className="space-y-4">
-        <h3 className="text-lg font-bold text-white px-2">Recent Activity</h3>
+        <div className="flex items-center justify-between px-2">
+          <h3 className="text-lg font-bold text-white">Recent Activity</h3>
+          <div className="flex items-center space-x-2">
+            <input
+              type="date"
+              value={searchDate}
+              onChange={(e) => setSearchDate(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-primary transition-colors"
+            />
+            {searchDate && (
+              <button 
+                onClick={() => setSearchDate('')}
+                className="text-[10px] text-primary font-bold uppercase"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
         
         <div className="space-y-3">
           {activeType === 'meal' ? (
-            meals.length > 0 ? (
-              meals.map((meal) => (
+            filteredMeals.length > 0 ? (
+              filteredMeals.map((meal) => (
                 <div key={meal.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center text-orange-500">
@@ -278,11 +315,11 @@ const LogActivity: React.FC<LogActivityProps> = ({
                 </div>
               ))
             ) : (
-              <p className="text-center text-white/20 py-8 italic">No meals logged yet</p>
+              <p className="text-center text-white/20 py-8 italic">No meals found</p>
             )
           ) : activeType === 'workout' ? (
-            workouts.length > 0 ? (
-              workouts.map((workout) => (
+            filteredWorkouts.length > 0 ? (
+              filteredWorkouts.map((workout) => (
                 <div key={workout.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center text-blue-500">
@@ -304,11 +341,11 @@ const LogActivity: React.FC<LogActivityProps> = ({
                 </div>
               ))
             ) : (
-              <p className="text-center text-white/20 py-8 italic">No workouts logged yet</p>
+              <p className="text-center text-white/20 py-8 italic">No workouts found</p>
             )
           ) : (
-            sleep.length > 0 ? (
-              sleep.map((s) => (
+            filteredSleep.length > 0 ? (
+              filteredSleep.map((s) => (
                 <div key={s.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-500">
@@ -330,7 +367,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                 </div>
               ))
             ) : (
-              <p className="text-center text-white/20 py-8 italic">No sleep logs yet</p>
+              <p className="text-center text-white/20 py-8 italic">No sleep logs found</p>
             )
           )}
         </div>
