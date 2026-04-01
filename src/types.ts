@@ -32,8 +32,9 @@ export interface MealRecord {
 
 export interface WorkoutRecord {
   id: string;
-  time: number;
-  duration: number; // in minutes
+  startTime: number;
+  endTime: number;
+  duration: number; // calculated in minutes
   intensity: 'low' | 'moderate' | 'high';
   createdAt?: any;
 }

@@ -238,7 +238,7 @@ export function useFasting() {
       snapshot.forEach((doc) => {
         records.push({ id: doc.id, ...doc.data() } as WorkoutRecord);
       });
-      setWorkouts(records.sort((a, b) => b.time - a.time));
+      setWorkouts(records.sort((a, b) => b.startTime - a.startTime));
     }, (error) => {
       handleFirestoreError(error, 'list', `users/${user.uid}/workouts`);
     });
@@ -439,11 +439,13 @@ export function useFasting() {
     }
   };
 
-  const logWorkout = async (time: number, duration: number, intensity: 'low' | 'moderate' | 'high') => {
+  const logWorkout = async (startTime: number, endTime: number, intensity: 'low' | 'moderate' | 'high') => {
     if (!user) return;
+    const duration = Math.floor((endTime - startTime) / (1000 * 60));
     try {
       await addDoc(collection(db, 'users', user.uid, 'workouts'), {
-        time,
+        startTime,
+        endTime,
         duration,
         intensity,
         createdAt: Timestamp.now()

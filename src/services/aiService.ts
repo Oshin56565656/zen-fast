@@ -75,13 +75,14 @@ export async function getFastingInsights(
     }));
 
   const workoutData = workouts
-    .filter(w => w.time >= fourDaysAgo)
+    .filter(w => w.startTime >= fourDaysAgo)
     .slice(0, 10)
     .map(w => ({
-      localTime: formatLocalTime(w.time),
+      localTime: formatLocalTime(w.startTime),
+      endTime: formatLocalTime(w.endTime),
       durationMins: w.duration,
       intensity: w.intensity,
-      relativeTime: `${Math.round((now.getTime() - w.time) / 60000)} minutes ago`
+      relativeTime: `${Math.round((now.getTime() - w.startTime) / 60000)} minutes ago`
     }));
 
   const sleepData = sleep

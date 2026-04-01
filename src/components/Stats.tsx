@@ -1,28 +1,53 @@
 import React, { FC, ReactNode } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { FastRecord } from '../types';
-import { format, subDays, startOfDay, isSameDay } from 'date-fns';
-import { Trophy, Clock, Flame, Target } from 'lucide-react';
+import { FastRecord, SleepRecord } from '../types';
+import { format, subDays, isSameDay } from 'date-fns';
+import { Trophy, Clock, Flame, Target, Moon, Zap, Star } from 'lucide-react';
 
 interface StatsProps {
   history: FastRecord[];
+  sleep: SleepRecord[];
 }
 
-export const Stats: FC<StatsProps> = ({ history }) => {
+export const Stats: FC<StatsProps> = ({ history, sleep }) => {
+  const [activeTab, setActiveTab] = React.useState<'fasting' | 'sleep'>('fasting');
+
+  // Fasting Stats
   const totalFasts = history.length;
-  const avgDuration = totalFasts > 0 
+  const avgFastDuration = totalFasts > 0 
     ? history.reduce((acc, curr) => acc + curr.duration, 0) / totalFasts 
     : 0;
   const longestFast = totalFasts > 0 
     ? Math.max(...history.map(h => h.duration)) 
     : 0;
-
   const successRate = totalFasts > 0 
     ? Math.round((history.filter(h => h.completed).length / totalFasts) * 100) 
     : 0;
 
-  // Chart data for last 7 days
-  const last7Days = Array.from({ length: 7 }).map((_, i) => {
+  // Sleep Stats
+  const totalSleepLogs = sleep.length;
+  const avgSleepDuration = totalSleepLogs > 0
+    ? sleep.reduce((acc, curr) => acc + curr.duration, 0) / totalSleepLogs
+    : 0;
+  const bestQuality = totalSleepLogs > 0
+    ? sleep.filter(s => s.quality === 'excellent').length
+    : 0;
+  const avgQualityScore = totalSleepLogs > 0
+    ? sleep.reduce((acc, curr) => {
+        const scores = { poor: 1, fair: 2, good: 3, excellent: 4 };
+        return acc + scores[curr.quality];
+      }, 0) / totalSleepLogs
+    : 0;
+
+  const getQualityLabel = (score: number) => {
+    if (score >= 3.5) return 'Excellent';
+    if (score >= 2.5) return 'Good';
+    if (score >= 1.5) return 'Fair';
+    return 'Poor';
+  };
+
+  // Chart data for last 7 days (Fasting)
+  const last7DaysFast = Array.from({ length: 7 }).map((_, i) => {
     const date = subDays(new Date(), 6 - i);
     const dayFasts = history.filter(h => isSameDay(new Date(h.startTime), date));
     const totalHours = dayFasts.reduce((acc, curr) => acc + curr.duration, 0) / 3600;
@@ -32,41 +57,109 @@ export const Stats: FC<StatsProps> = ({ history }) => {
     };
   });
 
+  // Chart data for last 7 days (Sleep)
+  const last7DaysSleep = Array.from({ length: 7 }).map((_, i) => {
+    const date = subDays(new Date(), 6 - i);
+    const daySleep = sleep.find(s => isSameDay(new Date(s.wakeUpTime), date));
+    return {
+      name: format(date, 'EEE'),
+      hours: daySleep ? parseFloat(daySleep.duration.toFixed(1)) : 0,
+    };
+  });
+
   return (
     <div className="p-6 space-y-8 pb-24">
-      <h2 className="text-xl font-bold">Statistics</h2>
-
-      <div className="grid grid-cols-2 gap-4">
-        <StatCard icon={<Target className="text-primary" />} label="Success Rate" value={`${successRate}%`} />
-        <StatCard icon={<Trophy className="text-yellow-500" />} label="Longest" value={`${(longestFast / 3600).toFixed(1)}h`} />
-        <StatCard icon={<Clock className="text-secondary" />} label="Average" value={`${(avgDuration / 3600).toFixed(1)}h`} />
-        <StatCard icon={<Flame className="text-orange-500" />} label="Total" value={totalFasts.toString()} />
-      </div>
-
-      <div className="bg-card p-6 rounded-3xl border border-white/5">
-        <h3 className="text-sm font-medium text-white/40 mb-6">Last 7 Days (Hours)</h3>
-        <div className="h-64 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={last7Days}>
-              <XAxis 
-                dataKey="name" 
-                axisLine={false} 
-                tickLine={false} 
-                tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 12 }}
-              />
-              <Tooltip 
-                cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
-              />
-              <Bar dataKey="hours" radius={[4, 4, 0, 0]}>
-                {last7Days.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.hours >= 16 ? '#f97316' : '#3f3f46'} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold">Statistics</h2>
+        <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+          <button
+            onClick={() => setActiveTab('fasting')}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              activeTab === 'fasting' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
+            }`}
+          >
+            Fasting
+          </button>
+          <button
+            onClick={() => setActiveTab('sleep')}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              activeTab === 'sleep' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
+            }`}
+          >
+            Sleep
+          </button>
         </div>
       </div>
+
+      {activeTab === 'fasting' ? (
+        <div className="space-y-8">
+          <div className="grid grid-cols-2 gap-4">
+            <StatCard icon={<Target className="text-primary" />} label="Success Rate" value={`${successRate}%`} />
+            <StatCard icon={<Trophy className="text-yellow-500" />} label="Longest" value={`${(longestFast / 3600).toFixed(1)}h`} />
+            <StatCard icon={<Clock className="text-secondary" />} label="Average" value={`${(avgFastDuration / 3600).toFixed(1)}h`} />
+            <StatCard icon={<Flame className="text-orange-500" />} label="Total Fasts" value={totalFasts.toString()} />
+          </div>
+
+          <div className="bg-card p-6 rounded-3xl border border-white/5">
+            <h3 className="text-sm font-medium text-white/40 mb-6">Last 7 Days Fasting (Hours)</h3>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={last7DaysFast}>
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 12 }}
+                  />
+                  <Tooltip 
+                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                  />
+                  <Bar dataKey="hours" radius={[4, 4, 0, 0]}>
+                    {last7DaysFast.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.hours >= 16 ? '#f97316' : '#3f3f46'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          <div className="grid grid-cols-2 gap-4">
+            <StatCard icon={<Moon className="text-indigo-400" />} label="Avg Sleep" value={`${avgSleepDuration.toFixed(1)}h`} />
+            <StatCard icon={<Star className="text-yellow-400" />} label="Avg Quality" value={getQualityLabel(avgQualityScore)} />
+            <StatCard icon={<Zap className="text-blue-400" />} label="Excellent Nights" value={bestQuality.toString()} />
+            <StatCard icon={<Clock className="text-white/40" />} label="Total Logs" value={totalSleepLogs.toString()} />
+          </div>
+
+          <div className="bg-card p-6 rounded-3xl border border-white/5">
+            <h3 className="text-sm font-medium text-white/40 mb-6">Last 7 Days Sleep (Hours)</h3>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={last7DaysSleep}>
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 12 }}
+                  />
+                  <Tooltip 
+                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                  />
+                  <Bar dataKey="hours" radius={[4, 4, 0, 0]}>
+                    {last7DaysSleep.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.hours >= 7 ? '#818cf8' : '#3f3f46'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

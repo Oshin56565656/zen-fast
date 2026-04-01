@@ -45,12 +45,13 @@
       "description": "A log of a workout session.",
       "type": "object",
       "properties": {
-        "time": { "type": "number", "description": "Timestamp of the workout." },
+        "startTime": { "type": "number", "description": "Timestamp of when the workout started." },
+        "endTime": { "type": "number", "description": "Timestamp of when the workout ended." },
         "duration": { "type": "number", "description": "Duration in minutes." },
         "intensity": { "type": "string", "enum": ["low", "moderate", "high"], "description": "Intensity level." },
         "createdAt": { "type": "object", "description": "Firestore server timestamp." }
       },
-      "required": ["time", "duration", "intensity", "createdAt"]
+      "required": ["startTime", "endTime", "duration", "intensity", "createdAt"]
     },
     "SleepRecord": {
       "title": "Sleep Record",

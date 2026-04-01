@@ -10,7 +10,7 @@ interface LogActivityProps {
   workouts: WorkoutRecord[];
   sleep: SleepRecord[];
   onLogMeal: (time: number, scale: 'snack' | 'normal' | 'large', description?: string) => void;
-  onLogWorkout: (time: number, duration: number, intensity: 'low' | 'moderate' | 'high') => void;
+  onLogWorkout: (startTime: number, endTime: number, intensity: 'low' | 'moderate' | 'high') => void;
   onLogSleep: (bedtime: number, wakeUpTime: number, quality: 'poor' | 'fair' | 'good' | 'excellent') => void;
   onDeleteMeal: (id: string) => void;
   onDeleteWorkout: (id: string) => void;
@@ -37,8 +37,8 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
   // Workout Form State
   const [workoutIntensity, setWorkoutIntensity] = useState<'low' | 'moderate' | 'high'>('moderate');
-  const [workoutDuration, setWorkoutDuration] = useState(30);
-  const [workoutTime, setWorkoutTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+  const [workoutStartTime, setWorkoutStartTime] = useState(format(subHours(new Date(), 0.5), "yyyy-MM-dd'T'HH:mm"));
+  const [workoutEndTime, setWorkoutEndTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
 
   // Sleep Form State
   const [sleepQuality, setSleepQuality] = useState<'poor' | 'fair' | 'good' | 'excellent'>('good');
@@ -53,7 +53,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
   const handleLogWorkout = (e: React.FormEvent) => {
     e.preventDefault();
-    onLogWorkout(new Date(workoutTime).getTime(), workoutDuration, workoutIntensity);
+    onLogWorkout(new Date(workoutStartTime).getTime(), new Date(workoutEndTime).getTime(), workoutIntensity);
   };
 
   const handleLogSleep = (e: React.FormEvent) => {
@@ -205,38 +205,38 @@ const LogActivity: React.FC<LogActivityProps> = ({
           onSubmit={handleLogWorkout}
           className="bg-card p-6 rounded-3xl border border-white/5 space-y-6"
         >
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Workout Time</label>
-            <input
-              type="datetime-local"
-              value={workoutTime}
-              onChange={(e) => setWorkoutTime(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Duration (min)</label>
+              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Start Time</label>
               <input
-                type="number"
-                value={workoutDuration}
-                onChange={(e) => setWorkoutDuration(Number(e.target.value))}
+                type="datetime-local"
+                value={workoutStartTime}
+                onChange={(e) => setWorkoutStartTime(e.target.value)}
                 className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Intensity</label>
-              <select
-                value={workoutIntensity}
-                onChange={(e) => setWorkoutIntensity(e.target.value as any)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors appearance-none"
-              >
-                <option value="low">Low</option>
-                <option value="moderate">Moderate</option>
-                <option value="high">High</option>
-              </select>
+              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">End Time</label>
+              <input
+                type="datetime-local"
+                value={workoutEndTime}
+                onChange={(e) => setWorkoutEndTime(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
+              />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Intensity</label>
+            <select
+              value={workoutIntensity}
+              onChange={(e) => setWorkoutIntensity(e.target.value as any)}
+              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors appearance-none"
+            >
+              <option value="low">Low</option>
+              <option value="moderate">Moderate</option>
+              <option value="high">High</option>
+            </select>
           </div>
 
           <button
@@ -290,7 +290,9 @@ const LogActivity: React.FC<LogActivityProps> = ({
                     </div>
                     <div>
                       <p className="font-bold text-white capitalize">{workout.intensity} Intensity</p>
-                      <p className="text-xs text-white/40">{workout.duration} mins • {formatDate(workout.time)}, {formatTime(workout.time)}</p>
+                      <p className="text-xs text-white/40">
+                        {workout.duration} mins • {formatTime(workout.startTime)} - {formatTime(workout.endTime)}
+                      </p>
                     </div>
                   </div>
                   <button
