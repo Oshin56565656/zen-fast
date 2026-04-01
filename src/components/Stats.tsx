@@ -113,7 +113,14 @@ export const Stats: FC<StatsProps> = ({ history, sleep }) => {
                   />
                   <Tooltip 
                     cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                    contentStyle={{ 
+                      backgroundColor: '#18181b', 
+                      border: '1px solid rgba(255,255,255,0.1)', 
+                      borderRadius: '12px',
+                      color: '#fff'
+                    }}
+                    itemStyle={{ color: '#fff' }}
+                    labelStyle={{ color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}
                   />
                   <Bar dataKey="hours" radius={[4, 4, 0, 0]}>
                     {last7DaysFast.map((entry, index) => (
@@ -147,7 +154,14 @@ export const Stats: FC<StatsProps> = ({ history, sleep }) => {
                   />
                   <Tooltip 
                     cursor={{ fill: 'rgba(255,255,255,0.05)' }}
-                    contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                    contentStyle={{ 
+                      backgroundColor: '#18181b', 
+                      border: '1px solid rgba(255,255,255,0.1)', 
+                      borderRadius: '12px',
+                      color: '#fff'
+                    }}
+                    itemStyle={{ color: '#fff' }}
+                    labelStyle={{ color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}
                   />
                   <Bar dataKey="hours" radius={[4, 4, 0, 0]}>
                     {last7DaysSleep.map((entry, index) => (
