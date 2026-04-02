@@ -425,7 +425,7 @@ export function useFasting() {
     updateState({ targetEndTime: time });
   };
 
-  const logMeal = async (time: number, scale: 'snack' | 'normal' | 'large', description?: string) => {
+  const logMeal = async (time: number, scale: 'light' | 'normal' | 'large', description?: string) => {
     if (!user) return;
     try {
       await addDoc(collection(db, 'users', user.uid, 'meals'), {

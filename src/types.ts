@@ -25,7 +25,7 @@ export interface CurrentFastState {
 export interface MealRecord {
   id: string;
   time: number;
-  scale: 'snack' | 'normal' | 'large';
+  scale: 'light' | 'normal' | 'large';
   description?: string;
   createdAt?: any;
 }

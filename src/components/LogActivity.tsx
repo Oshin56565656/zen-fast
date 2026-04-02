@@ -9,7 +9,7 @@ interface LogActivityProps {
   meals: MealRecord[];
   workouts: WorkoutRecord[];
   sleep: SleepRecord[];
-  onLogMeal: (time: number, scale: 'snack' | 'normal' | 'large', description?: string) => void;
+  onLogMeal: (time: number, scale: 'light' | 'normal' | 'large', description?: string) => void;
   onLogWorkout: (startTime: number, endTime: number, intensity: 'low' | 'moderate' | 'high') => void;
   onLogSleep: (bedtime: number, wakeUpTime: number, quality: 'poor' | 'fair' | 'good' | 'excellent') => void;
   onDeleteMeal: (id: string) => void;
@@ -32,7 +32,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const [searchDate, setSearchDate] = useState<string>('');
   
   // Meal Form State
-  const [mealScale, setMealScale] = useState<'snack' | 'normal' | 'large'>('normal');
+  const [mealScale, setMealScale] = useState<'light' | 'normal' | 'large'>('normal');
   const [mealTime, setMealTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   const [mealDescription, setMealDescription] = useState('');
 
@@ -132,7 +132,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
           <div className="space-y-2">
             <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Meal Scale</label>
             <div className="grid grid-cols-3 gap-2">
-              {(['snack', 'normal', 'large'] as const).map((s) => (
+              {(['light', 'normal', 'large'] as const).map((s) => (
                 <button
                   key={s}
                   type="button"
