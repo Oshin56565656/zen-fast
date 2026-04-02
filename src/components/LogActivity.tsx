@@ -59,13 +59,26 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const handleScan = (barcode: string, product: any) => {
     setMealBarcode(barcode);
     if (product) {
-      const productName = product.product_name || product.generic_name || 'Unknown Product';
+      const productName = product.product_name || product.generic_name || product.product_name_en || 'Unknown Product';
       const brand = product.brands ? ` (${product.brands})` : '';
       setMealDescription(`${productName}${brand}`);
+      // Optional: If there's nutritional info, we could add it too
     } else {
-      setMealDescription(`Scanned Barcode: ${barcode}`);
+      setMealDescription('');
+      // We'll use a temporary state to show a "not found" message
+      const toast = document.createElement('div');
+      toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-full font-bold text-sm shadow-2xl z-[200] animate-bounce';
+      toast.innerText = 'Product not found. Please enter details manually.';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
     }
     setShowScanner(false);
+    
+    // Focus the description field after a short delay to allow the modal to close
+    setTimeout(() => {
+      const textarea = document.querySelector('textarea');
+      if (textarea) textarea.focus();
+    }, 300);
   };
 
   const handleLogWorkout = (e: React.FormEvent) => {
