@@ -3,7 +3,7 @@
 @theme {
   --color-background: #09090b;
   --color-card: #18181b;
-  --color-primary: #f97316;
+  --color-primary: var(--accent-color, #f97316);
   --color-secondary: #a855f7;
   --color-accent: #22c55e;
   

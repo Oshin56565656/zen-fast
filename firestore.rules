@@ -93,13 +93,14 @@ service cloud.firestore {
 
     function isValidFastState(data) {
       return hasRequiredFields(['status', 'targetHours', 'totalPausedTime']) &&
-             hasOnlyAllowedFields(['startTime', 'endTime', 'status', 'targetHours', 'targetEndTime', 'pausedAt', 'totalPausedTime', 'height', 'weight']) &&
+             hasOnlyAllowedFields(['startTime', 'endTime', 'status', 'targetHours', 'targetEndTime', 'pausedAt', 'totalPausedTime', 'height', 'weight', 'accentColor']) &&
              data.status in ['idle', 'fasting', 'eating'] &&
              data.targetHours is number && data.targetHours >= 1 && data.targetHours <= 48 &&
              (!('targetEndTime' in data) || data.targetEndTime == null || data.targetEndTime is number) &&
              data.totalPausedTime is number &&
              (!('height' in data) || data.height is number) &&
-             (!('weight' in data) || data.weight is number);
+             (!('weight' in data) || data.weight is number) &&
+             (!('accentColor' in data) || data.accentColor is string);
     }
 
     function isValidFastRecord(data) {

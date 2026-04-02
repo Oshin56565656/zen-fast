@@ -12,6 +12,8 @@ interface SettingsProps {
   weight?: number;
   onHeightChange: (height: number) => void;
   onWeightChange: (weight: number) => void;
+  accentColor?: string;
+  onAccentColorChange: (color: string) => void;
   onTestNotification?: () => void;
 }
 
@@ -24,6 +26,8 @@ export const Settings: FC<SettingsProps> = ({
   weight, 
   onHeightChange, 
   onWeightChange, 
+  accentColor = '#f97316',
+  onAccentColorChange,
   onTestNotification 
 }) => {
   const [hasKey, setHasKey] = useState(false);
@@ -42,6 +46,17 @@ export const Settings: FC<SettingsProps> = ({
   };
 
   const bmiInfo = bmi ? getBMICategory(bmi) : null;
+
+  const accentColors = [
+    { name: 'Orange', value: '#f97316' },
+    { name: 'Blue', value: '#3b82f6' },
+    { name: 'Green', value: '#22c55e' },
+    { name: 'Purple', value: '#a855f7' },
+    { name: 'Pink', value: '#ec4899' },
+    { name: 'Cyan', value: '#06b6d4' },
+    { name: 'Red', value: '#ef4444' },
+    { name: 'Yellow', value: '#eab308' },
+  ];
 
   useEffect(() => {
     if (!("Notification" in window)) {
@@ -274,6 +289,52 @@ export const Settings: FC<SettingsProps> = ({
               </div>
             </div>
           )}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">Appearance</h3>
+        <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-6">
+          <div className="space-y-4">
+            <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Accent Color</label>
+            <div className="grid grid-cols-4 gap-3">
+              {accentColors.map((color) => (
+                <button
+                  key={color.value}
+                  onClick={() => onAccentColorChange(color.value)}
+                  className={cn(
+                    "group relative aspect-square rounded-xl transition-all active:scale-90",
+                    accentColor === color.value ? "ring-2 ring-white ring-offset-2 ring-offset-background" : "hover:scale-105"
+                  )}
+                  style={{ backgroundColor: color.value }}
+                  title={color.name}
+                >
+                  {accentColor === color.value && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <CheckCircle2 className="text-white drop-shadow-md" size={16} />
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Custom Hex Color</label>
+            <div className="flex space-x-2">
+              <div 
+                className="w-12 h-12 rounded-xl border border-white/10 shrink-0"
+                style={{ backgroundColor: accentColor }}
+              />
+              <input
+                type="text"
+                value={accentColor}
+                onChange={(e) => onAccentColorChange(e.target.value)}
+                placeholder="#f97316"
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-mono focus:outline-none focus:border-primary transition-colors"
+              />
+            </div>
+          </div>
         </div>
       </div>
 

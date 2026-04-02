@@ -20,6 +20,7 @@ export interface CurrentFastState {
   totalPausedTime: number; // in milliseconds
   height?: number; // in cm
   weight?: number; // in kg
+  accentColor?: string;
 }
 
 export interface MealRecord {

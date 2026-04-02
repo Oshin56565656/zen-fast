@@ -31,7 +31,8 @@ export function useFasting() {
     targetHours: 16,
     targetEndTime: null,
     pausedAt: null,
-    totalPausedTime: 0
+    totalPausedTime: 0,
+    accentColor: '#3b82f6' // Default blue
   });
 
   const [history, setHistory] = useState<FastRecord[]>([]);
@@ -534,6 +535,7 @@ export function useFasting() {
     deleteSleep,
     setHeight: (height: number) => updateState({ height }),
     setWeight: (weight: number) => updateState({ weight }),
+    setAccentColor: (color: string) => updateState({ accentColor: color }),
     testNotification
   };
 }

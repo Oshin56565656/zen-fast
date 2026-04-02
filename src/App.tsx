@@ -1,4 +1,4 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Timer as TimerIcon, History as HistoryIcon, BarChart3, Settings as SettingsIcon, LogOut, Sparkles, PlusCircle } from 'lucide-react';
 import { Timer } from './components/Timer';
@@ -41,8 +41,15 @@ export default function App() {
     deleteSleep,
     setHeight,
     setWeight,
+    setAccentColor,
     testNotification
   } = useFasting();
+
+  useEffect(() => {
+    if (state.accentColor) {
+      document.documentElement.style.setProperty('--accent-color', state.accentColor);
+    }
+  }, [state.accentColor]);
 
   if (!isAuthReady) {
     return (
@@ -119,6 +126,8 @@ export default function App() {
               weight={state.weight}
               onHeightChange={setHeight}
               onWeightChange={setWeight}
+              accentColor={state.accentColor}
+              onAccentColorChange={setAccentColor}
               onTestNotification={testNotification}
             />
             <div className="px-6">
