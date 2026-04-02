@@ -425,13 +425,14 @@ export function useFasting() {
     updateState({ targetEndTime: time });
   };
 
-  const logMeal = async (time: number, scale: 'light' | 'normal' | 'large', description?: string) => {
+  const logMeal = async (time: number, scale: 'light' | 'normal' | 'large', description?: string, barcode?: string) => {
     if (!user) return;
     try {
       await addDoc(collection(db, 'users', user.uid, 'meals'), {
         time,
         scale,
         description: description || '',
+        barcode: barcode || '',
         createdAt: Timestamp.now()
       });
     } catch (error) {

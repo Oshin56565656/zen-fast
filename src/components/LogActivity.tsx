@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Zap, Moon } from 'lucide-react';
+import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Zap, Moon, Camera, Scan } from 'lucide-react';
 import { MealRecord, WorkoutRecord, SleepRecord } from '../types';
 import { formatTime, formatDate } from '../lib/utils';
 import { format, subHours } from 'date-fns';
+import BarcodeScanner from './BarcodeScanner';
 
 interface LogActivityProps {
   meals: MealRecord[];
   workouts: WorkoutRecord[];
   sleep: SleepRecord[];
-  onLogMeal: (time: number, scale: 'light' | 'normal' | 'large', description?: string) => void;
+  onLogMeal: (time: number, scale: 'light' | 'normal' | 'large', description?: string, barcode?: string) => void;
   onLogWorkout: (startTime: number, endTime: number, intensity: 'low' | 'moderate' | 'high') => void;
   onLogSleep: (bedtime: number, wakeUpTime: number, quality: 'poor' | 'fair' | 'good' | 'excellent') => void;
   onDeleteMeal: (id: string) => void;
@@ -35,6 +36,8 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const [mealScale, setMealScale] = useState<'light' | 'normal' | 'large'>('normal');
   const [mealTime, setMealTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   const [mealDescription, setMealDescription] = useState('');
+  const [mealBarcode, setMealBarcode] = useState('');
+  const [showScanner, setShowScanner] = useState(false);
 
   // Workout Form State
   const [workoutIntensity, setWorkoutIntensity] = useState<'low' | 'moderate' | 'high'>('moderate');
@@ -48,8 +51,21 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
   const handleLogMeal = (e: React.FormEvent) => {
     e.preventDefault();
-    onLogMeal(new Date(mealTime).getTime(), mealScale, mealDescription);
+    onLogMeal(new Date(mealTime).getTime(), mealScale, mealDescription, mealBarcode);
     setMealDescription('');
+    setMealBarcode('');
+  };
+
+  const handleScan = (barcode: string, product: any) => {
+    setMealBarcode(barcode);
+    if (product) {
+      const productName = product.product_name || product.generic_name || 'Unknown Product';
+      const brand = product.brands ? ` (${product.brands})` : '';
+      setMealDescription(`${productName}${brand}`);
+    } else {
+      setMealDescription(`Scanned Barcode: ${barcode}`);
+    }
+    setShowScanner(false);
   };
 
   const handleLogWorkout = (e: React.FormEvent) => {
@@ -130,7 +146,17 @@ const LogActivity: React.FC<LogActivityProps> = ({
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Meal Scale</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Meal Scale</label>
+              <button 
+                type="button"
+                onClick={() => setShowScanner(true)}
+                className="flex items-center space-x-1 text-primary text-xs font-bold uppercase hover:bg-primary/10 px-2 py-1 rounded-lg transition-colors"
+              >
+                <Scan size={14} />
+                <span>Scan Barcode</span>
+              </button>
+            </div>
             <div className="grid grid-cols-3 gap-2">
               {(['light', 'normal', 'large'] as const).map((s) => (
                 <button
@@ -151,12 +177,20 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
           <div className="space-y-2">
             <label className="text-xs font-bold text-white/40 uppercase tracking-widest">What did you eat?</label>
-            <textarea
-              value={mealDescription}
-              onChange={(e) => setMealDescription(e.target.value)}
-              placeholder="e.g. Grilled chicken salad with avocado..."
-              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors min-h-[100px] resize-none"
-            />
+            <div className="relative">
+              <textarea
+                value={mealDescription}
+                onChange={(e) => setMealDescription(e.target.value)}
+                placeholder="e.g. Grilled chicken salad with avocado..."
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors min-h-[100px] resize-none"
+              />
+              {mealBarcode && (
+                <div className="absolute bottom-3 right-3 flex items-center space-x-1 bg-primary/20 text-primary text-[10px] font-bold px-2 py-1 rounded-full border border-primary/30">
+                  <Scan size={10} />
+                  <span>{mealBarcode}</span>
+                </div>
+              )}
+            </div>
           </div>
 
           <button
@@ -372,6 +406,13 @@ const LogActivity: React.FC<LogActivityProps> = ({
           )}
         </div>
       </div>
+
+      {showScanner && (
+        <BarcodeScanner 
+          onScan={handleScan}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
     </div>
   );
 };

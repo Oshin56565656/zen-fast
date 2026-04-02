@@ -35,7 +35,9 @@
       "type": "object",
       "properties": {
         "time": { "type": "number", "description": "Timestamp of the meal." },
-        "scale": { "type": "string", "enum": ["snack", "normal", "large"], "description": "Size of the meal." },
+        "scale": { "type": "string", "enum": ["light", "normal", "large"], "description": "Size of the meal." },
+        "description": { "type": "string", "description": "Description of the meal." },
+        "barcode": { "type": "string", "description": "Barcode of the meal." },
         "createdAt": { "type": "object", "description": "Firestore server timestamp." }
       },
       "required": ["time", "scale", "createdAt"]

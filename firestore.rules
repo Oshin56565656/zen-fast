@@ -29,8 +29,9 @@ service cloud.firestore {
     // Collection: users/{userId}/meals/{mealId}
     // Fields:
     //   - time: number (required)
-    //   - scale: string (required, ['snack', 'normal', 'large'])
+    //   - scale: string (required, ['light', 'normal', 'large'])
     //   - description: string (optional)
+    //   - barcode: string (optional)
     //   - createdAt: timestamp (required)
     //
     // Collection: users/{userId}/workouts/{workoutId}
@@ -124,10 +125,11 @@ service cloud.firestore {
 
     function isValidMeal(data) {
       return hasRequiredFields(['time', 'scale', 'createdAt']) &&
-             hasOnlyAllowedFields(['time', 'scale', 'description', 'createdAt']) &&
+             hasOnlyAllowedFields(['time', 'scale', 'description', 'barcode', 'createdAt']) &&
              data.time is number &&
-             data.scale in ['snack', 'normal', 'large'] &&
+             data.scale in ['light', 'normal', 'large'] &&
              (!('description' in data) || data.description is string) &&
+             (!('barcode' in data) || data.barcode is string) &&
              data.createdAt is timestamp;
     }
 

@@ -1,5 +1,5 @@
 {
   "name": "FastTrack - Intermittent Fasting",
   "description": "A modern, sleek intermittent fasting tracker with real-time timers, statistics, and streak tracking.",
-  "requestFramePermissions": []
+  "requestFramePermissions": ["camera"]
 }

@@ -27,6 +27,7 @@ export interface MealRecord {
   time: number;
   scale: 'light' | 'normal' | 'large';
   description?: string;
+  barcode?: string;
   createdAt?: any;
 }
 
