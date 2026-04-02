@@ -1,7 +1,8 @@
 import React, { FC, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
-import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info } from 'lucide-react';
+import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info, Download } from 'lucide-react';
+import { FastRecord, MealRecord, WorkoutRecord, SleepRecord } from '../types';
 
 interface SettingsProps {
   targetHours: number;
@@ -15,6 +16,10 @@ interface SettingsProps {
   accentColor?: string;
   onAccentColorChange: (color: string) => void;
   onTestNotification?: () => void;
+  history: FastRecord[];
+  meals: MealRecord[];
+  workouts: WorkoutRecord[];
+  sleep: SleepRecord[];
 }
 
 export const Settings: FC<SettingsProps> = ({ 
@@ -28,7 +33,11 @@ export const Settings: FC<SettingsProps> = ({
   onWeightChange, 
   accentColor = '#f97316',
   onAccentColorChange,
-  onTestNotification 
+  onTestNotification,
+  history,
+  meals,
+  workouts,
+  sleep
 }) => {
   const [hasKey, setHasKey] = useState(false);
   const [manualKey, setManualKey] = useState('');
@@ -139,6 +148,84 @@ export const Settings: FC<SettingsProps> = ({
         setNotificationStatus(Notification.permission);
       }
     }
+  };
+
+  const downloadCSV = (type: 'all' | 'fasting' | 'meals' | 'workouts' | 'sleep') => {
+    const escapeCSV = (val: any) => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val);
+      const cleaned = str.replace(/"/g, '""');
+      return `"${cleaned}"`;
+    };
+
+    const formatDateTime = (ts: number) => {
+      const d = new Date(ts);
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+      const time = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+      return { date, time };
+    };
+    
+    const triggerDownload = (content: string, filename: string) => {
+      const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    };
+
+    let csvContent = "";
+    const dateStr = new Date().toISOString().split('T')[0];
+
+    if (type === 'all' || type === 'fasting') {
+      csvContent += escapeCSV("FASTING HISTORY") + "\n";
+      csvContent += `${escapeCSV("Start Date")},${escapeCSV("Start Time")},${escapeCSV("End Date")},${escapeCSV("End Time")},${escapeCSV("Duration (h)")},${escapeCSV("Target (h)")},${escapeCSV("Goal Met")}\n`;
+      history.forEach(record => {
+        const start = formatDateTime(record.startTime);
+        const end = formatDateTime(record.endTime);
+        csvContent += `${escapeCSV(start.date)},${escapeCSV(start.time)},${escapeCSV(end.date)},${escapeCSV(end.time)},${escapeCSV((record.duration / 3600).toFixed(2))},${escapeCSV((record.targetDuration / 3600).toFixed(2))},${escapeCSV(record.completed ? 'Yes' : 'No')}\n`;
+      });
+      csvContent += "\n";
+    }
+
+    if (type === 'all' || type === 'meals') {
+      csvContent += escapeCSV("MEAL LOGS") + "\n";
+      csvContent += `${escapeCSV("Date")},${escapeCSV("Time")},${escapeCSV("Portion Size")},${escapeCSV("Description")},${escapeCSV("Barcode")}\n`;
+      meals.forEach(record => {
+        const dt = formatDateTime(record.time);
+        csvContent += `${escapeCSV(dt.date)},${escapeCSV(dt.time)},${escapeCSV(record.scale)},${escapeCSV(record.description || '')},${escapeCSV(record.barcode || '')}\n`;
+      });
+      csvContent += "\n";
+    }
+
+    if (type === 'all' || type === 'workouts') {
+      csvContent += escapeCSV("WORKOUT LOGS") + "\n";
+      csvContent += `${escapeCSV("Start Date")},${escapeCSV("Start Time")},${escapeCSV("End Date")},${escapeCSV("End Time")},${escapeCSV("Duration (m)")},${escapeCSV("Intensity")}\n`;
+      const sortedWorkouts = [...workouts].sort((a, b) => b.startTime - a.startTime);
+      sortedWorkouts.forEach(record => {
+        const start = formatDateTime(record.startTime);
+        const end = formatDateTime(record.endTime);
+        csvContent += `${escapeCSV(start.date)},${escapeCSV(start.time)},${escapeCSV(end.date)},${escapeCSV(end.time)},${escapeCSV(record.duration)},${escapeCSV(record.intensity)}\n`;
+      });
+      csvContent += "\n";
+    }
+
+    if (type === 'all' || type === 'sleep') {
+      csvContent += escapeCSV("SLEEP LOGS") + "\n";
+      csvContent += `${escapeCSV("Bedtime Date")},${escapeCSV("Bedtime Time")},${escapeCSV("Wake Date")},${escapeCSV("Wake Time")},${escapeCSV("Duration (h)")},${escapeCSV("Quality")}\n`;
+      sleep.forEach(record => {
+        const start = formatDateTime(record.bedtime);
+        const end = formatDateTime(record.wakeUpTime);
+        csvContent += `${escapeCSV(start.date)},${escapeCSV(start.time)},${escapeCSV(end.date)},${escapeCSV(end.time)},${escapeCSV(record.duration.toFixed(2))},${escapeCSV(record.quality)}\n`;
+      });
+    }
+
+    const filename = type === 'all' ? `fasttrack_full_export_${dateStr}.csv` : `fasttrack_${type}_export_${dateStr}.csv`;
+    triggerDownload(csvContent, filename);
   };
 
   const formatTimeForInput = (timestamp: number | null | undefined) => {
@@ -489,6 +576,58 @@ export const Settings: FC<SettingsProps> = ({
                 Enter manually
               </button>
             )}
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">Data Management</h3>
+        <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-6">
+          <div className="space-y-2">
+            <p className="text-xs text-white/60 leading-relaxed">
+              Export your logs to structured CSV files. You can download everything at once or choose specific categories.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <button
+              onClick={() => downloadCSV('all')}
+              className="w-full py-4 bg-primary text-white rounded-2xl font-bold flex items-center justify-center space-x-3 transition-all active:scale-95 shadow-lg shadow-primary/20"
+            >
+              <Download size={20} />
+              <span>Download All Data</span>
+            </button>
+
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => downloadCSV('fasting')}
+                className="py-3 bg-white/5 hover:bg-white/10 text-white/80 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition-all active:scale-95 border border-white/5"
+              >
+                <Download size={14} className="text-primary" />
+                <span>Fasting</span>
+              </button>
+              <button
+                onClick={() => downloadCSV('meals')}
+                className="py-3 bg-white/5 hover:bg-white/10 text-white/80 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition-all active:scale-95 border border-white/5"
+              >
+                <Download size={14} className="text-primary" />
+                <span>Meals</span>
+              </button>
+              <button
+                onClick={() => downloadCSV('workouts')}
+                className="py-3 bg-white/5 hover:bg-white/10 text-white/80 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition-all active:scale-95 border border-white/5"
+              >
+                <Download size={14} className="text-primary" />
+                <span>Workouts</span>
+              </button>
+              <button
+                onClick={() => downloadCSV('sleep')}
+                className="py-3 bg-white/5 hover:bg-white/10 text-white/80 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition-all active:scale-95 border border-white/5"
+              >
+                <Download size={14} className="text-primary" />
+                <span>Sleep</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

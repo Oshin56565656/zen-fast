@@ -129,6 +129,10 @@ export default function App() {
               accentColor={state.accentColor}
               onAccentColorChange={setAccentColor}
               onTestNotification={testNotification}
+              history={history}
+              meals={meals}
+              workouts={workouts}
+              sleep={sleep}
             />
             <div className="px-6">
               <button

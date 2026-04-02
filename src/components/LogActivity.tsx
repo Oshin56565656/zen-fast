@@ -105,9 +105,9 @@ const LogActivity: React.FC<LogActivityProps> = ({
     });
   };
 
-  const filteredMeals = filterByDate(meals) as MealRecord[];
-  const filteredWorkouts = filterByDate(workouts) as WorkoutRecord[];
-  const filteredSleep = filterByDate(sleep) as SleepRecord[];
+  const filteredMeals = ([...filterByDate(meals)] as MealRecord[]).sort((a, b) => b.time - a.time);
+  const filteredWorkouts = ([...filterByDate(workouts)] as WorkoutRecord[]).sort((a, b) => b.startTime - a.startTime);
+  const filteredSleep = ([...filterByDate(sleep)] as SleepRecord[]).sort((a, b) => b.wakeUpTime - a.wakeUpTime);
 
   return (
     <div className="space-y-8 p-6 pb-24">
