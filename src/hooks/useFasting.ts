@@ -57,6 +57,16 @@ export function useFasting() {
   const [lastWaterReminder, setLastWaterReminder] = useState<number>(Date.now());
   const [isWaterLoaded, setIsWaterLoaded] = useState(false);
 
+  // Apply theme color to CSS variable
+  useEffect(() => {
+    if (state.accentColor) {
+      document.documentElement.style.setProperty('--accent-color', state.accentColor);
+      // Update meta theme-color for mobile browser chrome
+      const metaTheme = document.querySelector('meta[name="theme-color"]');
+      if (metaTheme) metaTheme.setAttribute('content', state.accentColor);
+    }
+  }, [state.accentColor]);
+
   // Monitor fasting progress for target reached notification
   useEffect(() => {
     if (state.status !== 'fasting' || !state.startTime || hasNotifiedTarget) return;
@@ -81,7 +91,7 @@ export function useFasting() {
       }
 
       if (isTargetReached && !hasNotifiedTarget) {
-        sendNotification("Fast Goal Reached! 🎉", {
+        sendNotification("Fast Goal Reached!", {
           body: `You've reached ${targetLabel}. Great job!`,
           icon: "https://cdn-icons-png.flaticon.com/512/9165/9165743.png"
         });
@@ -123,7 +133,7 @@ export function useFasting() {
 
       // Remind if no log for 3 hours AND no reminder for 3 hours
       if (timeSinceLastLog > 3 * 3600 * 1000 && timeSinceLastReminder > 3 * 3600 * 1000) {
-        sendNotification("Time to Hydrate! 💧", {
+        sendNotification("Time to Hydrate!", {
           body: `You've drank ${todayTotal}ml today. Aim for ${goal}ml!`,
           icon: "https://cdn-icons-png.flaticon.com/512/9165/9165743.png"
         });
@@ -387,7 +397,7 @@ export function useFasting() {
     console.log("Starting fast...");
     if ("vibrate" in navigator) navigator.vibrate(50);
     await requestPermission();
-    sendNotification("Fast Started! ⏱️", {
+    sendNotification("Fast Started!", {
       body: `Your ${state.targetHours}h fast has begun. Good luck!`,
       icon: "https://cdn-icons-png.flaticon.com/512/9165/9165743.png"
     });
@@ -403,7 +413,7 @@ export function useFasting() {
   const pauseFast = () => {
     if (state.status !== 'fasting' || state.pausedAt) return;
     if ("vibrate" in navigator) navigator.vibrate(30);
-    sendNotification("Fast Paused ⏸️", {
+    sendNotification("Fast Paused", {
       body: "Your timer has been paused.",
       icon: "https://cdn-icons-png.flaticon.com/512/9165/9165743.png"
     });
@@ -413,7 +423,7 @@ export function useFasting() {
   const resumeFast = () => {
     if (state.status !== 'fasting' || !state.pausedAt) return;
     if ("vibrate" in navigator) navigator.vibrate(30);
-    sendNotification("Fast Resumed ▶️", {
+    sendNotification("Fast Resumed", {
       body: "Your timer is running again.",
       icon: "https://cdn-icons-png.flaticon.com/512/9165/9165743.png"
     });
@@ -447,7 +457,7 @@ export function useFasting() {
     try {
       await addDoc(collection(db, 'users', user.uid, 'history'), newRecord);
       
-      sendNotification("Fast Ended! 🥗", {
+      sendNotification("Fast Ended!", {
         body: `You fasted for ${Math.floor(durationSec / 3600)}h ${Math.floor((durationSec % 3600) / 60)}m. Time to refuel!`,
         icon: "https://cdn-icons-png.flaticon.com/512/9165/9165743.png"
       });
@@ -610,7 +620,7 @@ export function useFasting() {
 
   const testNotification = async () => {
     await requestPermission();
-    await sendNotification("Test Notification! 🔔", {
+    await sendNotification("Test Notification!", {
       body: "If you see this, notifications are working correctly.",
       icon: "https://cdn-icons-png.flaticon.com/512/9165/9165743.png"
     });

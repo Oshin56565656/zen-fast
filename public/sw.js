@@ -3,8 +3,8 @@ self.addEventListener('push', (event) => {
   const title = data.title ?? 'FastTrack';
   const options = {
     body: data.body ?? '',
-    icon: 'https://cdn-icons-png.flaticon.com/512/3242/3242257.png',
-    badge: 'https://cdn-icons-png.flaticon.com/192/3242/3242257.png',
+    icon: 'https://cdn-icons-png.flaticon.com/512/9165/9165743.png',
+    badge: 'https://cdn-icons-png.flaticon.com/192/9165/9165743.png',
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
