@@ -1,6 +1,6 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Timer as TimerIcon, History as HistoryIcon, BarChart3, Settings as SettingsIcon, LogOut, Sparkles, PlusCircle } from 'lucide-react';
+import { Timer as TimerIcon, History as HistoryIcon, BarChart3, Settings as SettingsIcon, LogOut, Sparkles, PlusCircle, Zap } from 'lucide-react';
 import { Timer } from './components/Timer';
 import { History } from './components/History';
 import { Stats } from './components/Stats';
@@ -102,6 +102,7 @@ export default function App() {
             meals={meals} 
             workouts={workouts} 
             sleep={sleep}
+            water={water}
             height={state.height}
             weight={state.weight}
             age={state.age}
@@ -171,7 +172,7 @@ export default function App() {
       <header className="p-6 flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <TimerIcon size={20} className="text-white" />
+            <Zap size={20} className="text-white fill-white/20" />
           </div>
           <h1 className="text-xl font-bold tracking-tight">FastTrack</h1>
         </div>

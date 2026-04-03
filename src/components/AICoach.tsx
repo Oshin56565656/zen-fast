@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, TrendingUp, Target, RefreshCw, Utensils, Dumbbell, Send, MessageCircle } from 'lucide-react';
 import { getFastingInsights, chatWithCoach } from '../services/aiService';
-import { FastRecord, MealRecord, WorkoutRecord, SleepRecord } from '../types';
+import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord } from '../types';
 import { cn } from '../lib/utils';
 
 interface AICoachProps {
@@ -10,6 +10,7 @@ interface AICoachProps {
   meals: MealRecord[];
   workouts: WorkoutRecord[];
   sleep: SleepRecord[];
+  water: WaterRecord[];
   height?: number;
   weight?: number;
   sex?: string;
@@ -103,7 +104,7 @@ const ChatBox: React.FC<{
   );
 };
 
-  const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, height, weight, sex, age }) => {
+  const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, water, height, weight, sex, age }) => {
     const [insights, setInsights] = useState<Insight[]>(() => {
       if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('fasttrack_insights');
@@ -145,7 +146,7 @@ const ChatBox: React.FC<{
       setLoading(true);
       try {
         const userLocalTime = new Date().toLocaleString();
-        const result = await getFastingInsights(history, meals, workouts, sleep, userLocalTime, height, weight, sex, age);
+        const result = await getFastingInsights(history, meals, workouts, sleep, water, userLocalTime, height, weight, sex, age);
         setInsights(Array.isArray(result) ? result : []);
       } catch (error: any) {
       console.error('Error fetching insights:', error);

@@ -42,6 +42,7 @@ export function useFasting() {
   const [sleep, setSleep] = useState<SleepRecord[]>([]);
   const [water, setWater] = useState<WaterRecord[]>([]);
   const [hasNotifiedTarget, setHasNotifiedTarget] = useState(false);
+  const [lastWaterReminder, setLastWaterReminder] = useState<number>(0);
 
   // Monitor fasting progress for target reached notification
   useEffect(() => {
@@ -69,7 +70,7 @@ export function useFasting() {
       if (isTargetReached && !hasNotifiedTarget) {
         sendNotification("Fast Goal Reached! 🎉", {
           body: `You've reached ${targetLabel}. Great job!`,
-          icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
+          icon: "https://cdn-icons-png.flaticon.com/512/1164/1164620.png"
         });
         setHasNotifiedTarget(true);
       }
@@ -80,6 +81,46 @@ export function useFasting() {
 
     return () => clearInterval(interval);
   }, [state.status, state.startTime, state.totalPausedTime, state.targetHours, hasNotifiedTarget]);
+
+  // Water reminder logic
+  useEffect(() => {
+    const checkWater = () => {
+      const now = new Date();
+      const hour = now.getHours();
+      
+      // Only remind between 8 AM and 10 PM
+      if (hour < 8 || hour > 22) return;
+
+      // Calculate today's total water
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayTotal = water
+        .filter(w => w.time >= today.getTime())
+        .reduce((acc, curr) => acc + curr.amount, 0);
+
+      const goal = state.waterGoal || 2000;
+      if (todayTotal >= goal) return;
+
+      // Check last log time
+      const lastLog = water.length > 0 ? Math.max(...water.map(w => w.time)) : 0;
+      const timeSinceLastLog = Date.now() - lastLog;
+      const timeSinceLastReminder = Date.now() - lastWaterReminder;
+
+      // Remind if no log for 3 hours AND no reminder for 3 hours
+      if (timeSinceLastLog > 3 * 3600 * 1000 && timeSinceLastReminder > 3 * 3600 * 1000) {
+        sendNotification("Time to Hydrate! 💧", {
+          body: `You've drank ${todayTotal}ml today. Aim for ${goal}ml!`,
+          icon: "https://cdn-icons-png.flaticon.com/512/1164/1164620.png"
+        });
+        setLastWaterReminder(Date.now());
+      }
+    };
+
+    const interval = setInterval(checkWater, 3600000); // Check every hour
+    checkWater(); // Check immediately
+
+    return () => clearInterval(interval);
+  }, [water, state.waterGoal, lastWaterReminder]);
 
   // Reset notification flag when fast ends or status changes
   useEffect(() => {
@@ -322,7 +363,7 @@ export function useFasting() {
     await requestPermission();
     sendNotification("Fast Started! ⏱️", {
       body: `Your ${state.targetHours}h fast has begun. Good luck!`,
-      icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
+      icon: "https://cdn-icons-png.flaticon.com/512/1164/1164620.png"
     });
     updateState({
       startTime: Date.now(),
@@ -338,7 +379,7 @@ export function useFasting() {
     if ("vibrate" in navigator) navigator.vibrate(30);
     sendNotification("Fast Paused ⏸️", {
       body: "Your timer has been paused.",
-      icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
+      icon: "https://cdn-icons-png.flaticon.com/512/1164/1164620.png"
     });
     updateState({ pausedAt: Date.now() });
   };
@@ -348,7 +389,7 @@ export function useFasting() {
     if ("vibrate" in navigator) navigator.vibrate(30);
     sendNotification("Fast Resumed ▶️", {
       body: "Your timer is running again.",
-      icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
+      icon: "https://cdn-icons-png.flaticon.com/512/1164/1164620.png"
     });
     const pauseDuration = Date.now() - state.pausedAt;
     updateState({
@@ -382,7 +423,7 @@ export function useFasting() {
       
       sendNotification("Fast Ended! 🥗", {
         body: `You fasted for ${Math.floor(durationSec / 3600)}h ${Math.floor((durationSec % 3600) / 60)}m. Time to refuel!`,
-        icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
+        icon: "https://cdn-icons-png.flaticon.com/512/1164/1164620.png"
       });
 
       await updateState({
@@ -545,7 +586,7 @@ export function useFasting() {
     await requestPermission();
     await sendNotification("Test Notification! 🔔", {
       body: "If you see this, notifications are working correctly.",
-      icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
+      icon: "https://cdn-icons-png.flaticon.com/512/1164/1164620.png"
     });
     // Add a small alert for feedback on mobile
     alert("Test notification triggered! If you don't see it, please check your Android notification settings for Chrome.");

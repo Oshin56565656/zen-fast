@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { FastRecord, MealRecord, WorkoutRecord, SleepRecord } from "../types";
+import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord } from "../types";
 
 const getAIInstance = () => {
   let apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
@@ -29,13 +29,14 @@ export async function getFastingInsights(
   meals: MealRecord[], 
   workouts: WorkoutRecord[],
   sleep: SleepRecord[],
+  water: WaterRecord[],
   userLocalTime: string,
   height?: number,
   weight?: number,
   sex?: string,
   age?: number
 ) {
-  if (history.length === 0 && meals.length === 0 && workouts.length === 0 && sleep.length === 0) {
+  if (history.length === 0 && meals.length === 0 && workouts.length === 0 && sleep.length === 0 && water.length === 0) {
     return [];
   }
 
@@ -100,6 +101,15 @@ export async function getFastingInsights(
       };
     });
 
+  const waterData = water
+    .filter(w => w.time >= fourDaysAgo)
+    .slice(0, 20)
+    .map(w => ({
+      localTime: formatLocalTime(w.time),
+      amountMl: w.amount,
+      relativeTime: `${Math.round((now.getTime() - w.time) / 60000)} minutes ago`
+    }));
+
   const prompt = `
     User's Current Local Time: ${userLocalTime}
     Current UTC Time: ${now.toISOString()}
@@ -116,6 +126,7 @@ export async function getFastingInsights(
     2. Specific recommendations for the BEST TIME and INTENSITY for their next workout based on their most recent meal(s), current fasting state, and sleep quality.
     3. How their sleep patterns (bedtime, wake-up time, duration, and quality) are affecting their fasting performance and metabolic health.
     4. How their meal choices (descriptions) affect their metabolic health and potentially their sleep.
+    5. Hydration: Analyze their water intake patterns and suggest an optimal daily water goal (in ml) based on their physical profile, activity level, and current hydration habits.
     
     CRITICAL: 
     1. Use "User's Current Local Time" as the primary reference for "morning", "night", etc.
@@ -129,6 +140,7 @@ export async function getFastingInsights(
     Recent Meals: ${JSON.stringify(mealData)}
     Recent Workouts: ${JSON.stringify(workoutData)}
     Recent Sleep: ${JSON.stringify(sleepData)}
+    Recent Water Intake: ${JSON.stringify(waterData)}
     
     Structure the response as a list of insights.
   `;
