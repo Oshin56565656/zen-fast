@@ -24,7 +24,14 @@ interface Insight {
   messages?: { role: 'user' | 'model'; text: string }[];
 }
 
-const ChatBox: React.FC<{ insight: Insight; onUpdateMessages: (messages: { role: 'user' | 'model'; text: string }[]) => void }> = ({ insight, onUpdateMessages }) => {
+const ChatBox: React.FC<{ 
+  insight: Insight; 
+  onUpdateMessages: (messages: { role: 'user' | 'model'; text: string }[]) => void;
+  height?: number;
+  weight?: number;
+  sex?: string;
+  age?: number;
+}> = ({ insight, onUpdateMessages, height, weight, sex, age }) => {
   const [messages, setMessages] = useState<{ role: 'user' | 'model'; text: string }[]>(insight.messages || []);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -40,7 +47,7 @@ const ChatBox: React.FC<{ insight: Insight; onUpdateMessages: (messages: { role:
     setLoading(true);
 
     try {
-      const response = await chatWithCoach(insight, userMsg, messages);
+      const response = await chatWithCoach(insight, userMsg, messages, height, weight, sex, age);
       const finalMessages: { role: 'user' | 'model'; text: string }[] = [...newMessages, { role: 'model', text: response }];
       setMessages(finalMessages);
       onUpdateMessages(finalMessages);
@@ -259,6 +266,10 @@ const ChatBox: React.FC<{ insight: Insight; onUpdateMessages: (messages: { role:
                   
                   <ChatBox 
                     insight={insight} 
+                    height={height}
+                    weight={weight}
+                    sex={sex}
+                    age={age}
                     onUpdateMessages={(msgs) => {
                       const newInsights = [...insights];
                       newInsights[index] = { ...insight, messages: msgs };

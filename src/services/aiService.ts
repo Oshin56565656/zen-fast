@@ -139,7 +139,7 @@ export async function getFastingInsights(
         model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
-          systemInstruction: "You are an expert fasting and fitness coach. Provide data-driven, structured insights based on the user's history and physical profile (height/weight if provided). Be precise about timing relationships. Specifically, recommend the optimal workout time and intensity based on the user's last meal, current fasting state, and body metrics. IMPORTANT: Never hallucinate or infer meal or workout data that is not explicitly provided in the user's logs. ALWAYS use 12-hour time format (e.g., 10:00 am) in your responses.",
+          systemInstruction: "You are an expert fasting and fitness coach. Provide data-driven, structured insights based on the user's history and physical profile (age, sex, height, and weight if provided). Be precise about timing relationships. Specifically, recommend the optimal workout time and intensity based on the user's last meal, current fasting state, and body metrics. IMPORTANT: Never hallucinate or infer meal or workout data that is not explicitly provided in the user's logs. ALWAYS use 12-hour time format (e.g., 10:00 am) in your responses.",
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.ARRAY,
@@ -176,38 +176,14 @@ export async function getFastingInsights(
   }
 }
 
-export async function getSmartMotivation(hoursPassed: number, targetHours: number) {
-  const ai = getAIInstance();
-  const prompt = `
-    The user is ${hoursPassed.toFixed(1)} hours into a ${targetHours} hour fast.
-    Provide a short, motivating message (max 2 sentences).
-    Explain what biological stage they are likely in (e.g., blood sugar drop, ketosis, autophagy) and why it's good.
-    Make it feel like a supportive coach.
-  `;
-
-  try {
-    const response = await withTimeout(
-      ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          systemInstruction: "You are an encouraging fasting coach. Provide short, scientifically-backed motivational tips."
-        }
-      }),
-      15000, // 15 second timeout
-      "Motivation is taking a moment..."
-    );
-    return response.text || "You're doing great! Every hour counts toward your health goals.";
-  } catch (error) {
-    console.error("AI Motivation Error:", error);
-    return "You're doing great! Every hour counts toward your health goals.";
-  }
-}
-
 export async function chatWithCoach(
   insight: { title: string; content: string; category: string },
   userMessage: string,
-  chatHistory: { role: 'user' | 'model'; text: string }[]
+  chatHistory: { role: 'user' | 'model'; text: string }[],
+  height?: number,
+  weight?: number,
+  sex?: string,
+  age?: number
 ) {
   const ai = getAIInstance();
   
@@ -230,6 +206,12 @@ export async function chatWithCoach(
     {
       role: 'user',
       parts: [{ text: `User's Current Local Time: ${userLocalTime}
+User Profile:
+- Sex: ${sex || 'Not provided'}
+- Age: ${age || 'Not provided'}
+- Height: ${height ? `${height}cm` : 'Not provided'}
+- Weight: ${weight ? `${weight}kg` : 'Not provided'}
+
 Context Insight:
 Category: ${insight.category}
 Title: ${insight.title}
@@ -245,7 +227,7 @@ User Question: ${userMessage}` }]
       model: "gemini-3-flash-preview",
       contents: contents,
       config: {
-        systemInstruction: "You are an expert fasting and fitness coach. A user is asking you a question about a specific insight you previously provided. Answer their question concisely and accurately based on the context of that insight. Be supportive and data-driven. Keep responses under 3 sentences if possible."
+        systemInstruction: "You are an expert fasting and fitness coach. A user is asking you a question about a specific insight you previously provided. Answer their question concisely and accurately based on the context of that insight and their physical profile. Be supportive and data-driven. Keep responses under 3 sentences if possible."
       }
     });
 

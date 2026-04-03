@@ -3,7 +3,6 @@ import { motion } from 'motion/react';
 import { Timer as TimerIcon, Play, Pause, Square, Zap, Sparkles } from 'lucide-react';
 import { CurrentFastState } from '../types';
 import { formatDuration, cn } from '../lib/utils';
-import { getSmartMotivation } from '../services/aiService';
 import { FastingStages } from './FastingStages';
 
 import { FASTING_STAGES } from '../constants/fastingStages';
@@ -20,38 +19,10 @@ interface TimerProps {
 export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd, onReset }) => {
   const [elapsed, setElapsed] = useState(0);
   const [displayMode, setDisplayMode] = useState<'elapsed' | 'remaining'>('elapsed');
-  const [motivation, setMotivation] = useState<string>('');
-  const [loadingMotivation, setLoadingMotivation] = useState(false);
-  const [lastMotivationHour, setLastMotivationHour] = useState(-1);
   
   const targetSeconds = state.targetEndTime && state.startTime 
     ? Math.max(Math.floor((state.targetEndTime - (state.startTime + state.totalPausedTime)) / 1000), 1)
     : state.targetHours * 3600;
-
-  useEffect(() => {
-    const hoursPassed = elapsed / 3600;
-    // Fetch motivation every 2 hours or at the start
-    if (state.status === 'fasting' && !state.pausedAt && !loadingMotivation && (hoursPassed >= lastMotivationHour + 2 || (hoursPassed > 0 && lastMotivationHour === -1))) {
-      const fetchMotivation = async () => {
-        setLoadingMotivation(true);
-        // Set this immediately to prevent re-triggering while loading
-        const currentHour = Math.floor(hoursPassed);
-        setLastMotivationHour(currentHour);
-        
-        try {
-          const msg = await getSmartMotivation(hoursPassed, state.targetHours);
-          setMotivation(msg);
-        } catch (error) {
-          console.error('Error fetching motivation:', error);
-          // Reset if it failed so it can try again later
-          setLastMotivationHour(prev => prev - 1);
-        } finally {
-          setLoadingMotivation(false);
-        }
-      };
-      fetchMotivation();
-    }
-  }, [elapsed, state.status, state.pausedAt, state.targetHours, lastMotivationHour, loadingMotivation]);
 
   useEffect(() => {
     let interval: number;
@@ -195,28 +166,6 @@ export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd
       </div>
 
       <FastingStages elapsedSeconds={elapsed} isFasting={isFasting} />
-
-      {isFasting && (motivation || loadingMotivation) && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-sm bg-primary/5 border border-primary/10 p-4 rounded-2xl relative overflow-hidden"
-        >
-          <div className="flex items-start space-x-3">
-            <Sparkles className="text-primary shrink-0 mt-1" size={18} />
-            <div className="space-y-1">
-              <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Coach Insight</p>
-              {loadingMotivation ? (
-                <div className="h-4 w-32 bg-primary/10 animate-pulse rounded" />
-              ) : (
-                <p className="text-xs text-white/70 leading-relaxed italic">
-                  {motivation}
-                </p>
-              )}
-            </div>
-          </div>
-        </motion.div>
-      )}
     </div>
   );
 };
