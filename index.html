@@ -10,6 +10,17 @@
     <meta name="theme-color" content="#f97316" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <script>
+      (function() {
+        try {
+          const state = JSON.parse(localStorage.getItem('fasttrack_state'));
+          if (state && state.accentColor) {
+            document.documentElement.style.setProperty('--accent-color', state.accentColor);
+            document.querySelector('meta[name="theme-color"]').setAttribute('content', state.accentColor);
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

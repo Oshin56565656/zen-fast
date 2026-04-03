@@ -24,16 +24,28 @@ const STORAGE_KEY_HISTORY = 'fasttrack_history';
 export function useFasting() {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
-  const [state, setState] = useState<CurrentFastState>({
-    startTime: null,
-    endTime: null,
-    status: 'idle',
-    targetHours: 16,
-    targetEndTime: null,
-    pausedAt: null,
-    totalPausedTime: 0,
-    waterGoal: 2000, // Default 2L
-    accentColor: '#3b82f6' // Default blue
+  const [state, setState] = useState<CurrentFastState>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(STORAGE_KEY_STATE);
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          console.error('Failed to parse saved state:', e);
+        }
+      }
+    }
+    return {
+      startTime: null,
+      endTime: null,
+      status: 'idle',
+      targetHours: 16,
+      targetEndTime: null,
+      pausedAt: null,
+      totalPausedTime: 0,
+      waterGoal: 2000, // Default 2L
+      accentColor: '#3b82f6' // Default blue
+    };
   });
 
   const [history, setHistory] = useState<FastRecord[]>([]);
@@ -187,7 +199,9 @@ export function useFasting() {
 
     const unsubscribe = onSnapshot(stateDocRef, (snapshot) => {
       if (snapshot.exists()) {
-        setState(snapshot.data() as CurrentFastState);
+        const newState = snapshot.data() as CurrentFastState;
+        setState(newState);
+        localStorage.setItem(STORAGE_KEY_STATE, JSON.stringify(newState));
       } else {
         // Initialize state in Firestore if it doesn't exist
         const localState = localStorage.getItem(STORAGE_KEY_STATE);
@@ -351,11 +365,14 @@ export function useFasting() {
     if (!user) return;
     const stateDocRef = doc(db, 'users', user.uid, 'settings', 'currentFast');
     try {
+      const newState = { ...state, ...updates };
+      setState(newState);
+      localStorage.setItem(STORAGE_KEY_STATE, JSON.stringify(newState));
       await updateDoc(stateDocRef, updates);
     } catch (error) {
       handleFirestoreError(error, 'update', `users/${user.uid}/settings/currentFast`);
     }
-  }, [user]);
+  }, [user, state]);
 
   const startFast = async () => {
     console.log("Starting fast...");
