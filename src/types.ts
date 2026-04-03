@@ -49,3 +49,10 @@ export interface SleepRecord {
   quality: 'poor' | 'fair' | 'good' | 'excellent';
   createdAt?: any;
 }
+
+export interface WaterRecord {
+  id: string;
+  time: number;
+  amount: number; // in ml
+  createdAt?: any;
+}

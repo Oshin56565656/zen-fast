@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord } from '../types';
+import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord } from '../types';
 import { 
   auth, 
   db, 
@@ -39,6 +39,7 @@ export function useFasting() {
   const [meals, setMeals] = useState<MealRecord[]>([]);
   const [workouts, setWorkouts] = useState<WorkoutRecord[]>([]);
   const [sleep, setSleep] = useState<SleepRecord[]>([]);
+  const [water, setWater] = useState<WaterRecord[]>([]);
   const [hasNotifiedTarget, setHasNotifiedTarget] = useState(false);
 
   // Monitor fasting progress for target reached notification
@@ -259,6 +260,23 @@ export function useFasting() {
       setSleep(records.sort((a, b) => b.wakeUpTime - a.wakeUpTime));
     }, (error) => {
       handleFirestoreError(error, 'list', `users/${user.uid}/sleep`);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  // Sync water with Firestore
+  useEffect(() => {
+    if (!user) return;
+    const waterRef = collection(db, 'users', user.uid, 'water');
+    const q = query(waterRef);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const records: WaterRecord[] = [];
+      snapshot.forEach((doc) => {
+        records.push({ id: doc.id, ...doc.data() } as WaterRecord);
+      });
+      setWater(records.sort((a, b) => b.time - a.time));
+    }, (error) => {
+      handleFirestoreError(error, 'list', `users/${user.uid}/water`);
     });
     return () => unsubscribe();
   }, [user]);
@@ -500,6 +518,28 @@ export function useFasting() {
     }
   };
 
+  const logWater = async (time: number, amount: number) => {
+    if (!user) return;
+    try {
+      await addDoc(collection(db, 'users', user.uid, 'water'), {
+        time,
+        amount,
+        createdAt: Timestamp.now()
+      });
+    } catch (error) {
+      handleFirestoreError(error, 'write', `users/${user.uid}/water`);
+    }
+  };
+
+  const deleteWater = async (id: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'water', id));
+    } catch (error) {
+      handleFirestoreError(error, 'delete', `users/${user.uid}/water/${id}`);
+    }
+  };
+
   const testNotification = async () => {
     await requestPermission();
     await sendNotification("Test Notification! 🔔", {
@@ -518,6 +558,7 @@ export function useFasting() {
     meals,
     workouts,
     sleep,
+    water,
     startFast,
     pauseFast,
     resumeFast,
@@ -530,9 +571,11 @@ export function useFasting() {
     logMeal,
     logWorkout,
     logSleep,
+    logWater,
     deleteMeal,
     deleteWorkout,
     deleteSleep,
+    deleteWater,
     setHeight: (height: number) => updateState({ height }),
     setWeight: (weight: number) => updateState({ weight }),
     setAccentColor: (color: string) => updateState({ accentColor: color }),

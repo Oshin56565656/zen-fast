@@ -1,9 +1,12 @@
 import React, { useState, useEffect, FC } from 'react';
 import { motion } from 'motion/react';
-import { Play, Pause, Square, Zap, Sparkles } from 'lucide-react';
+import { Timer as TimerIcon, Play, Pause, Square, Zap, Sparkles } from 'lucide-react';
 import { CurrentFastState } from '../types';
 import { formatDuration, cn } from '../lib/utils';
 import { getSmartMotivation } from '../services/aiService';
+import { FastingStages } from './FastingStages';
+
+import { FASTING_STAGES } from '../constants/fastingStages';
 
 interface TimerProps {
   state: CurrentFastState;
@@ -74,6 +77,11 @@ export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd
   const isFasting = state.status === 'fasting';
   const isIdle = state.status === 'idle';
 
+  const currentStage = FASTING_STAGES.find(
+    stage => (elapsed / 3600) >= stage.startHour && (elapsed / 3600) < stage.endHour
+  );
+  const ringColor = isFasting ? (currentStage?.hex || "#f97316") : "#3f3f46";
+
   const timeRemaining = Math.max(targetSeconds - elapsed, 0);
   const displayTime = displayMode === 'elapsed' 
       ? formatDuration(elapsed) 
@@ -99,7 +107,7 @@ export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd
             cy="144"
             r="120"
             fill="transparent"
-            stroke={isFasting ? "#f97316" : "#3f3f46"}
+            stroke={ringColor}
             strokeWidth="12"
             strokeDasharray={strokeDasharray}
             initial={{ strokeDashoffset: strokeDasharray }}
@@ -185,6 +193,8 @@ export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd
           </p>
         </div>
       </div>
+
+      <FastingStages elapsedSeconds={elapsed} isFasting={isFasting} />
 
       {isFasting && (motivation || loadingMotivation) && (
         <motion.div

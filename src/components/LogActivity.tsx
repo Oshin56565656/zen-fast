@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Zap, Moon, Camera, Scan } from 'lucide-react';
-import { MealRecord, WorkoutRecord, SleepRecord } from '../types';
+import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets } from 'lucide-react';
+import { MealRecord, WorkoutRecord, SleepRecord, WaterRecord } from '../types';
 import { formatTime, formatDate } from '../lib/utils';
 import { format, subHours } from 'date-fns';
 import BarcodeScanner from './BarcodeScanner';
@@ -10,26 +10,32 @@ interface LogActivityProps {
   meals: MealRecord[];
   workouts: WorkoutRecord[];
   sleep: SleepRecord[];
+  water: WaterRecord[];
   onLogMeal: (time: number, scale: 'light' | 'normal' | 'large', description?: string, barcode?: string) => void;
   onLogWorkout: (startTime: number, endTime: number, intensity: 'low' | 'moderate' | 'high') => void;
   onLogSleep: (bedtime: number, wakeUpTime: number, quality: 'poor' | 'fair' | 'good' | 'excellent') => void;
+  onLogWater: (time: number, amount: number) => void;
   onDeleteMeal: (id: string) => void;
   onDeleteWorkout: (id: string) => void;
   onDeleteSleep: (id: string) => void;
+  onDeleteWater: (id: string) => void;
 }
 
 const LogActivity: React.FC<LogActivityProps> = ({
   meals,
   workouts,
   sleep,
+  water,
   onLogMeal,
   onLogWorkout,
   onLogSleep,
+  onLogWater,
   onDeleteMeal,
   onDeleteWorkout,
-  onDeleteSleep
+  onDeleteSleep,
+  onDeleteWater
 }) => {
-  const [activeType, setActiveType] = useState<'meal' | 'workout' | 'sleep'>('meal');
+  const [activeType, setActiveType] = useState<'meal' | 'workout' | 'sleep' | 'water'>('meal');
   const [searchDate, setSearchDate] = useState<string>('');
   
   // Meal Form State
@@ -48,6 +54,10 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const [sleepQuality, setSleepQuality] = useState<'poor' | 'fair' | 'good' | 'excellent'>('good');
   const [bedtime, setBedtime] = useState(format(subHours(new Date(), 8), "yyyy-MM-dd'T'HH:mm"));
   const [wakeUpTime, setWakeUpTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+
+  // Water Form State
+  const [waterAmount, setWaterAmount] = useState(250);
+  const [waterTime, setWaterTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
 
   const handleLogMeal = (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,6 +101,11 @@ const LogActivity: React.FC<LogActivityProps> = ({
     onLogSleep(new Date(bedtime).getTime(), new Date(wakeUpTime).getTime(), sleepQuality);
   };
 
+  const handleLogWater = (e: React.FormEvent) => {
+    e.preventDefault();
+    onLogWater(new Date(waterTime).getTime(), waterAmount);
+  };
+
   const filterByDate = <T extends { time?: number; startTime?: number; bedtime?: number; wakeUpTime?: number }>(logs: T[]) => {
     if (!searchDate) return logs.slice(0, 6);
     
@@ -108,13 +123,14 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const filteredMeals = ([...filterByDate(meals)] as MealRecord[]).sort((a, b) => b.time - a.time);
   const filteredWorkouts = ([...filterByDate(workouts)] as WorkoutRecord[]).sort((a, b) => b.startTime - a.startTime);
   const filteredSleep = ([...filterByDate(sleep)] as SleepRecord[]).sort((a, b) => b.wakeUpTime - a.wakeUpTime);
+  const filteredWater = ([...filterByDate(water)] as WaterRecord[]).sort((a, b) => b.time - a.time);
 
   return (
     <div className="space-y-8 p-6 pb-24">
-      <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10">
+      <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 overflow-x-auto no-scrollbar">
         <button
           onClick={() => setActiveType('meal')}
-          className={`flex-1 flex items-center justify-center space-x-2 py-3 rounded-xl transition-all ${
+          className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
             activeType === 'meal' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
           }`}
         >
@@ -123,7 +139,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
         </button>
         <button
           onClick={() => setActiveType('workout')}
-          className={`flex-1 flex items-center justify-center space-x-2 py-3 rounded-xl transition-all ${
+          className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
             activeType === 'workout' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
           }`}
         >
@@ -132,12 +148,21 @@ const LogActivity: React.FC<LogActivityProps> = ({
         </button>
         <button
           onClick={() => setActiveType('sleep')}
-          className={`flex-1 flex items-center justify-center space-x-2 py-3 rounded-xl transition-all ${
+          className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
             activeType === 'sleep' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
           }`}
         >
           <Moon size={18} />
           <span className="font-bold">Sleep</span>
+        </button>
+        <button
+          onClick={() => setActiveType('water')}
+          className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
+            activeType === 'water' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
+          }`}
+        >
+          <Droplets size={18} />
+          <span className="font-bold">Water</span>
         </button>
       </div>
 
@@ -264,7 +289,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
             <span>Log Sleep</span>
           </button>
         </motion.form>
-      ) : (
+      ) : activeType === 'workout' ? (
         <motion.form
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -313,7 +338,107 @@ const LogActivity: React.FC<LogActivityProps> = ({
             <span>Log Workout</span>
           </button>
         </motion.form>
-      )}
+      ) : activeType === 'water' ? (
+        <motion.form
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          onSubmit={handleLogWater}
+          className="bg-card p-6 rounded-3xl border border-white/5 space-y-6"
+        >
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Time</label>
+            <input
+              type="datetime-local"
+              value={waterTime}
+              onChange={(e) => setWaterTime(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
+            />
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Amount (ml)</label>
+              <span className="text-xl font-black text-primary">{waterAmount}ml</span>
+            </div>
+            
+            <div className="grid grid-cols-4 gap-2">
+              {[250, 500, 750, 1000].map((amt) => (
+                <button
+                  key={amt}
+                  type="button"
+                  onClick={() => setWaterAmount(amt)}
+                  className={`py-3 rounded-xl border transition-all font-bold text-xs ${
+                    waterAmount === amt 
+                      ? 'bg-primary/20 border-primary text-primary' 
+                      : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
+                  }`}
+                >
+                  {amt}ml
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-4 pt-2">
+              <input
+                type="range"
+                min="0"
+                max="2000"
+                step="50"
+                value={waterAmount}
+                onChange={(e) => setWaterAmount(Number(e.target.value))}
+                className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+              />
+              <div className="flex justify-between text-[10px] font-bold text-white/20 uppercase tracking-tighter">
+                <span>0ml</span>
+                <span>500ml</span>
+                <span>1000ml</span>
+                <span>1500ml</span>
+                <span>2000ml</span>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setWaterAmount(prev => Math.max(0, prev - 100))}
+                className="flex-1 py-3 bg-white/5 border border-white/5 rounded-xl text-white/60 font-bold text-xs hover:bg-white/10 transition-colors"
+              >
+                -100ml
+              </button>
+              <button
+                type="button"
+                onClick={() => setWaterAmount(prev => prev + 100)}
+                className="flex-1 py-3 bg-white/5 border border-white/5 rounded-xl text-white/60 font-bold text-xs hover:bg-white/10 transition-colors"
+              >
+                +100ml
+              </button>
+              <button
+                type="button"
+                onClick={() => setWaterAmount(prev => prev + 250)}
+                className="flex-1 py-3 bg-white/5 border border-white/5 rounded-xl text-white/60 font-bold text-xs hover:bg-white/10 transition-colors"
+              >
+                +250ml
+              </button>
+            </div>
+
+            <input
+              type="number"
+              value={waterAmount}
+              onChange={(e) => setWaterAmount(Number(e.target.value))}
+              placeholder="Custom amount..."
+              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors text-center font-bold"
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="w-full bg-primary text-white py-4 rounded-2xl font-bold flex items-center justify-center space-x-2 hover:bg-primary/90 transition-all active:scale-95"
+          >
+            <Droplets size={20} />
+            <span>Log Water</span>
+          </button>
+        </motion.form>
+      ) : null}
 
       <div className="space-y-4">
         <div className="flex items-center justify-between px-2">
@@ -390,7 +515,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
             ) : (
               <p className="text-center text-white/20 py-8 italic">No workouts found</p>
             )
-          ) : (
+          ) : activeType === 'sleep' ? (
             filteredSleep.length > 0 ? (
               filteredSleep.map((s) => (
                 <div key={s.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
@@ -416,7 +541,31 @@ const LogActivity: React.FC<LogActivityProps> = ({
             ) : (
               <p className="text-center text-white/20 py-8 italic">No sleep logs found</p>
             )
-          )}
+          ) : activeType === 'water' ? (
+            filteredWater.length > 0 ? (
+              filteredWater.map((w) => (
+                <div key={w.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-blue-400/20 rounded-xl flex items-center justify-center text-blue-400">
+                      <Droplets size={20} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-white">{w.amount}ml Water</p>
+                      <p className="text-xs text-white/40">{formatDate(w.time)}, {formatTime(w.time)}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onDeleteWater(w.id)}
+                    className="p-2 text-white/20 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-white/20 py-8 italic">No water logs found</p>
+            )
+          ) : null}
         </div>
       </div>
 

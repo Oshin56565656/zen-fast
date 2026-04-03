@@ -1,16 +1,17 @@
 import React, { FC, ReactNode } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { FastRecord, SleepRecord } from '../types';
+import { FastRecord, SleepRecord, WaterRecord } from '../types';
 import { format, subDays, isSameDay } from 'date-fns';
-import { Trophy, Clock, Flame, Target, Moon, Zap, Star } from 'lucide-react';
+import { Trophy, Clock, Flame, Target, Moon, Zap, Star, Droplets } from 'lucide-react';
 
 interface StatsProps {
   history: FastRecord[];
   sleep: SleepRecord[];
+  water: WaterRecord[];
 }
 
-export const Stats: FC<StatsProps> = ({ history, sleep }) => {
-  const [activeTab, setActiveTab] = React.useState<'fasting' | 'sleep'>('fasting');
+export const Stats: FC<StatsProps> = ({ history, sleep, water }) => {
+  const [activeTab, setActiveTab] = React.useState<'fasting' | 'sleep' | 'water'>('fasting');
 
   // Fasting Stats
   const totalFasts = history.length;
@@ -38,6 +39,17 @@ export const Stats: FC<StatsProps> = ({ history, sleep }) => {
         return acc + scores[curr.quality];
       }, 0) / totalSleepLogs
     : 0;
+
+  // Water Stats
+  const totalWaterLogs = water.length;
+  const totalWaterAmount = water.reduce((acc, curr) => acc + curr.amount, 0);
+  const avgWaterPerDay = totalWaterLogs > 0 ? totalWaterAmount / 7 : 0; // Rough avg over 7 days
+  const maxWaterDay = Math.max(...Array.from({ length: 7 }).map((_, i) => {
+    const date = subDays(new Date(), i);
+    return water
+      .filter(w => isSameDay(new Date(w.time), date))
+      .reduce((acc, curr) => acc + curr.amount, 0);
+  }));
 
   const getQualityLabel = (score: number) => {
     if (score >= 3.5) return 'Excellent';
@@ -67,6 +79,17 @@ export const Stats: FC<StatsProps> = ({ history, sleep }) => {
     };
   });
 
+  // Chart data for last 7 days (Water)
+  const last7DaysWater = Array.from({ length: 7 }).map((_, i) => {
+    const date = subDays(new Date(), 6 - i);
+    const dayWater = water.filter(w => isSameDay(new Date(w.time), date));
+    const totalAmount = dayWater.reduce((acc, curr) => acc + curr.amount, 0);
+    return {
+      name: format(date, 'EEE'),
+      amount: totalAmount,
+    };
+  });
+
   return (
     <div className="p-6 space-y-8 pb-24">
       <div className="flex items-center justify-between">
@@ -87,6 +110,14 @@ export const Stats: FC<StatsProps> = ({ history, sleep }) => {
             }`}
           >
             Sleep
+          </button>
+          <button
+            onClick={() => setActiveTab('water')}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              activeTab === 'water' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
+            }`}
+          >
+            Water
           </button>
         </div>
       </div>
@@ -132,7 +163,7 @@ export const Stats: FC<StatsProps> = ({ history, sleep }) => {
             </div>
           </div>
         </div>
-      ) : (
+      ) : activeTab === 'sleep' ? (
         <div className="space-y-8">
           <div className="grid grid-cols-2 gap-4">
             <StatCard icon={<Moon className="text-indigo-400" />} label="Avg Sleep" value={`${avgSleepDuration.toFixed(1)}h`} />
@@ -166,6 +197,47 @@ export const Stats: FC<StatsProps> = ({ history, sleep }) => {
                   <Bar dataKey="hours" radius={[4, 4, 0, 0]}>
                     {last7DaysSleep.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.hours >= 7 ? '#818cf8' : '#3f3f46'} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          <div className="grid grid-cols-2 gap-4">
+            <StatCard icon={<Droplets className="text-blue-400" />} label="Total Water" value={`${(totalWaterAmount / 1000).toFixed(1)}L`} />
+            <StatCard icon={<Target className="text-primary" />} label="Avg Daily" value={`${(avgWaterPerDay / 1000).toFixed(1)}L`} />
+            <StatCard icon={<Trophy className="text-yellow-500" />} label="Max Day" value={`${(maxWaterDay / 1000).toFixed(1)}L`} />
+            <StatCard icon={<Clock className="text-white/40" />} label="Total Logs" value={totalWaterLogs.toString()} />
+          </div>
+
+          <div className="bg-card p-6 rounded-3xl border border-white/5">
+            <h3 className="text-sm font-medium text-white/40 mb-6">Last 7 Days Hydration (ml)</h3>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={last7DaysWater}>
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 12 }}
+                  />
+                  <Tooltip 
+                    cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                    contentStyle={{ 
+                      backgroundColor: '#18181b', 
+                      border: '1px solid rgba(255,255,255,0.1)', 
+                      borderRadius: '12px',
+                      color: '#fff'
+                    }}
+                    itemStyle={{ color: '#fff' }}
+                    labelStyle={{ color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}
+                  />
+                  <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
+                    {last7DaysWater.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.amount >= 2000 ? '#60a5fa' : '#3f3f46'} />
                     ))}
                   </Bar>
                 </BarChart>
