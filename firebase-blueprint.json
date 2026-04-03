@@ -12,6 +12,11 @@
         "targetEndTime": { "type": "number", "description": "Specific timestamp to end the fast." },
         "pausedAt": { "type": "number", "description": "Timestamp of when the fast was paused." },
         "totalPausedTime": { "type": "number", "description": "Total time the fast has been paused in ms." },
+        "height": { "type": "number", "description": "User height in cm." },
+        "weight": { "type": "number", "description": "User weight in kg." },
+        "sex": { "type": "string", "enum": ["male", "female", "other"], "description": "User sex." },
+        "age": { "type": "number", "description": "User age." },
+        "waterGoal": { "type": "number", "description": "User daily water goal in ml." },
         "accentColor": { "type": "string", "description": "Hex code of the user's preferred accent color." }
       },
       "required": ["status", "targetHours", "totalPausedTime"]

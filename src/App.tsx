@@ -44,6 +44,9 @@ export default function App() {
     deleteWater,
     setHeight,
     setWeight,
+    setAge,
+    setSex,
+    setWaterGoal,
     setAccentColor,
     testNotification
   } = useFasting();
@@ -91,7 +94,7 @@ export default function App() {
       case 'history':
         return <History history={history} onDelete={deleteRecord} onManualLog={manualLogFast} />;
       case 'stats':
-        return <Stats history={history} sleep={sleep} water={water} />;
+        return <Stats history={history} sleep={sleep} water={water} waterGoal={state.waterGoal} />;
       case 'coach':
         return (
           <AICoach 
@@ -101,6 +104,8 @@ export default function App() {
             sleep={sleep}
             height={state.height}
             weight={state.weight}
+            age={state.age}
+            sex={state.sex}
           />
         );
       case 'log':
@@ -130,8 +135,14 @@ export default function App() {
               onTargetEndTimeChange={setTargetEndTime}
               height={state.height}
               weight={state.weight}
+              age={state.age}
+              sex={state.sex}
               onHeightChange={setHeight}
               onWeightChange={setWeight}
+              onAgeChange={setAge}
+              onSexChange={setSex}
+              waterGoal={state.waterGoal}
+              onWaterGoalChange={setWaterGoal}
               accentColor={state.accentColor}
               onAccentColorChange={setAccentColor}
               onTestNotification={testNotification}

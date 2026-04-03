@@ -31,7 +31,9 @@ export async function getFastingInsights(
   sleep: SleepRecord[],
   userLocalTime: string,
   height?: number,
-  weight?: number
+  weight?: number,
+  sex?: string,
+  age?: number
 ) {
   if (history.length === 0 && meals.length === 0 && workouts.length === 0 && sleep.length === 0) {
     return [];
@@ -79,7 +81,7 @@ export async function getFastingInsights(
     .slice(0, 10)
     .map(w => ({
       localTime: formatLocalTime(w.startTime),
-      endTime: formatLocalTime(w.endTime),
+      localEndTime: formatLocalTime(w.endTime),
       durationMins: w.duration,
       intensity: w.intensity,
       relativeTime: `${Math.round((now.getTime() - w.startTime) / 60000)} minutes ago`
@@ -102,7 +104,11 @@ export async function getFastingInsights(
     User's Current Local Time: ${userLocalTime}
     Current UTC Time: ${now.toISOString()}
     Timezone Offset: ${now.getTimezoneOffset()} minutes
-    User Profile: ${height ? `Height: ${height}cm` : 'Height: Not provided'}, ${weight ? `Weight: ${weight}kg` : 'Weight: Not provided'}
+    User Profile: 
+    - Sex: ${sex || 'Not provided'}
+    - Age: ${age || 'Not provided'}
+    - Height: ${height ? `${height}cm` : 'Not provided'}
+    - Weight: ${weight ? `${weight}kg` : 'Not provided'}
     
     Analyze this user's health data and provide 3-4 concise, personalized insights.
     Focus on:

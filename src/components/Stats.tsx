@@ -8,9 +8,10 @@ interface StatsProps {
   history: FastRecord[];
   sleep: SleepRecord[];
   water: WaterRecord[];
+  waterGoal?: number;
 }
 
-export const Stats: FC<StatsProps> = ({ history, sleep, water }) => {
+export const Stats: FC<StatsProps> = ({ history, sleep, water, waterGoal = 2000 }) => {
   const [activeTab, setActiveTab] = React.useState<'fasting' | 'sleep' | 'water'>('fasting');
 
   // Fasting Stats
@@ -43,6 +44,10 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water }) => {
   // Water Stats
   const totalWaterLogs = water.length;
   const totalWaterAmount = water.reduce((acc, curr) => acc + curr.amount, 0);
+  const todayWaterAmount = water
+    .filter(w => isSameDay(new Date(w.time), new Date()))
+    .reduce((acc, curr) => acc + curr.amount, 0);
+  const remainingWater = Math.max(0, waterGoal - todayWaterAmount);
   const avgWaterPerDay = totalWaterLogs > 0 ? totalWaterAmount / 7 : 0; // Rough avg over 7 days
   const maxWaterDay = Math.max(...Array.from({ length: 7 }).map((_, i) => {
     const date = subDays(new Date(), i);
@@ -210,7 +215,7 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water }) => {
             <StatCard icon={<Droplets className="text-blue-400" />} label="Total Water" value={`${(totalWaterAmount / 1000).toFixed(1)}L`} />
             <StatCard icon={<Target className="text-primary" />} label="Avg Daily" value={`${(avgWaterPerDay / 1000).toFixed(1)}L`} />
             <StatCard icon={<Trophy className="text-yellow-500" />} label="Max Day" value={`${(maxWaterDay / 1000).toFixed(1)}L`} />
-            <StatCard icon={<Clock className="text-white/40" />} label="Total Logs" value={totalWaterLogs.toString()} />
+            <StatCard icon={<Clock className="text-blue-400" />} label="Remaining" value={`${(remainingWater / 1000).toFixed(1)}L`} />
           </div>
 
           <div className="bg-card p-6 rounded-3xl border border-white/5">

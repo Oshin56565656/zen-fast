@@ -12,6 +12,8 @@ interface AICoachProps {
   sleep: SleepRecord[];
   height?: number;
   weight?: number;
+  sex?: string;
+  age?: number;
 }
 
 interface Insight {
@@ -94,51 +96,51 @@ const ChatBox: React.FC<{ insight: Insight; onUpdateMessages: (messages: { role:
   );
 };
 
-const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, height, weight }) => {
-  const [insights, setInsights] = useState<Insight[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('fasttrack_insights');
-      return saved ? JSON.parse(saved) : [];
-    }
-    return [];
-  });
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [hasKey, setHasKey] = useState<boolean>(true);
-
-  useEffect(() => {
-    localStorage.setItem('fasttrack_insights', JSON.stringify(insights));
-  }, [insights]);
-
-  useEffect(() => {
-    const checkKey = async () => {
-      // @ts-ignore
-      if (typeof window !== 'undefined' && window.aistudio) {
+  const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, height, weight, sex, age }) => {
+    const [insights, setInsights] = useState<Insight[]>(() => {
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('fasttrack_insights');
+        return saved ? JSON.parse(saved) : [];
+      }
+      return [];
+    });
+    const [loading, setLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string | null>(null);
+    const [hasKey, setHasKey] = useState<boolean>(true);
+  
+    useEffect(() => {
+      localStorage.setItem('fasttrack_insights', JSON.stringify(insights));
+    }, [insights]);
+  
+    useEffect(() => {
+      const checkKey = async () => {
         // @ts-ignore
-        const selected = await window.aistudio.hasSelectedApiKey();
-        setHasKey(selected || !!process.env.GEMINI_API_KEY || !!process.env.API_KEY);
+        if (typeof window !== 'undefined' && window.aistudio) {
+          // @ts-ignore
+          const selected = await window.aistudio.hasSelectedApiKey();
+          setHasKey(selected || !!process.env.GEMINI_API_KEY || !!process.env.API_KEY);
+        }
+      };
+      checkKey();
+    }, []);
+  
+    const handleSelectKey = async () => {
+      // @ts-ignore
+      if (window.aistudio) {
+        // @ts-ignore
+        await window.aistudio.openSelectKey();
+        setHasKey(true);
       }
     };
-    checkKey();
-  }, []);
-
-  const handleSelectKey = async () => {
-    // @ts-ignore
-    if (window.aistudio) {
-      // @ts-ignore
-      await window.aistudio.openSelectKey();
-      setHasKey(true);
-    }
-  };
-
-  const fetchInsights = async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      const userLocalTime = new Date().toLocaleString();
-      const result = await getFastingInsights(history, meals, workouts, sleep, userLocalTime, height, weight);
-      setInsights(Array.isArray(result) ? result : []);
-    } catch (error: any) {
+  
+    const fetchInsights = async () => {
+      setError(null);
+      setLoading(true);
+      try {
+        const userLocalTime = new Date().toLocaleString();
+        const result = await getFastingInsights(history, meals, workouts, sleep, userLocalTime, height, weight, sex, age);
+        setInsights(Array.isArray(result) ? result : []);
+      } catch (error: any) {
       console.error('Error fetching insights:', error);
       if (error.message?.includes("Requested entity was not found")) {
         setHasKey(false);

@@ -93,13 +93,16 @@ service cloud.firestore {
 
     function isValidFastState(data) {
       return hasRequiredFields(['status', 'targetHours', 'totalPausedTime']) &&
-             hasOnlyAllowedFields(['startTime', 'endTime', 'status', 'targetHours', 'targetEndTime', 'pausedAt', 'totalPausedTime', 'height', 'weight', 'accentColor']) &&
+             hasOnlyAllowedFields(['startTime', 'endTime', 'status', 'targetHours', 'targetEndTime', 'pausedAt', 'totalPausedTime', 'height', 'weight', 'sex', 'age', 'waterGoal', 'accentColor']) &&
              data.status in ['idle', 'fasting', 'eating'] &&
              data.targetHours is number && data.targetHours >= 1 && data.targetHours <= 48 &&
              (!('targetEndTime' in data) || data.targetEndTime == null || data.targetEndTime is number) &&
              data.totalPausedTime is number &&
              (!('height' in data) || data.height is number) &&
              (!('weight' in data) || data.weight is number) &&
+             (!('sex' in data) || data.sex in ['male', 'female', 'other']) &&
+             (!('age' in data) || data.age is number) &&
+             (!('waterGoal' in data) || data.waterGoal is number) &&
              (!('accentColor' in data) || data.accentColor is string);
     }
 

@@ -11,8 +11,14 @@ interface SettingsProps {
   onTargetEndTimeChange: (time: number | null) => void;
   height?: number;
   weight?: number;
+  age?: number;
+  sex?: 'male' | 'female' | 'other';
   onHeightChange: (height: number) => void;
   onWeightChange: (weight: number) => void;
+  onAgeChange: (age: number) => void;
+  onSexChange: (sex: 'male' | 'female' | 'other') => void;
+  waterGoal?: number;
+  onWaterGoalChange: (goal: number) => void;
   accentColor?: string;
   onAccentColorChange: (color: string) => void;
   onTestNotification?: () => void;
@@ -29,8 +35,14 @@ export const Settings: FC<SettingsProps> = ({
   onTargetEndTimeChange,
   height, 
   weight, 
+  age,
+  sex,
   onHeightChange, 
   onWeightChange, 
+  onAgeChange,
+  onSexChange,
+  waterGoal = 2000,
+  onWaterGoalChange,
   accentColor = '#f97316',
   onAccentColorChange,
   onTestNotification,
@@ -194,10 +206,10 @@ export const Settings: FC<SettingsProps> = ({
 
     if (type === 'all' || type === 'meals') {
       csvContent += escapeCSV("MEAL LOGS") + "\n";
-      csvContent += `${escapeCSV("Date")},${escapeCSV("Time")},${escapeCSV("Portion Size")},${escapeCSV("Description")},${escapeCSV("Barcode")}\n`;
+      csvContent += `${escapeCSV("Date")},${escapeCSV("Time")},${escapeCSV("Portion Size")},${escapeCSV("Description")}\n`;
       meals.forEach(record => {
         const dt = formatDateTime(record.time);
-        csvContent += `${escapeCSV(dt.date)},${escapeCSV(dt.time)},${escapeCSV(record.scale)},${escapeCSV(record.description || '')},${escapeCSV(record.barcode || '')}\n`;
+        csvContent += `${escapeCSV(dt.date)},${escapeCSV(dt.time)},${escapeCSV(record.scale)},${escapeCSV(record.description || '')}\n`;
       });
       csvContent += "\n";
     }
@@ -317,31 +329,72 @@ export const Settings: FC<SettingsProps> = ({
       </div>
 
       <div className="space-y-4">
-        <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">Body Metrics</h3>
-        <div className="bg-card p-6 rounded-2xl border border-white/5 grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Height (cm)</label>
-            <input
-              type="number"
-              value={height || ''}
-              onChange={(e) => onHeightChange(parseFloat(e.target.value))}
-              placeholder="175"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
-            />
+        <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">Personal Profile</h3>
+        <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Age</label>
+              <input
+                type="number"
+                value={age || ''}
+                onChange={(e) => onAgeChange(parseInt(e.target.value))}
+                placeholder="25"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Sex</label>
+              <select
+                value={sex || ''}
+                onChange={(e) => onSexChange(e.target.value as 'male' | 'female' | 'other')}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors appearance-none"
+              >
+                <option value="" disabled className="bg-background">Select</option>
+                <option value="male" className="bg-background">Male</option>
+                <option value="female" className="bg-background">Female</option>
+                <option value="other" className="bg-background">Other</option>
+              </select>
+            </div>
           </div>
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Weight (kg)</label>
-            <input
-              type="number"
-              value={weight || ''}
-              onChange={(e) => onWeightChange(parseFloat(e.target.value))}
-              placeholder="70"
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
-            />
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Height (cm)</label>
+              <input
+                type="number"
+                value={height || ''}
+                onChange={(e) => onHeightChange(parseFloat(e.target.value))}
+                placeholder="175"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Weight (kg)</label>
+              <input
+                type="number"
+                value={weight || ''}
+                onChange={(e) => onWeightChange(parseFloat(e.target.value))}
+                placeholder="70"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Water Goal (ml)</label>
+              <input
+                type="number"
+                value={waterGoal}
+                onChange={(e) => onWaterGoalChange(parseInt(e.target.value))}
+                placeholder="2000"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
+              />
+            </div>
           </div>
 
           {bmi && bmiInfo && (
-            <div className="col-span-2 pt-4 border-t border-white/5 space-y-4">
+            <div className="pt-4 border-t border-white/5 space-y-4">
               <div className="flex items-end justify-between">
                 <div>
                   <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">Your BMI</p>

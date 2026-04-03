@@ -20,6 +20,9 @@ export interface CurrentFastState {
   totalPausedTime: number; // in milliseconds
   height?: number; // in cm
   weight?: number; // in kg
+  sex?: 'male' | 'female' | 'other';
+  age?: number;
+  waterGoal?: number; // in ml
   accentColor?: string;
 }
 

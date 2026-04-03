@@ -32,6 +32,7 @@ export function useFasting() {
     targetEndTime: null,
     pausedAt: null,
     totalPausedTime: 0,
+    waterGoal: 2000, // Default 2L
     accentColor: '#3b82f6' // Default blue
   });
 
@@ -578,6 +579,9 @@ export function useFasting() {
     deleteWater,
     setHeight: (height: number) => updateState({ height }),
     setWeight: (weight: number) => updateState({ weight }),
+    setAge: (age: number) => updateState({ age }),
+    setSex: (sex: 'male' | 'female' | 'other') => updateState({ sex }),
+    setWaterGoal: (goal: number) => updateState({ waterGoal: goal }),
     setAccentColor: (color: string) => updateState({ accentColor: color }),
     testNotification
   };
