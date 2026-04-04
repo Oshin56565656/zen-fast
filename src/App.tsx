@@ -99,7 +99,7 @@ export default function App() {
       case 'history':
         return <History history={history} onDelete={deleteRecord} onManualLog={manualLogFast} />;
       case 'stats':
-        return <Stats history={history} sleep={sleep} water={water} weights={weights} waterGoal={state.waterGoal} />;
+        return <Stats history={history} sleep={sleep} water={water} weights={weights} workouts={workouts} waterGoal={state.waterGoal} />;
       case 'coach':
         return (
           <AICoach 

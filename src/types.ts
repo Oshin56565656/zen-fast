@@ -75,3 +75,14 @@ export interface WeightRecord {
   note?: string;
   createdAt?: any;
 }
+
+export interface Milestone {
+  id: string;
+  title: string;
+  description: string;
+  category: 'water' | 'weight';
+  threshold: number;
+  icon: string;
+  achieved: boolean;
+  progress: number;
+}

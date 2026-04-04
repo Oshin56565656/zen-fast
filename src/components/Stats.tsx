@@ -1,19 +1,22 @@
 import React, { FC, ReactNode } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
-import { FastRecord, SleepRecord, WaterRecord, WeightRecord } from '../types';
+import { FastRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutRecord } from '../types';
 import { format, subDays, isSameDay, startOfDay } from 'date-fns';
-import { Trophy, Clock, Flame, Target, Moon, Zap, Star, Droplets, Scale, TrendingDown, TrendingUp, Minus } from 'lucide-react';
+import { Trophy, Clock, Flame, Target, Moon, Zap, Star, Droplets, Scale, TrendingDown, TrendingUp, Minus, Calendar, Award } from 'lucide-react';
+import { Milestones } from './Milestones';
+import { Review } from './Review';
 
 interface StatsProps {
   history: FastRecord[];
   sleep: SleepRecord[];
   water: WaterRecord[];
   weights: WeightRecord[];
+  workouts: WorkoutRecord[];
   waterGoal?: number;
 }
 
-export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, waterGoal = 2000 }) => {
-  const [activeTab, setActiveTab] = React.useState<'fasting' | 'sleep' | 'water' | 'weight'>('fasting');
+export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts, waterGoal = 2000 }) => {
+  const [activeTab, setActiveTab] = React.useState<'fasting' | 'sleep' | 'water' | 'weight' | 'milestones' | 'review'>('fasting');
 
   // Fasting Stats
   const totalFasts = history.length;
@@ -127,41 +130,65 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, waterGoa
 
   return (
     <div className="p-6 space-y-8 pb-24">
-      <div className="flex items-center justify-between">
+      <div className="space-y-4">
         <h2 className="text-xl font-bold">Statistics</h2>
-        <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
-          <button
-            onClick={() => setActiveTab('fasting')}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              activeTab === 'fasting' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
-            }`}
-          >
-            Fasting
-          </button>
-          <button
-            onClick={() => setActiveTab('sleep')}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              activeTab === 'sleep' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
-            }`}
-          >
-            Sleep
-          </button>
-          <button
-            onClick={() => setActiveTab('water')}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              activeTab === 'water' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
-            }`}
-          >
-            Water
-          </button>
-          <button
-            onClick={() => setActiveTab('weight')}
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
-              activeTab === 'weight' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
-            }`}
-          >
-            Weight
-          </button>
+        <div className="flex justify-center">
+          <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 overflow-x-auto no-scrollbar max-w-full touch-pan-x w-fit">
+            <button
+              onClick={() => setActiveTab('fasting')}
+              className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
+                activeTab === 'fasting' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
+              }`}
+              title="Fasting"
+            >
+              <Flame size={18} />
+            </button>
+            <button
+              onClick={() => setActiveTab('sleep')}
+              className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
+                activeTab === 'sleep' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
+              }`}
+              title="Sleep"
+            >
+              <Moon size={18} />
+            </button>
+            <button
+              onClick={() => setActiveTab('water')}
+              className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
+                activeTab === 'water' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
+              }`}
+              title="Water"
+            >
+              <Droplets size={18} />
+            </button>
+            <button
+              onClick={() => setActiveTab('weight')}
+              className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
+                activeTab === 'weight' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
+              }`}
+              title="Weight"
+            >
+              <Scale size={18} />
+            </button>
+            <button
+              onClick={() => setActiveTab('milestones')}
+              className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
+                activeTab === 'milestones' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
+              }`}
+              title="Awards"
+            >
+              <Award size={18} />
+            </button>
+            <button
+              onClick={() => setActiveTab('review')}
+              className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
+                activeTab === 'review' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
+              }`}
+              title="Review"
+            >
+              <Calendar size={18} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -304,7 +331,7 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, waterGoa
             </div>
           </div>
         </div>
-      ) : (
+      ) : activeTab === 'water' ? (
         <div className="space-y-8">
           <div className="grid grid-cols-2 gap-4">
             <StatCard icon={<Droplets className="text-blue-400" />} label="Total Water" value={`${(totalWaterAmount / 1000).toFixed(1)}L`} />
@@ -345,6 +372,10 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, waterGoa
             </div>
           </div>
         </div>
+      ) : activeTab === 'milestones' ? (
+        <Milestones water={water} weights={weights} />
+      ) : (
+        <Review history={history} sleep={sleep} water={water} weights={weights} workouts={workouts} />
       )}
     </div>
   );

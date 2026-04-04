@@ -249,3 +249,36 @@ User Question: ${userMessage}` }]
     throw error;
   }
 }
+
+export async function getPeriodicReview(
+  data: any[],
+  type: 'monthly' | 'yearly'
+) {
+  const ai = getAIInstance();
+  const prompt = `
+    Analyze the following ${type} health data and provide a concise, motivating summary of the user's progress.
+    Data: ${JSON.stringify(data)}
+    
+    Focus on:
+    1. Overall trends in weight, hydration, and activity.
+    2. One specific area of improvement or success.
+    3. A motivating closing statement for the next ${type === 'monthly' ? 'month' : 'year'}.
+    
+    Keep the response under 150 words. Use a supportive and professional tone.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        systemInstruction: "You are an expert health and fitness coach providing a high-level periodic review. Be concise, data-driven, and motivating."
+      }
+    });
+
+    return response.text || "I couldn't generate a review at this time. Keep up the great work!";
+  } catch (error) {
+    console.error("Periodic Review Error:", error);
+    throw error;
+  }
+}

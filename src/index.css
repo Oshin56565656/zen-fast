@@ -25,3 +25,11 @@
 .timer-ring {
   transition: stroke-dashoffset 0.5s ease;
 }
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
