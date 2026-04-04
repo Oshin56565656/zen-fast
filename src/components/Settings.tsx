@@ -136,7 +136,7 @@ export const Settings: FC<SettingsProps> = ({
   const [showManual, setShowManual] = useState(false);
   const [notificationStatus, setNotificationStatus] = useState<NotificationPermission | 'unsupported'>('default');
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    profile: true,
+    profile: false,
     goals: false,
     appearance: false,
     weather: false,
