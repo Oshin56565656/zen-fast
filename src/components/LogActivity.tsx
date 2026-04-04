@@ -13,8 +13,6 @@ interface LogActivityProps {
   sleep: SleepRecord[];
   water: WaterRecord[];
   weights: WeightRecord[];
-  height?: number;
-  weight?: number;
   onLogMeal: (time: number, scale: 'light' | 'normal' | 'large', description?: string, barcode?: string) => void;
   onLogWorkout: (startTime: number, endTime: number, intensity: 'low' | 'moderate' | 'high') => void;
   onLogSleep: (bedtime: number, wakeUpTime: number, quality: 'poor' | 'fair' | 'good' | 'excellent') => void;
@@ -33,8 +31,6 @@ const LogActivity: React.FC<LogActivityProps> = ({
   sleep,
   water,
   weights,
-  height,
-  weight,
   onLogMeal,
   onLogWorkout,
   onLogSleep,
@@ -129,17 +125,6 @@ const LogActivity: React.FC<LogActivityProps> = ({
     setWeightValue('');
     setWeightNote('');
   };
-
-  const bmi = height && (weightValue || weight) ? (Number(weightValue || weight) / ((height / 100) ** 2)) : null;
-  
-  const getBMICategory = (val: number) => {
-    if (val < 18.5) return { label: 'Underweight', color: 'text-blue-400', position: (val / 40) * 100 };
-    if (val < 25) return { label: 'Normal', color: 'text-green-400', position: (val / 40) * 100 };
-    if (val < 30) return { label: 'Overweight', color: 'text-yellow-400', position: (val / 40) * 100 };
-    return { label: 'Obese', color: 'text-red-400', position: Math.min((val / 40) * 100, 100) };
-  };
-
-  const bmiInfo = bmi ? getBMICategory(bmi) : null;
 
   const filterByDate = <T extends { time?: number; startTime?: number; bedtime?: number; wakeUpTime?: number }>(logs: T[]) => {
     if (!searchDate) return logs.slice(0, 6);
@@ -512,34 +497,6 @@ const LogActivity: React.FC<LogActivityProps> = ({
               required
             />
           </div>
-
-          {bmi && bmiInfo && (
-            <div className="bg-white/5 p-4 rounded-2xl border border-white/5 space-y-3">
-              <div className="flex items-end justify-between">
-                <div>
-                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest mb-1">Calculated BMI</p>
-                  <p className="text-2xl font-bold text-white">{bmi.toFixed(1)}</p>
-                </div>
-                <div className="text-right">
-                  <p className={cn("text-sm font-bold", bmiInfo.color)}>{bmiInfo.label}</p>
-                </div>
-              </div>
-
-              <div className="relative h-1.5 bg-white/5 rounded-full overflow-hidden flex">
-                <div className="h-full bg-blue-400/40" style={{ width: '46.25%' }} />
-                <div className="h-full bg-green-400/40" style={{ width: '16.25%' }} />
-                <div className="h-full bg-yellow-400/40" style={{ width: '12.5%' }} />
-                <div className="h-full bg-red-400/40 flex-1" />
-                
-                <motion.div 
-                  initial={{ left: 0 }}
-                  animate={{ left: `${bmiInfo.position}%` }}
-                  className="absolute top-0 bottom-0 w-1 bg-white shadow-[0_0_10px_rgba(255,255,255,0.5)] z-10"
-                  style={{ transform: 'translateX(-50%)' }}
-                />
-              </div>
-            </div>
-          )}
 
           <div className="space-y-2">
             <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Note (Optional)</label>
