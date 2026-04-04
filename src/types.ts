@@ -80,7 +80,7 @@ export interface Milestone {
   id: string;
   title: string;
   description: string;
-  category: 'water' | 'weight';
+  category: 'water' | 'weight' | 'sleep' | 'workout';
   threshold: number;
   icon: string;
   achieved: boolean;

@@ -373,7 +373,7 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
           </div>
         </div>
       ) : activeTab === 'milestones' ? (
-        <Milestones water={water} weights={weights} />
+        <Milestones water={water} weights={weights} sleep={sleep} workouts={workouts} />
       ) : (
         <Review history={history} sleep={sleep} water={water} weights={weights} workouts={workouts} />
       )}
