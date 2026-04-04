@@ -172,9 +172,9 @@ export default function App() {
       <header className="p-6 flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <Zap size={20} className="text-white fill-white/20" />
+            <TimerIcon size={20} className="text-white fill-white/20" />
           </div>
-          <h1 className="text-xl font-bold tracking-tight">FastTrack</h1>
+          <h1 className="text-xl font-bold tracking-tight">FastTrack <span className="text-primary">AI</span></h1>
         </div>
         {state.status === 'fasting' && (
           <div className="px-3 py-1 bg-primary/20 text-primary text-[10px] font-bold rounded-full uppercase tracking-widest animate-pulse">
