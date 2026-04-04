@@ -649,11 +649,11 @@ export function useFasting() {
     }
   };
 
-  const logWeight = async (weight: number, note?: string) => {
+  const logWeight = async (time: number, weight: number, note?: string) => {
     if (!user) return;
     try {
       await addDoc(collection(db, 'users', user.uid, 'weights'), {
-        time: Date.now(),
+        time,
         weight,
         note: note || '',
         createdAt: Timestamp.now()
