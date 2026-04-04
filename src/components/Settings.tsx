@@ -1,7 +1,7 @@
 import React, { FC, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
-import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info, Download, Zap } from 'lucide-react';
+import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info, Download, Zap, ChevronDown, User, Target, Cloud, Settings as SettingsIcon, Database, Brain } from 'lucide-react';
 import { FastRecord, MealRecord, WorkoutRecord, SleepRecord } from '../types';
 
 interface SettingsProps {
@@ -38,6 +38,70 @@ interface SettingsProps {
   sleep: SleepRecord[];
 }
 
+interface CollapsibleSectionProps {
+  id: string;
+  title: string;
+  icon: any;
+  children: React.ReactNode;
+  isExpanded: boolean;
+  onToggle: () => void;
+}
+
+const CollapsibleSection: FC<CollapsibleSectionProps> = ({ 
+  title, 
+  icon: Icon, 
+  children,
+  isExpanded,
+  onToggle
+}) => {
+  return (
+    <div className="space-y-4">
+      <button 
+        type="button"
+        onClick={onToggle}
+        className="w-full flex items-center justify-between py-2 group focus:outline-none"
+      >
+        <div className="flex items-center space-x-3">
+          <div className={cn(
+            "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+            isExpanded ? "bg-primary/20 text-primary" : "bg-white/5 text-white/40 group-hover:text-white/60"
+          )}>
+            <Icon size={18} />
+          </div>
+          <h3 className={cn(
+            "text-sm font-medium uppercase tracking-widest transition-colors",
+            isExpanded ? "text-white" : "text-white/40 group-hover:text-white/60"
+          )}>
+            {title}
+          </h3>
+        </div>
+        <motion.div
+          animate={{ rotate: isExpanded ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          className="text-white/20 group-hover:text-white/40"
+        >
+          <ChevronDown size={20} />
+        </motion.div>
+      </button>
+
+      <motion.div
+        initial={false}
+        animate={{ 
+          height: isExpanded ? 'auto' : 0,
+          opacity: isExpanded ? 1 : 0,
+          marginBottom: isExpanded ? 24 : 0
+        }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className="overflow-hidden"
+      >
+        <div className="pt-2">
+          {children}
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
 export const Settings: FC<SettingsProps> = ({ 
   targetHours, 
   onHoursChange, 
@@ -71,6 +135,23 @@ export const Settings: FC<SettingsProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [showManual, setShowManual] = useState(false);
   const [notificationStatus, setNotificationStatus] = useState<NotificationPermission | 'unsupported'>('default');
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    profile: true,
+    goals: false,
+    appearance: false,
+    weather: false,
+    notifications: false,
+    data: false,
+    ai: false,
+    about: false
+  });
+
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
 
   const bmi = height && weight ? (weight / ((height / 100) ** 2)) : null;
   
@@ -273,8 +354,13 @@ export const Settings: FC<SettingsProps> = ({
     <div className="p-6 space-y-8">
       <h2 className="text-xl font-bold">Settings</h2>
 
-      <div className="space-y-4">
-        <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">Fasting Goal</h3>
+      <CollapsibleSection 
+        id="goals" 
+        title="Fasting Goal" 
+        icon={Target}
+        isExpanded={expandedSections.goals}
+        onToggle={() => toggleSection('goals')}
+      >
         <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-8">
           {/* Duration Goal */}
           <div className="space-y-6">
@@ -347,10 +433,15 @@ export const Settings: FC<SettingsProps> = ({
             )}
           </div>
         </div>
-      </div>
+      </CollapsibleSection>
 
-      <div className="space-y-4">
-        <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">Personal Profile</h3>
+      <CollapsibleSection 
+        id="profile" 
+        title="Personal Profile" 
+        icon={User}
+        isExpanded={expandedSections.profile}
+        onToggle={() => toggleSection('profile')}
+      >
         <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -451,10 +542,15 @@ export const Settings: FC<SettingsProps> = ({
             </div>
           )}
         </div>
-      </div>
+      </CollapsibleSection>
 
-      <div className="space-y-4">
-        <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">Appearance</h3>
+      <CollapsibleSection 
+        id="appearance" 
+        title="Appearance" 
+        icon={Target}
+        isExpanded={expandedSections.appearance}
+        onToggle={() => toggleSection('appearance')}
+      >
         <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-6">
           <div className="space-y-4">
             <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Accent Color</label>
@@ -497,10 +593,15 @@ export const Settings: FC<SettingsProps> = ({
             </div>
           </div>
         </div>
-      </div>
+      </CollapsibleSection>
 
-      <div className="space-y-4">
-        <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">Weather & Hydration</h3>
+      <CollapsibleSection 
+        id="weather" 
+        title="Weather & Hydration" 
+        icon={Cloud}
+        isExpanded={expandedSections.weather}
+        onToggle={() => toggleSection('weather')}
+      >
         <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -551,10 +652,15 @@ export const Settings: FC<SettingsProps> = ({
             </p>
           )}
         </div>
-      </div>
+      </CollapsibleSection>
 
-      <div className="space-y-4">
-        <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">Notifications</h3>
+      <CollapsibleSection 
+        id="notifications" 
+        title="Notifications" 
+        icon={Bell}
+        isExpanded={expandedSections.notifications}
+        onToggle={() => toggleSection('notifications')}
+      >
         <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -636,10 +742,15 @@ export const Settings: FC<SettingsProps> = ({
             <span>Send Test Notification</span>
           </button>
         </div>
-      </div>
+      </CollapsibleSection>
 
-      <div className="space-y-4">
-        <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">AI Integration</h3>
+      <CollapsibleSection 
+        id="ai" 
+        title="AI Integration" 
+        icon={Brain}
+        isExpanded={expandedSections.ai}
+        onToggle={() => toggleSection('ai')}
+      >
         <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -721,10 +832,15 @@ export const Settings: FC<SettingsProps> = ({
             )}
           </div>
         </div>
-      </div>
+      </CollapsibleSection>
 
-      <div className="space-y-4">
-        <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">Data Management</h3>
+      <CollapsibleSection 
+        id="data" 
+        title="Data Management" 
+        icon={Database}
+        isExpanded={expandedSections.data}
+        onToggle={() => toggleSection('data')}
+      >
         <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-6">
           <div className="space-y-2">
             <p className="text-xs text-white/60 leading-relaxed">
@@ -773,18 +889,25 @@ export const Settings: FC<SettingsProps> = ({
             </div>
           </div>
         </div>
-      </div>
+      </CollapsibleSection>
 
-      <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-4">
-        <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">About FastTrack</h3>
-        <p className="text-sm text-white/60 leading-relaxed">
-          Intermittent fasting is an eating pattern where you cycle between periods of eating and fasting. 
-          Simply set your target hours and start your fast.
-        </p>
-        <div className="pt-4 border-t border-white/5">
-          <p className="text-xs text-white/20">Version 1.1.0</p>
+      <CollapsibleSection 
+        id="about" 
+        title="About FastTrack" 
+        icon={Info}
+        isExpanded={expandedSections.about}
+        onToggle={() => toggleSection('about')}
+      >
+        <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-4">
+          <p className="text-sm text-white/60 leading-relaxed">
+            Intermittent fasting is an eating pattern where you cycle between periods of eating and fasting. 
+            Simply set your target hours and start your fast.
+          </p>
+          <div className="pt-4 border-t border-white/5">
+            <p className="text-xs text-white/20">Version 1.1.0</p>
+          </div>
         </div>
-      </div>
+      </CollapsibleSection>
     </div>
   );
 };
