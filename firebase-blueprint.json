@@ -73,6 +73,29 @@
         "createdAt": { "type": "object", "description": "Firestore server timestamp." }
       },
       "required": ["bedtime", "wakeUpTime", "duration", "quality", "createdAt"]
+    },
+    "WaterRecord": {
+      "title": "Water Record",
+      "description": "A log of water consumption.",
+      "type": "object",
+      "properties": {
+        "time": { "type": "number", "description": "Timestamp of consumption." },
+        "amount": { "type": "number", "description": "Amount in ml." },
+        "createdAt": { "type": "object", "description": "Firestore server timestamp." }
+      },
+      "required": ["time", "amount", "createdAt"]
+    },
+    "WeightRecord": {
+      "title": "Weight Record",
+      "description": "A log of user weight.",
+      "type": "object",
+      "properties": {
+        "time": { "type": "number", "description": "Timestamp of measurement." },
+        "weight": { "type": "number", "description": "Weight in kg." },
+        "note": { "type": "string", "description": "Optional note." },
+        "createdAt": { "type": "object", "description": "Firestore server timestamp." }
+      },
+      "required": ["time", "weight", "createdAt"]
     }
   },
   "firestore": {
@@ -95,6 +118,14 @@
     "/users/{userId}/sleep/{sleepId}": {
       "schema": "SleepRecord",
       "description": "Stores the user's sleep logs."
+    },
+    "/users/{userId}/water/{waterId}": {
+      "schema": "WaterRecord",
+      "description": "Stores the user's water logs."
+    },
+    "/users/{userId}/weights/{weightId}": {
+      "schema": "WeightRecord",
+      "description": "Stores the user's weight logs."
     }
   }
 }

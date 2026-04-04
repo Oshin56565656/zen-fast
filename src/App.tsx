@@ -25,6 +25,7 @@ export default function App() {
     workouts,
     sleep,
     water,
+    weights,
     startFast, 
     pauseFast, 
     resumeFast, 
@@ -38,10 +39,12 @@ export default function App() {
     logWorkout,
     logSleep,
     logWater,
+    logWeight,
     deleteMeal,
     deleteWorkout,
     deleteSleep,
     deleteWater,
+    deleteWeight,
     setHeight,
     setWeight,
     setAge,
@@ -96,7 +99,7 @@ export default function App() {
       case 'history':
         return <History history={history} onDelete={deleteRecord} onManualLog={manualLogFast} />;
       case 'stats':
-        return <Stats history={history} sleep={sleep} water={water} waterGoal={state.waterGoal} />;
+        return <Stats history={history} sleep={sleep} water={water} weights={weights} waterGoal={state.waterGoal} />;
       case 'coach':
         return (
           <AICoach 
@@ -118,14 +121,17 @@ export default function App() {
             workouts={workouts} 
             sleep={sleep}
             water={water}
+            weights={weights}
             onLogMeal={logMeal} 
             onLogWorkout={logWorkout} 
             onLogSleep={logSleep}
             onLogWater={logWater}
+            onLogWeight={logWeight}
             onDeleteMeal={deleteMeal}
             onDeleteWorkout={deleteWorkout}
             onDeleteSleep={deleteSleep}
             onDeleteWater={deleteWater}
+            onDeleteWeight={deleteWeight}
           />
         );
       case 'settings':

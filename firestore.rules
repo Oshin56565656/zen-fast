@@ -147,6 +147,23 @@ service cloud.firestore {
              data.createdAt is timestamp;
     }
 
+    function isValidWater(data) {
+      return hasRequiredFields(['time', 'amount', 'createdAt']) &&
+             hasOnlyAllowedFields(['time', 'amount', 'createdAt']) &&
+             data.time is number &&
+             data.amount is number &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidWeight(data) {
+      return hasRequiredFields(['time', 'weight', 'createdAt']) &&
+             hasOnlyAllowedFields(['time', 'weight', 'note', 'createdAt']) &&
+             data.time is number &&
+             data.weight is number &&
+             (!('note' in data) || data.note is string) &&
+             data.createdAt is timestamp;
+    }
+
     // ===============================================================
     // Rules
     // ===============================================================
@@ -183,6 +200,18 @@ service cloud.firestore {
       match /sleep/{sleepId} {
         allow read: if request.auth.uid == userId || isAdmin();
         allow create, update: if (request.auth.uid == userId || isAdmin()) && isValidSleep(request.resource.data);
+        allow delete: if request.auth.uid == userId || isAdmin();
+      }
+
+      match /water/{waterId} {
+        allow read: if request.auth.uid == userId || isAdmin();
+        allow create, update: if (request.auth.uid == userId || isAdmin()) && isValidWater(request.resource.data);
+        allow delete: if request.auth.uid == userId || isAdmin();
+      }
+
+      match /weights/{weightId} {
+        allow read: if request.auth.uid == userId || isAdmin();
+        allow create, update: if (request.auth.uid == userId || isAdmin()) && isValidWeight(request.resource.data);
         allow delete: if request.auth.uid == userId || isAdmin();
       }
 

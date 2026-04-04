@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets } from 'lucide-react';
-import { MealRecord, WorkoutRecord, SleepRecord, WaterRecord } from '../types';
+import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets, LineChart } from 'lucide-react';
+import { MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord } from '../types';
 import { formatTime, formatDate } from '../lib/utils';
 import { format, subHours } from 'date-fns';
 import BarcodeScanner from './BarcodeScanner';
@@ -11,14 +11,17 @@ interface LogActivityProps {
   workouts: WorkoutRecord[];
   sleep: SleepRecord[];
   water: WaterRecord[];
+  weights: WeightRecord[];
   onLogMeal: (time: number, scale: 'light' | 'normal' | 'large', description?: string, barcode?: string) => void;
   onLogWorkout: (startTime: number, endTime: number, intensity: 'low' | 'moderate' | 'high') => void;
   onLogSleep: (bedtime: number, wakeUpTime: number, quality: 'poor' | 'fair' | 'good' | 'excellent') => void;
   onLogWater: (time: number, amount: number) => void;
+  onLogWeight: (weight: number, note?: string) => void;
   onDeleteMeal: (id: string) => void;
   onDeleteWorkout: (id: string) => void;
   onDeleteSleep: (id: string) => void;
   onDeleteWater: (id: string) => void;
+  onDeleteWeight: (id: string) => void;
 }
 
 const LogActivity: React.FC<LogActivityProps> = ({
@@ -26,16 +29,19 @@ const LogActivity: React.FC<LogActivityProps> = ({
   workouts,
   sleep,
   water,
+  weights,
   onLogMeal,
   onLogWorkout,
   onLogSleep,
   onLogWater,
+  onLogWeight,
   onDeleteMeal,
   onDeleteWorkout,
   onDeleteSleep,
-  onDeleteWater
+  onDeleteWater,
+  onDeleteWeight
 }) => {
-  const [activeType, setActiveType] = useState<'meal' | 'workout' | 'sleep' | 'water'>('meal');
+  const [activeType, setActiveType] = useState<'meal' | 'workout' | 'sleep' | 'water' | 'weight'>('meal');
   const [searchDate, setSearchDate] = useState<string>('');
   
   // Meal Form State
@@ -58,6 +64,11 @@ const LogActivity: React.FC<LogActivityProps> = ({
   // Water Form State
   const [waterAmount, setWaterAmount] = useState(250);
   const [waterTime, setWaterTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+
+  // Weight Form State
+  const [weightValue, setWeightValue] = useState<string>('');
+  const [weightNote, setWeightNote] = useState('');
+  const [weightTime, setWeightTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
 
   const handleLogMeal = (e: React.FormEvent) => {
     e.preventDefault();
@@ -106,6 +117,14 @@ const LogActivity: React.FC<LogActivityProps> = ({
     onLogWater(new Date(waterTime).getTime(), waterAmount);
   };
 
+  const handleLogWeight = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!weightValue) return;
+    onLogWeight(Number(weightValue), weightNote);
+    setWeightValue('');
+    setWeightNote('');
+  };
+
   const filterByDate = <T extends { time?: number; startTime?: number; bedtime?: number; wakeUpTime?: number }>(logs: T[]) => {
     if (!searchDate) return logs.slice(0, 6);
     
@@ -124,6 +143,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const filteredWorkouts = ([...filterByDate(workouts)] as WorkoutRecord[]).sort((a, b) => b.startTime - a.startTime);
   const filteredSleep = ([...filterByDate(sleep)] as SleepRecord[]).sort((a, b) => b.wakeUpTime - a.wakeUpTime);
   const filteredWater = ([...filterByDate(water)] as WaterRecord[]).sort((a, b) => b.time - a.time);
+  const filteredWeights = ([...filterByDate(weights)] as WeightRecord[]).sort((a, b) => b.time - a.time);
 
   return (
     <div className="space-y-8 p-6 pb-24">
@@ -163,6 +183,15 @@ const LogActivity: React.FC<LogActivityProps> = ({
         >
           <Droplets size={18} />
           <span className="font-bold">Water</span>
+        </button>
+        <button
+          onClick={() => setActiveType('weight')}
+          className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
+            activeType === 'weight' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
+          }`}
+        >
+          <Scale size={18} />
+          <span className="font-bold">Weight</span>
         </button>
       </div>
 
@@ -438,6 +467,54 @@ const LogActivity: React.FC<LogActivityProps> = ({
             <span>Log Water</span>
           </button>
         </motion.form>
+      ) : activeType === 'weight' ? (
+        <motion.form
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          onSubmit={handleLogWeight}
+          className="bg-card p-6 rounded-3xl border border-white/5 space-y-6"
+        >
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Time</label>
+            <input
+              type="datetime-local"
+              value={weightTime}
+              onChange={(e) => setWeightTime(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Weight (kg)</label>
+            <input
+              type="number"
+              step="0.1"
+              value={weightValue}
+              onChange={(e) => setWeightValue(e.target.value)}
+              placeholder="Enter weight..."
+              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors text-center font-medium text-xl"
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Note (Optional)</label>
+            <textarea
+              value={weightNote}
+              onChange={(e) => setWeightNote(e.target.value)}
+              placeholder="How are you feeling today?"
+              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors min-h-[80px] resize-none"
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="w-full bg-primary text-white py-4 rounded-2xl font-bold flex items-center justify-center space-x-2 hover:bg-primary/90 transition-all active:scale-95"
+          >
+            <Plus size={20} />
+            <span>Log Weight</span>
+          </button>
+        </motion.form>
       ) : null}
 
       <div className="space-y-4">
@@ -564,6 +641,33 @@ const LogActivity: React.FC<LogActivityProps> = ({
               ))
             ) : (
               <p className="text-center text-white/20 py-8 italic">No water logs found</p>
+            )
+          ) : activeType === 'weight' ? (
+            filteredWeights.length > 0 ? (
+              filteredWeights.map((w) => (
+                <div key={w.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-500">
+                      <Scale size={20} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-white">{w.weight} kg</p>
+                      {w.note && (
+                        <p className="text-sm text-white/60 line-clamp-1">{w.note}</p>
+                      )}
+                      <p className="text-xs text-white/40">{formatDate(w.time)}, {formatTime(w.time)}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => onDeleteWeight(w.id)}
+                    className="p-2 text-white/20 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-white/20 py-8 italic">No weight logs found</p>
             )
           ) : null}
         </div>

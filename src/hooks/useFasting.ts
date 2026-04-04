@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord } from '../types';
+import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord } from '../types';
 import { 
   auth, 
   db, 
@@ -56,6 +56,7 @@ export function useFasting() {
   const [workouts, setWorkouts] = useState<WorkoutRecord[]>([]);
   const [sleep, setSleep] = useState<SleepRecord[]>([]);
   const [water, setWater] = useState<WaterRecord[]>([]);
+  const [weights, setWeights] = useState<WeightRecord[]>([]);
   const [hasNotifiedTarget, setHasNotifiedTarget] = useState(false);
   const [lastWaterReminder, setLastWaterReminder] = useState<number>(Date.now());
   const [isWaterLoaded, setIsWaterLoaded] = useState(false);
@@ -360,6 +361,24 @@ export function useFasting() {
     return () => unsubscribe();
   }, [user]);
 
+  // Sync weights with Firestore
+  useEffect(() => {
+    if (!user) return;
+    const weightsRef = collection(db, 'users', user.uid, 'weights');
+    const q = query(weightsRef);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const records: WeightRecord[] = [];
+      snapshot.forEach((doc) => {
+        records.push({ id: doc.id, ...doc.data() } as WeightRecord);
+      });
+      setWeights(records.sort((a, b) => b.time - a.time));
+    }, (error) => {
+      handleFirestoreError(error, 'list', `users/${user.uid}/weights`);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
   const handleFirestoreError = (error: any, operationType: string, path: string) => {
     const errInfo = {
       error: error instanceof Error ? error.message : String(error),
@@ -630,6 +649,31 @@ export function useFasting() {
     }
   };
 
+  const logWeight = async (weight: number, note?: string) => {
+    if (!user) return;
+    try {
+      await addDoc(collection(db, 'users', user.uid, 'weights'), {
+        time: Date.now(),
+        weight,
+        note: note || '',
+        createdAt: Timestamp.now()
+      });
+      // Also update current weight in settings
+      updateState({ weight });
+    } catch (error) {
+      handleFirestoreError(error, 'write', `users/${user.uid}/weights`);
+    }
+  };
+
+  const deleteWeight = async (id: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'weights', id));
+    } catch (error) {
+      handleFirestoreError(error, 'delete', `users/${user.uid}/weights/${id}`);
+    }
+  };
+
   const testNotification = async () => {
     await requestPermission();
     await sendNotification("Test Notification!", {
@@ -756,6 +800,7 @@ export function useFasting() {
     workouts,
     sleep,
     water,
+    weights,
     startFast,
     pauseFast,
     resumeFast,
@@ -769,10 +814,12 @@ export function useFasting() {
     logWorkout,
     logSleep,
     logWater,
+    logWeight,
     deleteMeal,
     deleteWorkout,
     deleteSleep,
     deleteWater,
+    deleteWeight,
     setHeight: (height: number) => updateState({ height }),
     setWeight: (weight: number) => updateState({ weight }),
     setAge: (age: number) => updateState({ age }),

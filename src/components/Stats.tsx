@@ -1,18 +1,19 @@
 import React, { FC, ReactNode } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { FastRecord, SleepRecord, WaterRecord } from '../types';
-import { format, subDays, isSameDay } from 'date-fns';
-import { Trophy, Clock, Flame, Target, Moon, Zap, Star, Droplets } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
+import { FastRecord, SleepRecord, WaterRecord, WeightRecord } from '../types';
+import { format, subDays, isSameDay, startOfDay } from 'date-fns';
+import { Trophy, Clock, Flame, Target, Moon, Zap, Star, Droplets, Scale, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 
 interface StatsProps {
   history: FastRecord[];
   sleep: SleepRecord[];
   water: WaterRecord[];
+  weights: WeightRecord[];
   waterGoal?: number;
 }
 
-export const Stats: FC<StatsProps> = ({ history, sleep, water, waterGoal = 2000 }) => {
-  const [activeTab, setActiveTab] = React.useState<'fasting' | 'sleep' | 'water'>('fasting');
+export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, waterGoal = 2000 }) => {
+  const [activeTab, setActiveTab] = React.useState<'fasting' | 'sleep' | 'water' | 'weight'>('fasting');
 
   // Fasting Stats
   const totalFasts = history.length;
@@ -55,6 +56,35 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, waterGoal = 2000 
       .filter(w => isSameDay(new Date(w.time), date))
       .reduce((acc, curr) => acc + curr.amount, 0);
   }));
+
+  // Weight Stats
+  const sortedWeights = [...weights].sort((a, b) => a.time - b.time);
+  const currentWeight = sortedWeights.length > 0 ? sortedWeights[sortedWeights.length - 1].weight : 0;
+  const startWeight = sortedWeights.length > 0 ? sortedWeights[0].weight : 0;
+  const weightChange = currentWeight - startWeight;
+  const weightChangeLabel = weightChange > 0 ? `+${weightChange.toFixed(1)}` : weightChange.toFixed(1);
+
+  // Chart data for last 30 days (Weight)
+  const last30DaysWeight = Array.from({ length: 30 }).map((_, i) => {
+    const date = subDays(new Date(), 29 - i);
+    const dayWeight = weights
+      .filter(w => isSameDay(new Date(w.time), date))
+      .sort((a, b) => b.time - a.time)[0];
+    
+    // If no weight for this day, find the closest previous weight
+    let displayWeight = dayWeight?.weight;
+    if (!displayWeight) {
+      const prevWeights = weights
+        .filter(w => new Date(w.time) < startOfDay(date))
+        .sort((a, b) => b.time - a.time);
+      displayWeight = prevWeights.length > 0 ? prevWeights[0].weight : undefined;
+    }
+
+    return {
+      name: format(date, 'MMM d'),
+      weight: displayWeight,
+    };
+  }).filter(d => d.weight !== undefined);
 
   const getQualityLabel = (score: number) => {
     if (score >= 3.5) return 'Excellent';
@@ -123,6 +153,14 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, waterGoal = 2000 
             }`}
           >
             Water
+          </button>
+          <button
+            onClick={() => setActiveTab('weight')}
+            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              activeTab === 'weight' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
+            }`}
+          >
+            Weight
           </button>
         </div>
       </div>
@@ -205,6 +243,63 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, waterGoal = 2000 
                     ))}
                   </Bar>
                 </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      ) : activeTab === 'weight' ? (
+        <div className="space-y-8">
+          <div className="grid grid-cols-2 gap-4">
+            <StatCard 
+              icon={<Scale className="text-emerald-500" />} 
+              label="Current" 
+              value={`${currentWeight.toFixed(1)} kg`} 
+            />
+            <StatCard 
+              icon={weightChange < 0 ? <TrendingDown className="text-emerald-500" /> : weightChange > 0 ? <TrendingUp className="text-red-500" /> : <Minus className="text-white/40" />} 
+              label="Total Change" 
+              value={`${weightChangeLabel} kg`} 
+            />
+            <StatCard icon={<Target className="text-primary" />} label="Start" value={`${startWeight.toFixed(1)} kg`} />
+            <StatCard icon={<Clock className="text-white/40" />} label="Logs" value={weights.length.toString()} />
+          </div>
+
+          <div className="bg-card p-6 rounded-3xl border border-white/5">
+            <h3 className="text-sm font-medium text-white/40 mb-6">Weight Journey (kg)</h3>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={last30DaysWeight}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10 }}
+                    minTickGap={30}
+                  />
+                  <YAxis 
+                    hide 
+                    domain={['dataMin - 2', 'dataMax + 2']} 
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#18181b', 
+                      border: '1px solid rgba(255,255,255,0.1)', 
+                      borderRadius: '12px',
+                      color: '#fff'
+                    }}
+                    itemStyle={{ color: '#fff' }}
+                    labelStyle={{ color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="weight" 
+                    stroke="#3b82f6" 
+                    strokeWidth={3} 
+                    dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4, stroke: '#18181b' }}
+                    activeDot={{ r: 6, strokeWidth: 0 }}
+                  />
+                </LineChart>
               </ResponsiveContainer>
             </div>
           </div>

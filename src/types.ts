@@ -67,3 +67,11 @@ export interface WaterRecord {
   amount: number; // in ml
   createdAt?: any;
 }
+
+export interface WeightRecord {
+  id: string;
+  time: number;
+  weight: number; // in kg
+  note?: string;
+  createdAt?: any;
+}
