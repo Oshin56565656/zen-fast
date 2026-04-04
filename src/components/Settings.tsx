@@ -1,7 +1,7 @@
 import React, { FC, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
-import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info, Download } from 'lucide-react';
+import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info, Download, Zap } from 'lucide-react';
 import { FastRecord, MealRecord, WorkoutRecord, SleepRecord } from '../types';
 
 interface SettingsProps {
@@ -21,6 +21,16 @@ interface SettingsProps {
   onWaterGoalChange: (goal: number) => void;
   accentColor?: string;
   onAccentColorChange: (color: string) => void;
+  notificationsEnabled?: boolean;
+  onNotificationsEnabledChange: (enabled: boolean) => void;
+  weatherData?: {
+    temp: number;
+    condition: string;
+    city?: string;
+    lastUpdated: number;
+  };
+  suggestedWaterGoal?: number;
+  onRefreshWeather?: () => void;
   onTestNotification?: () => void;
   history: FastRecord[];
   meals: MealRecord[];
@@ -45,6 +55,11 @@ export const Settings: FC<SettingsProps> = ({
   onWaterGoalChange,
   accentColor = '#f97316',
   onAccentColorChange,
+  notificationsEnabled = true,
+  onNotificationsEnabledChange,
+  weatherData,
+  suggestedWaterGoal,
+  onRefreshWeather,
   onTestNotification,
   history,
   meals,
@@ -159,6 +174,12 @@ export const Settings: FC<SettingsProps> = ({
       if ("Notification" in window) {
         setNotificationStatus(Notification.permission);
       }
+    }
+  };
+
+  const handleApplySuggestedGoal = () => {
+    if (suggestedWaterGoal) {
+      onWaterGoalChange(suggestedWaterGoal);
     }
   };
 
@@ -479,28 +500,97 @@ export const Settings: FC<SettingsProps> = ({
       </div>
 
       <div className="space-y-4">
+        <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">Weather & Hydration</h3>
+        <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <Sparkles size={20} />
+              </div>
+              <div>
+                <p className="font-bold text-sm">{weatherData?.city || "Local Weather"}</p>
+                <p className="text-xs text-white/40">
+                  {weatherData ? `${weatherData.temp}°C • ${weatherData.condition}` : "Tap to fetch suggestion"}
+                </p>
+              </div>
+            </div>
+            <button 
+              onClick={onRefreshWeather}
+              className="p-2 hover:bg-white/5 rounded-lg transition-colors text-white/40 hover:text-white"
+            >
+              <Zap size={16} className={cn(!weatherData && "animate-pulse")} />
+            </button>
+          </div>
+
+          {weatherData && suggestedWaterGoal && (
+            <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl space-y-3">
+              <div className="flex items-start space-x-3">
+                <Info className="text-primary shrink-0 mt-0.5" size={14} />
+                <div className="space-y-1">
+                  <p className="text-[10px] text-primary font-bold uppercase tracking-wider">AI Suggestion</p>
+                  <p className="text-xs text-white/80 leading-relaxed">
+                    Based on your <strong>{sex || 'profile'}</strong>, <strong>{age ? `${age}y age` : 'age'}</strong>, <strong>{weatherData.temp}°C</strong> weather, and <strong>today's activity</strong>, we suggest <strong>{suggestedWaterGoal}ml</strong>.
+                  </p>
+                </div>
+              </div>
+              
+              {waterGoal !== suggestedWaterGoal && (
+                <button
+                  onClick={handleApplySuggestedGoal}
+                  className="w-full py-2 bg-primary text-white text-[10px] font-bold uppercase tracking-widest rounded-lg hover:bg-primary/90 transition-all active:scale-95"
+                >
+                  Apply Suggested Goal
+                </button>
+              )}
+            </div>
+          )}
+          
+          {!weatherData && (
+            <p className="text-[10px] text-white/20 italic text-center">
+              Enable location access to get personalized hydration goals based on your local weather.
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-4">
         <h3 className="text-sm font-medium text-white/40 uppercase tracking-widest">Notifications</h3>
         <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className={cn(
                 "w-10 h-10 rounded-xl flex items-center justify-center",
-                notificationStatus === 'granted' ? "bg-green-500/10 text-green-500" : "bg-white/5 text-white/40"
+                notificationStatus === 'granted' && notificationsEnabled ? "bg-green-500/10 text-green-500" : "bg-white/5 text-white/40"
               )}>
-                {notificationStatus === 'granted' ? <Bell size={20} /> : <BellOff size={20} />}
+                {notificationStatus === 'granted' && notificationsEnabled ? <Bell size={20} /> : <BellOff size={20} />}
               </div>
               <div>
                 <p className="font-bold text-sm">Push Notifications</p>
                 <p className="text-xs text-white/40 capitalize">
-                  {notificationStatus === 'unsupported' ? "Not supported on this browser" : notificationStatus}
+                  {notificationStatus === 'unsupported' ? "Not supported on this browser" : 
+                   !notificationsEnabled ? "Disabled in settings" : notificationStatus}
                 </p>
               </div>
             </div>
-            {notificationStatus === 'granted' ? (
-              <CheckCircle2 className="text-green-500" size={20} />
-            ) : (
-              <AlertCircle className="text-white/20" size={20} />
-            )}
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => onNotificationsEnabledChange(!notificationsEnabled)}
+                className={cn(
+                  "w-12 h-6 rounded-full transition-all relative",
+                  notificationsEnabled ? "bg-primary" : "bg-white/10"
+                )}
+              >
+                <motion.div 
+                  animate={{ x: notificationsEnabled ? 24 : 4 }}
+                  className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                />
+              </button>
+              {notificationStatus === 'granted' ? (
+                <CheckCircle2 className="text-green-500" size={20} />
+              ) : (
+                <AlertCircle className="text-white/20" size={20} />
+              )}
+            </div>
           </div>
 
           {notificationStatus === 'unsupported' ? (

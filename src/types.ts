@@ -24,6 +24,14 @@ export interface CurrentFastState {
   age?: number;
   waterGoal?: number; // in ml
   accentColor?: string;
+  notificationsEnabled?: boolean;
+  weatherData?: {
+    temp: number;
+    condition: string;
+    city?: string;
+    lastUpdated: number;
+  };
+  suggestedWaterGoal?: number;
 }
 
 export interface MealRecord {

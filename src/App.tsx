@@ -48,6 +48,8 @@ export default function App() {
     setSex,
     setWaterGoal,
     setAccentColor,
+    setNotificationsEnabled,
+    refreshWeather,
     testNotification
   } = useFasting();
 
@@ -146,6 +148,11 @@ export default function App() {
               onWaterGoalChange={setWaterGoal}
               accentColor={state.accentColor}
               onAccentColorChange={setAccentColor}
+              notificationsEnabled={state.notificationsEnabled}
+              onNotificationsEnabledChange={setNotificationsEnabled}
+              weatherData={state.weatherData}
+              suggestedWaterGoal={state.suggestedWaterGoal}
+              onRefreshWeather={refreshWeather}
               onTestNotification={testNotification}
               history={history}
               meals={meals}
