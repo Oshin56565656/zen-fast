@@ -424,16 +424,20 @@ export function useFasting() {
     }
   }, [user, state]);
 
-  const startFast = async () => {
+  const startFast = async (customStartTime?: number) => {
     console.log("Starting fast...");
     if ("vibrate" in navigator) navigator.vibrate(50);
     await requestPermission();
+    
+    const startTime = customStartTime || Date.now();
+    
     sendNotification("Fast Started!", {
       body: `Your ${state.targetHours}h fast has begun. Good luck!`,
       icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
     });
+    
     updateState({
-      startTime: Date.now(),
+      startTime,
       endTime: null,
       status: 'fasting',
       pausedAt: null,

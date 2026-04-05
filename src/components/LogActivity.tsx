@@ -556,12 +556,14 @@ const LogActivity: React.FC<LogActivityProps> = ({
                       <p className="text-xs text-white/40">{formatDate(meal.time)}, {formatTime(meal.time)}</p>
                     </div>
                   </div>
-                  <button
-                    onClick={() => onDeleteMeal(meal.id)}
-                    className="p-2 text-white/20 hover:text-red-500 transition-colors"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => onDeleteMeal(meal.id)}
+                      className="p-2 text-white/20 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
                 </div>
               ))
             ) : (

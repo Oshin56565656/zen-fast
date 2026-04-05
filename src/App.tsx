@@ -89,6 +89,7 @@ export default function App() {
         return (
           <Timer 
             state={state} 
+            meals={meals}
             onStart={startFast} 
             onPause={pauseFast} 
             onResume={resumeFast} 

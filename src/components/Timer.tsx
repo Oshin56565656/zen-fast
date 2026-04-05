@@ -1,22 +1,23 @@
 import React, { useState, useEffect, FC } from 'react';
 import { motion } from 'motion/react';
 import { Timer as TimerIcon, Play, Pause, Square, Zap, Sparkles } from 'lucide-react';
-import { CurrentFastState } from '../types';
-import { formatDuration, cn } from '../lib/utils';
+import { CurrentFastState, MealRecord } from '../types';
+import { formatDuration, cn, formatTime } from '../lib/utils';
 import { FastingStages } from './FastingStages';
 
 import { FASTING_STAGES } from '../constants/fastingStages';
 
 interface TimerProps {
   state: CurrentFastState;
-  onStart: () => void;
+  meals: MealRecord[];
+  onStart: (startTime?: number) => void;
   onPause: () => void;
   onResume: () => void;
   onEnd: () => void;
   onReset: () => void;
 }
 
-export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd, onReset }) => {
+export const Timer: FC<TimerProps> = ({ state, meals, onStart, onPause, onResume, onEnd, onReset }) => {
   const [elapsed, setElapsed] = useState(0);
   const [displayMode, setDisplayMode] = useState<'elapsed' | 'remaining'>('elapsed');
   
@@ -47,6 +48,8 @@ export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd
 
   const isFasting = state.status === 'fasting';
   const isIdle = state.status === 'idle';
+
+  const lastMeal = meals.length > 0 ? meals[0] : null;
 
   const currentStage = FASTING_STAGES.find(
     stage => (elapsed / 3600) >= stage.startHour && (elapsed / 3600) < stage.endHour
@@ -110,12 +113,24 @@ export const Timer: FC<TimerProps> = ({ state, onStart, onPause, onResume, onEnd
 
       <div className="flex items-center space-x-4">
         {isIdle && (
-          <button
-            onClick={onStart}
-            className="bg-primary hover:bg-primary/90 text-white p-6 rounded-full shadow-lg shadow-primary/20 transition-all active:scale-95"
-          >
-            <Play size={32} fill="currentColor" />
-          </button>
+          <div className="flex flex-col items-center space-y-4">
+            <button
+              onClick={() => onStart()}
+              className="bg-primary hover:bg-primary/90 text-white p-6 rounded-full shadow-lg shadow-primary/20 transition-all active:scale-95"
+            >
+              <Play size={32} fill="currentColor" />
+            </button>
+            
+            {lastMeal && (
+              <button
+                onClick={() => onStart(lastMeal.time)}
+                className="flex items-center space-x-2 bg-white/5 border border-white/10 px-4 py-2 rounded-xl text-xs font-bold text-white/60 hover:bg-white/10 transition-all active:scale-95"
+              >
+                <Zap size={14} className="text-yellow-500" />
+                <span>Start from last meal ({formatTime(lastMeal.time)})</span>
+              </button>
+            )}
+          </div>
         )}
 
         {isFasting && (
