@@ -80,6 +80,18 @@ export interface WeightRecord {
   createdAt?: any;
 }
 
+export interface DailySummary {
+  id?: string;
+  date: string; // YYYY-MM-DD
+  intake: number;
+  burn: number;
+  waterTotal: number;
+  waterGoal: number;
+  isDeficit: boolean;
+  isWaterGoalMet: boolean;
+  createdAt: any;
+}
+
 export interface Milestone {
   id: string;
   title: string;

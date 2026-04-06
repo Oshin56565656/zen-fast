@@ -1,9 +1,9 @@
 import React, { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line, AreaChart, Area } from 'recharts';
-import { FastRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutRecord } from '../types';
-import { format, subMonths, subYears, startOfMonth, endOfMonth, eachMonthOfInterval, startOfYear, endOfYear, isSameMonth, isSameYear, startOfDay } from 'date-fns';
-import { TrendingDown, TrendingUp, Minus, Droplets, Scale, Dumbbell, Moon, Clock, ChevronDown, ChevronUp, Sparkles, RefreshCw } from 'lucide-react';
+import { FastRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutRecord, DailySummary } from '../types';
+import { format, subMonths, subYears, startOfMonth, endOfMonth, eachMonthOfInterval, startOfYear, endOfYear, isSameMonth, isSameYear, startOfDay, isWithinInterval } from 'date-fns';
+import { TrendingDown, TrendingUp, Minus, Droplets, Scale, Dumbbell, Moon, Clock, ChevronDown, ChevronUp, Sparkles, RefreshCw, Flame, CheckCircle2 } from 'lucide-react';
 import { getPeriodicReview } from '../services/aiService';
 import { cn } from '../lib/utils';
 
@@ -13,9 +13,10 @@ interface ReviewProps {
   water: WaterRecord[];
   weights: WeightRecord[];
   workouts: WorkoutRecord[];
+  dailySummaries?: DailySummary[];
 }
 
-export const Review: FC<ReviewProps> = ({ history, sleep, water, weights, workouts }) => {
+export const Review: FC<ReviewProps> = ({ history, sleep, water, weights, workouts, dailySummaries = [] }) => {
   const [view, setView] = React.useState<'monthly' | 'yearly'>('monthly');
   const [expandedSection, setExpandedSection] = useState<string | null>('weight');
   const [aiReview, setAiReview] = useState<string | null>(null);
@@ -39,12 +40,21 @@ export const Review: FC<ReviewProps> = ({ history, sleep, water, weights, workou
     const monthWeights = weights.filter(w => new Date(w.time) >= monthStart && new Date(w.time) <= monthEnd).sort((a, b) => b.time - a.time);
     const lastWeight = monthWeights.length > 0 ? monthWeights[0].weight : null;
 
+    const monthSummaries = dailySummaries.filter(s => {
+      const d = new Date(s.date);
+      return isWithinInterval(d, { start: monthStart, end: monthEnd });
+    });
+    const waterGoalsMet = monthSummaries.filter(s => s.isWaterGoalMet).length;
+    const deficitDays = monthSummaries.filter(s => s.isDeficit).length;
+
     return {
       name: format(date, 'MMM'),
       water: parseFloat(totalWater.toFixed(1)),
       workouts: totalWorkouts,
       sleep: parseFloat(avgSleep.toFixed(1)),
       weight: lastWeight,
+      waterGoalsMet,
+      deficitDays
     };
   });
 
@@ -65,12 +75,21 @@ export const Review: FC<ReviewProps> = ({ history, sleep, water, weights, workou
     const monthWeights = weights.filter(w => new Date(w.time) >= monthStart && new Date(w.time) <= monthEnd).sort((a, b) => b.time - a.time);
     const lastWeight = monthWeights.length > 0 ? monthWeights[0].weight : null;
 
+    const monthSummaries = dailySummaries.filter(s => {
+      const d = new Date(s.date);
+      return isWithinInterval(d, { start: monthStart, end: monthEnd });
+    });
+    const waterGoalsMet = monthSummaries.filter(s => s.isWaterGoalMet).length;
+    const deficitDays = monthSummaries.filter(s => s.isDeficit).length;
+
     return {
       name: format(date, 'MMM'),
       water: parseFloat(totalWater.toFixed(1)),
       workouts: monthWorkouts.length,
       sleep: parseFloat(avgSleep.toFixed(1)),
       weight: lastWeight,
+      waterGoalsMet,
+      deficitDays
     };
   });
 
@@ -246,6 +265,29 @@ export const Review: FC<ReviewProps> = ({ history, sleep, water, weights, workou
                 />
                 <Line type="monotone" dataKey="sleep" stroke="#818cf8" strokeWidth={3} dot={{ fill: '#818cf8' }} />
               </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </CollapsibleSection>
+
+        {/* Consistency Review */}
+        <CollapsibleSection
+          title="Consistency"
+          icon={<CheckCircle2 size={18} className="text-primary" />}
+          isExpanded={expandedSection === 'consistency'}
+          onToggle={() => toggleSection('consistency')}
+        >
+          <div className="h-48 w-full pt-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={view === 'monthly' ? monthlyData : yearlyData}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10 }} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#18181b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                  itemStyle={{ color: '#fff' }}
+                />
+                <Bar dataKey="waterGoalsMet" name="Water Goals" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="deficitDays" name="Deficit Days" fill="#f97316" radius={[4, 4, 0, 0]} />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </CollapsibleSection>

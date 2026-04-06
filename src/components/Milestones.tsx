@@ -1,19 +1,22 @@
 import React, { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Trophy, Droplets, Scale, CheckCircle2, Lock, Star, Moon, Dumbbell, ChevronDown, ChevronUp } from 'lucide-react';
-import { WaterRecord, WeightRecord, SleepRecord, WorkoutRecord, Milestone } from '../types';
+import { WaterRecord, WeightRecord, SleepRecord, WorkoutRecord, Milestone, DailySummary } from '../types';
 
 interface MilestonesProps {
   water: WaterRecord[];
   weights: WeightRecord[];
   sleep: SleepRecord[];
   workouts: WorkoutRecord[];
+  dailySummaries?: DailySummary[];
 }
 
-export const Milestones: FC<MilestonesProps> = ({ water, weights, sleep, workouts }) => {
+export const Milestones: FC<MilestonesProps> = ({ water, weights, sleep, workouts, dailySummaries = [] }) => {
   const [expandedCategory, setExpandedCategory] = useState<string | null>('weight');
 
   const totalWater = water.reduce((acc, curr) => acc + curr.amount, 0);
+  const waterGoalMetDays = dailySummaries.filter(s => s.isWaterGoalMet).length;
+  const deficitDays = dailySummaries.filter(s => s.isDeficit).length;
   const sortedWeights = [...weights].sort((a, b) => a.time - b.time);
   const weightLoss = sortedWeights.length > 1 ? sortedWeights[0].weight - sortedWeights[sortedWeights.length - 1].weight : 0;
   const weightLogs = weights.length;
@@ -82,6 +85,46 @@ export const Milestones: FC<MilestonesProps> = ({ water, weights, sleep, workout
       icon: '🌌',
       achieved: totalWater >= 1000000,
       progress: Math.min(100, (totalWater / 1000000) * 100)
+    },
+    {
+      id: 'water-goal-1',
+      title: 'Consistent Hydrator',
+      description: 'Achieve water goal 3 times',
+      category: 'water',
+      threshold: 3,
+      icon: '🥤',
+      achieved: waterGoalMetDays >= 3,
+      progress: Math.min(100, (waterGoalMetDays / 3) * 100)
+    },
+    {
+      id: 'water-goal-2',
+      title: 'Water Habit',
+      description: 'Achieve water goal 7 times',
+      category: 'water',
+      threshold: 7,
+      icon: '💧',
+      achieved: waterGoalMetDays >= 7,
+      progress: Math.min(100, (waterGoalMetDays / 7) * 100)
+    },
+    {
+      id: 'water-goal-3',
+      title: 'Hydration Pro',
+      description: 'Achieve water goal 30 times',
+      category: 'water',
+      threshold: 30,
+      icon: '🏆',
+      achieved: waterGoalMetDays >= 30,
+      progress: Math.min(100, (waterGoalMetDays / 30) * 100)
+    },
+    {
+      id: 'water-goal-4',
+      title: 'Master of Flow',
+      description: 'Achieve water goal 100 times',
+      category: 'water',
+      threshold: 100,
+      icon: '🌊',
+      achieved: waterGoalMetDays >= 100,
+      progress: Math.min(100, (waterGoalMetDays / 100) * 100)
     }
   ];
 
@@ -175,6 +218,46 @@ export const Milestones: FC<MilestonesProps> = ({ water, weights, sleep, workout
       icon: '💎',
       achieved: weightLoss >= 20,
       progress: Math.min(100, (weightLoss / 20) * 100)
+    },
+    {
+      id: 'deficit-1',
+      title: 'Calorie Conscious',
+      description: 'Achieve your first calorie deficit day',
+      category: 'weight',
+      threshold: 1,
+      icon: '🥗',
+      achieved: deficitDays >= 1,
+      progress: Math.min(100, (deficitDays / 1) * 100)
+    },
+    {
+      id: 'deficit-2',
+      title: 'Fat Burner',
+      description: 'Achieve 7 days of calorie deficit',
+      category: 'weight',
+      threshold: 7,
+      icon: '🔥',
+      achieved: deficitDays >= 7,
+      progress: Math.min(100, (deficitDays / 7) * 100)
+    },
+    {
+      id: 'deficit-3',
+      title: 'Metabolic Master',
+      description: 'Achieve 30 days of calorie deficit',
+      category: 'weight',
+      threshold: 30,
+      icon: '⚡',
+      achieved: deficitDays >= 30,
+      progress: Math.min(100, (deficitDays / 30) * 100)
+    },
+    {
+      id: 'deficit-4',
+      title: 'Weight Loss Legend',
+      description: 'Achieve 100 days of calorie deficit',
+      category: 'weight',
+      threshold: 100,
+      icon: '👑',
+      achieved: deficitDays >= 100,
+      progress: Math.min(100, (deficitDays / 100) * 100)
     }
   ];
 

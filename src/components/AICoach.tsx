@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, TrendingUp, Target, RefreshCw, Utensils, Dumbbell, Send, MessageCircle } from 'lucide-react';
 import { getFastingInsights, chatWithCoach } from '../services/aiService';
-import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord } from '../types';
+import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, DailySummary } from '../types';
 import { cn } from '../lib/utils';
 
 interface AICoachProps {
@@ -15,6 +15,8 @@ interface AICoachProps {
   weight?: number;
   sex?: string;
   age?: number;
+  waterGoal?: number;
+  saveDailySummary: (summary: Omit<DailySummary, 'id' | 'createdAt'>) => Promise<void>;
 }
 
 interface Insight {
@@ -114,7 +116,7 @@ const ChatBox: React.FC<{
   );
 };
 
-  const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, water, height, weight, sex, age }) => {
+  const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, water, height, weight, sex, age, waterGoal, saveDailySummary }) => {
     const [insights, setInsights] = useState<Insight[]>(() => {
       if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('fasttrack_insights');
@@ -189,6 +191,32 @@ const ChatBox: React.FC<{
           setInsights(result.insights || []);
           setCalorieGuess(result.calorieGuess || null);
           setCaloriesBurned(result.caloriesBurned || null);
+
+          // Save Daily Summary
+          if (result.calorieGuess && result.caloriesBurned) {
+            const today = new Date();
+            const dateStr = today.toISOString().split('T')[0];
+            const todayWater = water
+              .filter(w => {
+                const d = new Date(w.time);
+                return d.getFullYear() === today.getFullYear() &&
+                       d.getMonth() === today.getMonth() &&
+                       d.getDate() === today.getDate();
+              })
+              .reduce((acc, curr) => acc + curr.amount, 0);
+            
+            const goal = waterGoal || 2000;
+            
+            await saveDailySummary({
+              date: dateStr,
+              intake: result.calorieGuess.amount,
+              burn: result.caloriesBurned.amount,
+              waterTotal: todayWater,
+              waterGoal: goal,
+              isDeficit: (result.calorieGuess.amount - result.caloriesBurned.amount) <= 0,
+              isWaterGoalMet: todayWater >= goal
+            });
+          }
         }
       } catch (error: any) {
       console.error('Error fetching insights:', error);

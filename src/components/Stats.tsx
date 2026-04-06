@@ -1,8 +1,8 @@
 import React, { FC, ReactNode } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
-import { FastRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutRecord } from '../types';
-import { format, subDays, isSameDay, startOfDay } from 'date-fns';
-import { Trophy, Clock, Flame, Target, Moon, Zap, Star, Droplets, Scale, TrendingDown, TrendingUp, Minus, Calendar, Award } from 'lucide-react';
+import { FastRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutRecord, DailySummary } from '../types';
+import { format, subDays, isSameDay, startOfDay, eachDayOfInterval } from 'date-fns';
+import { Trophy, Clock, Flame, Target, Moon, Zap, Star, Droplets, Scale, TrendingDown, TrendingUp, Minus, Calendar, Award, CheckCircle2, XCircle } from 'lucide-react';
 import { Milestones } from './Milestones';
 import { Review } from './Review';
 
@@ -13,10 +13,11 @@ interface StatsProps {
   weights: WeightRecord[];
   workouts: WorkoutRecord[];
   waterGoal?: number;
+  dailySummaries?: DailySummary[];
 }
 
-export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts, waterGoal = 2000 }) => {
-  const [activeTab, setActiveTab] = React.useState<'fasting' | 'sleep' | 'water' | 'weight' | 'milestones' | 'review'>('fasting');
+export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts, waterGoal = 2000, dailySummaries = [] }) => {
+  const [activeTab, setActiveTab] = React.useState<'fasting' | 'sleep' | 'water' | 'weight' | 'milestones' | 'review' | 'consistency'>('fasting');
 
   // Fasting Stats
   const totalFasts = history.length;
@@ -187,6 +188,15 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
               title="Review"
             >
               <Calendar size={18} />
+            </button>
+            <button
+              onClick={() => setActiveTab('consistency')}
+              className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
+                activeTab === 'consistency' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
+              }`}
+              title="Consistency"
+            >
+              <CheckCircle2 size={18} />
             </button>
           </div>
         </div>
@@ -372,10 +382,62 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
             </div>
           </div>
         </div>
+      ) : activeTab === 'consistency' ? (
+        <div className="space-y-8">
+          <div className="bg-card p-6 rounded-3xl border border-white/5">
+            <h3 className="text-lg font-bold mb-6">Daily Goals Consistency</h3>
+            <div className="space-y-6">
+              {Array.from({ length: 14 }).map((_, i) => {
+                const date = subDays(new Date(), i);
+                const dateStr = format(date, 'yyyy-MM-dd');
+                
+                // Water check
+                const dayWater = water
+                  .filter(w => isSameDay(new Date(w.time), date))
+                  .reduce((acc, curr) => acc + curr.amount, 0);
+                const waterMet = dayWater >= waterGoal;
+
+                // Calorie check (from dailySummaries)
+                const summary = dailySummaries.find(s => s.date === dateStr);
+                const deficitMet = summary ? summary.isDeficit : null;
+
+                return (
+                  <div key={dateStr} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold">{format(date, 'EEEE')}</span>
+                      <span className="text-[10px] text-white/40 uppercase tracking-widest">{format(date, 'MMM d, yyyy')}</span>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="flex flex-col items-center space-y-1">
+                        <Droplets size={16} className={waterMet ? "text-blue-400" : "text-white/10"} />
+                        <span className={`text-[8px] font-bold uppercase ${waterMet ? "text-blue-400" : "text-white/20"}`}>Water</span>
+                        {waterMet ? <CheckCircle2 size={12} className="text-green-500" /> : <XCircle size={12} className="text-white/10" />}
+                      </div>
+                      <div className="flex flex-col items-center space-y-1">
+                        <Flame size={16} className={deficitMet === true ? "text-orange-500" : "text-white/10"} />
+                        <span className={`text-[8px] font-bold uppercase ${deficitMet === true ? "text-orange-500" : "text-white/20"}`}>Deficit</span>
+                        {deficitMet === true ? (
+                          <CheckCircle2 size={12} className="text-green-500" />
+                        ) : deficitMet === false ? (
+                          <XCircle size={12} className="text-red-500/50" />
+                        ) : (
+                          <div className="w-3 h-3 rounded-full border border-white/10" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-6 text-[10px] text-white/20 text-center italic">
+              * Calorie deficit data is tracked when you refresh AI Coach insights for that day.
+            </p>
+          </div>
+        </div>
       ) : activeTab === 'milestones' ? (
-        <Milestones water={water} weights={weights} sleep={sleep} workouts={workouts} />
+        <Milestones water={water} weights={weights} sleep={sleep} workouts={workouts} dailySummaries={dailySummaries} />
       ) : (
-        <Review history={history} sleep={sleep} water={water} weights={weights} workouts={workouts} />
+        <Review history={history} sleep={sleep} water={water} weights={weights} workouts={workouts} dailySummaries={dailySummaries} />
       )}
     </div>
   );

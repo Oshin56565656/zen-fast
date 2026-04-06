@@ -53,7 +53,9 @@ export default function App() {
     setAccentColor,
     setNotificationsEnabled,
     refreshWeather,
-    testNotification
+    testNotification,
+    dailySummaries,
+    saveDailySummary
   } = useFasting();
 
   useEffect(() => {
@@ -100,7 +102,17 @@ export default function App() {
       case 'history':
         return <History history={history} onDelete={deleteRecord} onManualLog={manualLogFast} />;
       case 'stats':
-        return <Stats history={history} sleep={sleep} water={water} weights={weights} workouts={workouts} waterGoal={state.waterGoal} />;
+        return (
+          <Stats 
+            history={history} 
+            sleep={sleep} 
+            water={water} 
+            weights={weights} 
+            workouts={workouts} 
+            waterGoal={state.waterGoal} 
+            dailySummaries={dailySummaries}
+          />
+        );
       case 'coach':
         return (
           <AICoach 
@@ -113,6 +125,8 @@ export default function App() {
             weight={state.weight}
             age={state.age}
             sex={state.sex}
+            waterGoal={state.waterGoal}
+            saveDailySummary={saveDailySummary}
           />
         );
       case 'log':

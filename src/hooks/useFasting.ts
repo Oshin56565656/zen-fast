@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity } from '../types';
+import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, DailySummary } from '../types';
 import { 
   auth, 
   db, 
@@ -57,6 +57,7 @@ export function useFasting() {
   const [sleep, setSleep] = useState<SleepRecord[]>([]);
   const [water, setWater] = useState<WaterRecord[]>([]);
   const [weights, setWeights] = useState<WeightRecord[]>([]);
+  const [dailySummaries, setDailySummaries] = useState<DailySummary[]>([]);
   const [hasNotifiedTarget, setHasNotifiedTarget] = useState(false);
   const [lastWaterReminder, setLastWaterReminder] = useState<number>(Date.now());
   const [isWaterLoaded, setIsWaterLoaded] = useState(false);
@@ -379,6 +380,39 @@ export function useFasting() {
     return () => unsubscribe();
   }, [user]);
 
+  // Sync daily summaries with Firestore
+  useEffect(() => {
+    if (!user) return;
+    const summariesRef = collection(db, 'users', user.uid, 'dailySummaries');
+    const q = query(summariesRef);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const records: DailySummary[] = [];
+      snapshot.forEach((doc) => {
+        records.push({ id: doc.id, ...doc.data() } as DailySummary);
+      });
+      setDailySummaries(records.sort((a, b) => b.date.localeCompare(a.date)));
+    }, (error) => {
+      handleFirestoreError(error, 'list', `users/${user.uid}/dailySummaries`);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  const saveDailySummary = async (summary: Omit<DailySummary, 'id' | 'createdAt'>) => {
+    if (!user) return;
+    try {
+      const summariesRef = collection(db, 'users', user.uid, 'dailySummaries');
+      const q = query(summariesRef, where('date', '==', summary.date));
+      const snapshot = await getDoc(doc(summariesRef, summary.date)).catch(() => null);
+      
+      // Use date as ID for easy lookup/update
+      await setDoc(doc(db, 'users', user.uid, 'dailySummaries', summary.date), {
+        ...summary,
+        createdAt: Timestamp.now()
+      }, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, 'write', `users/${user.uid}/dailySummaries/${summary.date}`);
+    }
+  };
   const handleFirestoreError = (error: any, operationType: string, path: string) => {
     const errInfo = {
       error: error instanceof Error ? error.message : String(error),
@@ -833,6 +867,8 @@ export function useFasting() {
     setAccentColor: (color: string) => updateState({ accentColor: color }),
     setNotificationsEnabled: (enabled: boolean) => updateState({ notificationsEnabled: enabled }),
     refreshWeather,
-    testNotification
+    testNotification,
+    dailySummaries,
+    saveDailySummary
   };
 }
