@@ -1,5 +1,5 @@
 {
   "name": "FastTrack - Intermittent Fasting",
   "description": "A modern, sleek intermittent fasting tracker with an AI Coach, personalized hydration goals, and smart notification reminders.",
-  "requestFramePermissions": ["camera", "geolocation"]
+  "requestFramePermissions": ["camera", "geolocation", "microphone"]
 }

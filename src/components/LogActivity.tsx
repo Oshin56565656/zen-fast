@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets, LineChart } from 'lucide-react';
+import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets, LineChart, Mic, MicOff, Sparkles } from 'lucide-react';
 import { MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity } from '../types';
 import { cn } from '../lib/utils';
 import { formatTime, formatDate } from '../lib/utils';
@@ -51,6 +51,114 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const [mealDescription, setMealDescription] = useState('');
   const [mealBarcode, setMealBarcode] = useState('');
   const [showScanner, setShowScanner] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeechSupported, setIsSpeechSupported] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
+  const recognitionRef = useRef<any>(null);
+
+  React.useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setIsSpeechSupported(false);
+    }
+  }, []);
+
+  const toggleListening = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    if (isListening) {
+      if (recognitionRef.current) recognitionRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+
+    setRetryCount(0);
+    startRecognition(0);
+  };
+
+  const startRecognition = (currentRetry: number) => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+    
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setMealDescription(prev => prev ? `${prev} ${transcript}` : transcript);
+      setIsListening(false);
+      setRetryCount(0);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error:', event.error);
+      setIsListening(false);
+      
+      if (event.error === 'network' && currentRetry < 2) {
+        setRetryCount(currentRetry + 1);
+        const toast = document.createElement('div');
+        toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 bg-primary text-white px-6 py-3 rounded-full font-bold text-sm shadow-2xl z-[200] flex items-center space-x-3';
+        toast.innerHTML = `<span>Retrying connection... (${currentRetry + 1}/2)</span>`;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 1000);
+        
+        setTimeout(() => {
+          startRecognition(currentRetry + 1);
+        }, 1000);
+        return;
+      }
+
+      let message = 'Voice recognition failed. Please try again.';
+      if (event.error === 'network') {
+        message = 'Network error. Voice recognition is restricted in some preview environments.';
+      } else if (event.error === 'not-allowed') {
+        message = 'Microphone access denied. Please check your browser permissions.';
+      } else if (event.error === 'no-speech') {
+        message = 'No speech detected. Please try speaking again.';
+      }
+
+      const toast = document.createElement('div');
+      toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-full font-bold text-sm shadow-2xl z-[200] flex flex-col items-center space-y-2';
+      
+      const isIframe = window.self !== window.top;
+      
+      toast.innerHTML = `
+        <div class="flex items-center space-x-3">
+          <span>${message}</span>
+          ${event.error === 'network' ? '<button onclick="window.location.reload()" class="bg-white/20 px-2 py-1 rounded text-[10px] uppercase font-black">Reload</button>' : ''}
+        </div>
+        ${isIframe && event.error === 'network' ? `
+          <button onclick="window.open(window.location.href, '_blank')" class="bg-white text-red-500 px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-white/90 transition-colors">
+            Open in New Tab to Fix
+          </button>
+        ` : ''}
+      `;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.5s ease';
+        setTimeout(() => toast.remove(), 500);
+      }, 6000);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    try {
+      recognition.start();
+    } catch (e) {
+      console.error('Recognition start failed:', e);
+      setIsListening(false);
+    }
+  };
 
   // Workout Form State
   const [workoutIntensity, setWorkoutIntensity] = useState<WorkoutIntensity>('moderate');
@@ -251,15 +359,38 @@ const LogActivity: React.FC<LogActivityProps> = ({
                 value={mealDescription}
                 onChange={(e) => setMealDescription(e.target.value)}
                 placeholder="e.g. Grilled chicken salad with avocado..."
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors min-h-[100px] resize-none"
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors min-h-[100px] resize-none pr-12"
               />
-              {mealBarcode && (
-                <div className="absolute bottom-3 right-3 flex items-center space-x-1 bg-primary/20 text-primary text-[10px] font-bold px-2 py-1 rounded-full border border-primary/30">
-                  <Scan size={10} />
-                  <span>{mealBarcode}</span>
-                </div>
-              )}
+              <div className="absolute bottom-3 right-3 flex items-center space-x-2">
+                {isSpeechSupported && (
+                  <button
+                    type="button"
+                    onClick={toggleListening}
+                    className={cn(
+                      "p-2 rounded-xl transition-all",
+                      isListening 
+                        ? "bg-red-500 text-white animate-pulse" 
+                        : "bg-white/5 text-white/40 hover:bg-white/10"
+                    )}
+                    title={isListening ? "Stop Listening" : "Start Voice Log"}
+                  >
+                    {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+                  </button>
+                )}
+                {mealBarcode && (
+                  <div className="flex items-center space-x-1 bg-primary/20 text-primary text-[10px] font-bold px-2 py-1 rounded-full border border-primary/30 h-8">
+                    <Scan size={10} />
+                    <span>{mealBarcode}</span>
+                  </div>
+                )}
+              </div>
             </div>
+            {isSpeechSupported && (
+              <p className="text-[10px] text-white/20 mt-2 italic flex items-center space-x-1">
+                <Sparkles size={10} className="text-primary" />
+                <span>Tip: For best voice stability, open the app in a new tab.</span>
+              </p>
+            )}
           </div>
 
           <button

@@ -20,6 +20,10 @@ export const Auth: FC = () => {
         }
       } catch (err: any) {
         console.error('Redirect error:', err);
+        if (err.code === 'auth/user-cancelled' || err.code === 'auth/popup-closed-by-user') {
+          // Silent ignore user cancellation
+          return;
+        }
         setError(err.message || 'Failed to sign in after redirect.');
       } finally {
         setIsLoading(false);
@@ -39,10 +43,18 @@ export const Auth: FC = () => {
       }
     } catch (err: any) {
       console.error('Error signing in:', err);
+      if (err.code === 'auth/user-cancelled' || err.code === 'auth/popup-closed-by-user') {
+        // Silent ignore user cancellation
+        return;
+      }
       if (err.code === 'auth/popup-blocked') {
         setError('Popup was blocked. Try "Sign In with Redirect" or open in a new tab.');
       } else if (err.code === 'auth/unauthorized-domain') {
         setError('This domain is not authorized in Firebase. Please add it to the Authorized Domains list.');
+      } else if (err.code === 'auth/network-request-failed') {
+        setError('Network error. Please check your internet connection.');
+      } else if (err.code === 'auth/internal-error') {
+        setError('An internal Firebase error occurred. Please try again later.');
       } else {
         setError(err.message || 'Failed to sign in. Please try again.');
       }
