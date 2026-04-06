@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets, LineChart } from 'lucide-react';
-import { MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord } from '../types';
+import { MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity } from '../types';
 import { cn } from '../lib/utils';
 import { formatTime, formatDate } from '../lib/utils';
 import { format, subHours } from 'date-fns';
@@ -14,7 +14,7 @@ interface LogActivityProps {
   water: WaterRecord[];
   weights: WeightRecord[];
   onLogMeal: (time: number, scale: 'light' | 'normal' | 'large', description?: string, barcode?: string) => void;
-  onLogWorkout: (startTime: number, endTime: number, intensity: 'low' | 'moderate' | 'high') => void;
+  onLogWorkout: (startTime: number, endTime: number, intensity: WorkoutIntensity, type: WorkoutType) => void;
   onLogSleep: (bedtime: number, wakeUpTime: number, quality: 'poor' | 'fair' | 'good' | 'excellent') => void;
   onLogWater: (time: number, amount: number) => void;
   onLogWeight: (time: number, weight: number, note?: string) => void;
@@ -53,7 +53,8 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const [showScanner, setShowScanner] = useState(false);
 
   // Workout Form State
-  const [workoutIntensity, setWorkoutIntensity] = useState<'low' | 'moderate' | 'high'>('moderate');
+  const [workoutIntensity, setWorkoutIntensity] = useState<WorkoutIntensity>('moderate');
+  const [workoutType, setWorkoutType] = useState<WorkoutType>('cardio');
   const [workoutStartTime, setWorkoutStartTime] = useState(format(subHours(new Date(), 0.5), "yyyy-MM-dd'T'HH:mm"));
   const [workoutEndTime, setWorkoutEndTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
 
@@ -105,7 +106,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
   const handleLogWorkout = (e: React.FormEvent) => {
     e.preventDefault();
-    onLogWorkout(new Date(workoutStartTime).getTime(), new Date(workoutEndTime).getTime(), workoutIntensity);
+    onLogWorkout(new Date(workoutStartTime).getTime(), new Date(workoutEndTime).getTime(), workoutIntensity, workoutType);
   };
 
   const handleLogSleep = (e: React.FormEvent) => {
@@ -347,17 +348,46 @@ const LogActivity: React.FC<LogActivityProps> = ({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Intensity</label>
-            <select
-              value={workoutIntensity}
-              onChange={(e) => setWorkoutIntensity(e.target.value as any)}
-              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors appearance-none"
-            >
-              <option value="low">Low</option>
-              <option value="moderate">Moderate</option>
-              <option value="high">High</option>
-            </select>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Workout Type</label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {(['cardio', 'strength', 'hiit', 'yoga', 'walking', 'swimming', 'cycling', 'sports', 'home', 'other'] as WorkoutType[]).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setWorkoutType(t)}
+                    className={`py-2 px-3 rounded-xl border transition-all capitalize text-[10px] font-bold tracking-wider ${
+                      workoutType === t 
+                        ? 'bg-primary/20 border-primary text-primary' 
+                        : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
+                    }`}
+                  >
+                    {t.replace('-', ' ')}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Intensity</label>
+              <div className="grid grid-cols-3 gap-2">
+                {(['low', 'moderate', 'high'] as WorkoutIntensity[]).map((i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setWorkoutIntensity(i)}
+                    className={`py-3 rounded-xl border transition-all capitalize font-medium ${
+                      workoutIntensity === i 
+                        ? 'bg-primary/20 border-primary text-primary' 
+                        : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
+                    }`}
+                  >
+                    {i}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           <button
@@ -578,7 +608,9 @@ const LogActivity: React.FC<LogActivityProps> = ({
                       <Dumbbell size={20} />
                     </div>
                     <div>
-                      <p className="font-bold text-white capitalize">{workout.intensity} Intensity</p>
+                      <p className="font-bold text-white capitalize">
+                        {workout.type || 'Workout'} • {workout.intensity}
+                      </p>
                       <p className="text-xs text-white/40">
                         {workout.duration} mins • {formatTime(workout.startTime)} - {formatTime(workout.endTime)}
                       </p>

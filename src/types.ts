@@ -43,12 +43,16 @@ export interface MealRecord {
   createdAt?: any;
 }
 
+export type WorkoutIntensity = 'low' | 'moderate' | 'high';
+export type WorkoutType = 'cardio' | 'strength' | 'hiit' | 'yoga' | 'walking' | 'swimming' | 'cycling' | 'sports' | 'home' | 'other';
+
 export interface WorkoutRecord {
   id: string;
   startTime: number;
   endTime: number;
   duration: number; // calculated in minutes
-  intensity: 'low' | 'moderate' | 'high';
+  intensity: WorkoutIntensity;
+  type: WorkoutType;
   createdAt?: any;
 }
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord } from '../types';
+import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity } from '../types';
 import { 
   auth, 
   db, 
@@ -572,7 +572,7 @@ export function useFasting() {
     }
   };
 
-  const logWorkout = async (startTime: number, endTime: number, intensity: 'low' | 'moderate' | 'high') => {
+  const logWorkout = async (startTime: number, endTime: number, intensity: WorkoutIntensity, type: WorkoutType) => {
     if (!user) return;
     const duration = Math.floor((endTime - startTime) / (1000 * 60));
     try {
@@ -581,6 +581,7 @@ export function useFasting() {
         endTime,
         duration,
         intensity,
+        type,
         createdAt: Timestamp.now()
       });
     } catch (error) {

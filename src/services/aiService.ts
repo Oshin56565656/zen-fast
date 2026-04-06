@@ -24,6 +24,23 @@ const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, errorMessage: st
   ]);
 };
 
+interface InsightResponse {
+  insights: {
+    category: string;
+    title: string;
+    content: string;
+    impact: 'positive' | 'neutral' | 'improvement';
+  }[];
+  calorieGuess?: {
+    amount: number;
+    reasoning: string;
+  };
+  caloriesBurned?: {
+    amount: number;
+    reasoning: string;
+  };
+}
+
 export async function getFastingInsights(
   history: FastRecord[], 
   meals: MealRecord[], 
@@ -35,7 +52,7 @@ export async function getFastingInsights(
   weight?: number,
   sex?: string,
   age?: number
-) {
+): Promise<InsightResponse | []> {
   if (history.length === 0 && meals.length === 0 && workouts.length === 0 && sleep.length === 0 && water.length === 0) {
     return [];
   }
@@ -85,6 +102,7 @@ export async function getFastingInsights(
       localEndTime: formatLocalTime(w.endTime),
       durationMins: w.duration,
       intensity: w.intensity,
+      type: w.type || 'other',
       relativeTime: `${Math.round((now.getTime() - w.startTime) / 60000)} minutes ago`
     }));
 
@@ -123,10 +141,12 @@ export async function getFastingInsights(
     Analyze this user's health data and provide 3-4 concise, personalized insights.
     Focus on:
     1. The relationship between fasting windows, sleep quality, and energy levels.
-    2. Specific recommendations for the BEST TIME and INTENSITY for their next workout based on their most recent meal(s), current fasting state, and sleep quality.
+    2. Specific recommendations for the BEST TIME and INTENSITY for their next workout based on their most recent meal(s), current fasting state, and sleep quality. Consider the impact of different workout types (cardio vs strength vs hiit, etc.) on their metabolic state.
     3. How their sleep patterns (bedtime, wake-up time, duration, and quality) are affecting their fasting performance and metabolic health.
     4. How their meal choices (descriptions) affect their metabolic health and potentially their sleep.
     5. Hydration: Analyze their water intake patterns and suggest an optimal daily water goal (in ml) based on their physical profile, activity level, and current hydration habits.
+    6. Calorie Estimation: Based on the descriptions and scales of the meals logged TODAY (using userLocalTime as reference), provide a rough estimate of their total calorie intake for the current day. If no meals are logged today, provide a general estimate based on their typical patterns or skip if no data.
+    7. Calories Burned: Based on the workouts logged TODAY (duration, intensity, and type) and their physical profile (BMR estimate), provide a rough estimate of their total calories burned for the current day.
     
     CRITICAL: 
     1. Use "User's Current Local Time" as the primary reference for "morning", "night", etc.
@@ -154,17 +174,39 @@ export async function getFastingInsights(
           systemInstruction: "You are an expert fasting and fitness coach. Provide data-driven, structured insights based on the user's history and physical profile (age, sex, height, and weight if provided). Be precise about timing relationships. Specifically, recommend the optimal workout time and intensity based on the user's last meal, current fasting state, and body metrics. IMPORTANT: Never hallucinate or infer meal or workout data that is not explicitly provided in the user's logs. ALWAYS use 12-hour time format (e.g., 10:00 am) in your responses.",
           responseMimeType: "application/json",
           responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                category: { type: Type.STRING, description: "Category (e.g., Timing, Nutrition, Performance)" },
-                title: { type: Type.STRING, description: "Short title" },
-                content: { type: Type.STRING, description: "Detailed insight" },
-                impact: { type: Type.STRING, enum: ["positive", "neutral", "improvement"] }
+            type: Type.OBJECT,
+            properties: {
+              insights: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    category: { type: Type.STRING, description: "Category (e.g., Timing, Nutrition, Performance)" },
+                    title: { type: Type.STRING, description: "Short title" },
+                    content: { type: Type.STRING, description: "Detailed insight" },
+                    impact: { type: Type.STRING, enum: ["positive", "neutral", "improvement"] }
+                  },
+                  required: ["category", "title", "content", "impact"]
+                }
               },
-              required: ["category", "title", "content", "impact"]
-            }
+              calorieGuess: {
+                type: Type.OBJECT,
+                properties: {
+                  amount: { type: Type.NUMBER, description: "Estimated calories consumed today" },
+                  reasoning: { type: Type.STRING, description: "Brief explanation of how this was calculated" }
+                },
+                required: ["amount", "reasoning"]
+              },
+              caloriesBurned: {
+                type: Type.OBJECT,
+                properties: {
+                  amount: { type: Type.NUMBER, description: "Estimated calories burned today (BMR + Activity)" },
+                  reasoning: { type: Type.STRING, description: "Brief explanation of how this was calculated" }
+                },
+                required: ["amount", "reasoning"]
+              }
+            },
+            required: ["insights"]
           }
         }
       }),

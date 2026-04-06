@@ -25,6 +25,16 @@ interface Insight {
   messages?: { role: 'user' | 'model'; text: string }[];
 }
 
+interface CalorieGuess {
+  amount: number;
+  reasoning: string;
+}
+
+interface CaloriesBurned {
+  amount: number;
+  reasoning: string;
+}
+
 const ChatBox: React.FC<{ 
   insight: Insight; 
   onUpdateMessages: (messages: { role: 'user' | 'model'; text: string }[]) => void;
@@ -108,17 +118,40 @@ const ChatBox: React.FC<{
     const [insights, setInsights] = useState<Insight[]>(() => {
       if (typeof window !== 'undefined') {
         const saved = localStorage.getItem('fasttrack_insights');
-        return saved ? JSON.parse(saved) : [];
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          return Array.isArray(parsed) ? parsed : (parsed.insights || []);
+        }
       }
       return [];
+    });
+    const [calorieGuess, setCalorieGuess] = useState<CalorieGuess | null>(() => {
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('fasttrack_insights');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          return Array.isArray(parsed) ? null : (parsed.calorieGuess || null);
+        }
+      }
+      return null;
+    });
+    const [caloriesBurned, setCaloriesBurned] = useState<CaloriesBurned | null>(() => {
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('fasttrack_insights');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          return Array.isArray(parsed) ? null : (parsed.caloriesBurned || null);
+        }
+      }
+      return null;
     });
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const [hasKey, setHasKey] = useState<boolean>(true);
   
     useEffect(() => {
-      localStorage.setItem('fasttrack_insights', JSON.stringify(insights));
-    }, [insights]);
+      localStorage.setItem('fasttrack_insights', JSON.stringify({ insights, calorieGuess, caloriesBurned }));
+    }, [insights, calorieGuess, caloriesBurned]);
   
     useEffect(() => {
       const checkKey = async () => {
@@ -147,7 +180,16 @@ const ChatBox: React.FC<{
       try {
         const userLocalTime = new Date().toLocaleString();
         const result = await getFastingInsights(history, meals, workouts, sleep, water, userLocalTime, height, weight, sex, age);
-        setInsights(Array.isArray(result) ? result : []);
+        
+        if (Array.isArray(result)) {
+          setInsights(result);
+          setCalorieGuess(null);
+          setCaloriesBurned(null);
+        } else {
+          setInsights(result.insights || []);
+          setCalorieGuess(result.calorieGuess || null);
+          setCaloriesBurned(result.caloriesBurned || null);
+        }
       } catch (error: any) {
       console.error('Error fetching insights:', error);
       if (error.message?.includes("Requested entity was not found")) {
@@ -235,54 +277,162 @@ const ChatBox: React.FC<{
                 Try Again
               </button>
             </motion.div>
-          ) : insights.length > 0 ? (
+          ) : (insights.length > 0 || calorieGuess || caloriesBurned) ? (
             <motion.div
               key="content"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-1 gap-4"
+              className="space-y-4"
             >
-              {insights.map((insight, index) => (
-                <div 
-                  key={`${insight.title}-${index}`} 
-                  className="bg-white/5 p-6 rounded-3xl border border-white/10 relative overflow-hidden group hover:bg-white/[0.07] transition-colors"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-bold text-primary uppercase tracking-widest">{insight.category}</span>
-                      <h3 className="text-lg font-bold text-white">{insight.title}</h3>
+              {(calorieGuess && caloriesBurned) && (
+                <div className={cn(
+                  "p-6 rounded-3xl border relative overflow-hidden group transition-all",
+                  (calorieGuess.amount - caloriesBurned.amount) <= 0 
+                    ? "bg-green-500/10 border-green-500/20" 
+                    : "bg-red-500/10 border-red-500/20"
+                )}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className={cn(
+                        "w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg",
+                        (calorieGuess.amount - caloriesBurned.amount) <= 0 
+                          ? "bg-green-500/20 text-green-500" 
+                          : "bg-red-500/20 text-red-500"
+                      )}>
+                        <TrendingUp size={24} className={cn((calorieGuess.amount - caloriesBurned.amount) > 0 && "rotate-180")} />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-black text-white">Net Balance</h3>
+                        <p className="text-xs text-white/40 uppercase tracking-widest font-bold">Daily Calorie Delta</p>
+                      </div>
                     </div>
-                    <div className={cn(
-                      "px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                      insight.impact === 'positive' ? "bg-green-500/20 text-green-500" :
-                      insight.impact === 'improvement' ? "bg-orange-500/20 text-orange-500" :
-                      "bg-white/10 text-white/60"
-                    )}>
-                      {insight.impact}
+                    <div className="text-right">
+                      <p className={cn(
+                        "text-3xl font-black",
+                        (calorieGuess.amount - caloriesBurned.amount) <= 0 ? "text-green-500" : "text-red-500"
+                      )}>
+                        {calorieGuess.amount - caloriesBurned.amount > 0 ? '+' : ''}{calorieGuess.amount - caloriesBurned.amount}
+                      </p>
+                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">kcal</p>
                     </div>
                   </div>
-                  <p className="text-white/70 text-sm leading-relaxed">
-                    {insight.content}
-                  </p>
-                  
-                  <ChatBox 
-                    insight={insight} 
-                    height={height}
-                    weight={weight}
-                    sex={sex}
-                    age={age}
-                    onUpdateMessages={(msgs) => {
-                      const newInsights = [...insights];
-                      newInsights[index] = { ...insight, messages: msgs };
-                      setInsights(newInsights);
-                    }}
-                  />
-
-                  <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
-                    <Sparkles size={60} />
+                  <div className="mt-4 flex items-center space-x-2 text-xs font-medium">
+                    <span className={cn(
+                      "px-2 py-1 rounded-lg",
+                      (calorieGuess.amount - caloriesBurned.amount) <= 0 ? "bg-green-500/20 text-green-500" : "bg-red-500/20 text-red-500"
+                    )}>
+                      {(calorieGuess.amount - caloriesBurned.amount) <= 0 ? 'Calorie Deficit' : 'Calorie Surplus'}
+                    </span>
+                    <span className="text-white/40">•</span>
+                    <span className="text-white/60">
+                      {(calorieGuess.amount - caloriesBurned.amount) <= 0 
+                        ? 'Great for weight loss and autophagy' 
+                        : 'Fueling for growth or recovery'}
+                    </span>
+                  </div>
+                  <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                    <Target size={60} className={(calorieGuess.amount - caloriesBurned.amount) <= 0 ? "text-green-500" : "text-red-500"} />
                   </div>
                 </div>
-              ))}
+              )}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {calorieGuess && (
+                  <div className="bg-primary/10 p-6 rounded-3xl border border-primary/20 relative overflow-hidden group">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
+                          <Utensils size={20} />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-white">Intake Guess</h3>
+                          <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">AI Estimation</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-black text-primary">~{calorieGuess.amount}</p>
+                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">kcal</p>
+                      </div>
+                    </div>
+                    <p className="text-white/70 text-xs leading-relaxed italic">
+                      "{calorieGuess.reasoning}"
+                    </p>
+                    <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                      <Sparkles size={40} className="text-primary" />
+                    </div>
+                  </div>
+                )}
+
+                {caloriesBurned && (
+                  <div className="bg-orange-500/10 p-6 rounded-3xl border border-orange-500/20 relative overflow-hidden group">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center text-orange-500">
+                          <Dumbbell size={20} />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-white">Burned Guess</h3>
+                          <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">AI Estimation</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-black text-orange-500">~{caloriesBurned.amount}</p>
+                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">kcal</p>
+                      </div>
+                    </div>
+                    <p className="text-white/70 text-xs leading-relaxed italic">
+                      "{caloriesBurned.reasoning}"
+                    </p>
+                    <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                      <Sparkles size={40} className="text-orange-500" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                {insights.map((insight, index) => (
+                  <div 
+                    key={`${insight.title}-${index}`} 
+                    className="bg-white/5 p-6 rounded-3xl border border-white/10 relative overflow-hidden group hover:bg-white/[0.07] transition-colors"
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-bold text-primary uppercase tracking-widest">{insight.category}</span>
+                        <h3 className="text-lg font-bold text-white">{insight.title}</h3>
+                      </div>
+                      <div className={cn(
+                        "px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
+                        insight.impact === 'positive' ? "bg-green-500/20 text-green-500" :
+                        insight.impact === 'improvement' ? "bg-orange-500/20 text-orange-500" :
+                        "bg-white/10 text-white/60"
+                      )}>
+                        {insight.impact}
+                      </div>
+                    </div>
+                    <p className="text-white/70 text-sm leading-relaxed">
+                      {insight.content}
+                    </p>
+                    
+                    <ChatBox 
+                      insight={insight} 
+                      height={height}
+                      weight={weight}
+                      sex={sex}
+                      age={age}
+                      onUpdateMessages={(msgs) => {
+                        const newInsights = [...insights];
+                        newInsights[index] = { ...insight, messages: msgs };
+                        setInsights(newInsights);
+                      }}
+                    />
+
+                    <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity pointer-events-none">
+                      <Sparkles size={60} />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </motion.div>
           ) : (
             <motion.div
