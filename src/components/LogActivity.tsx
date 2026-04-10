@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets, LineChart, Mic, MicOff, Sparkles } from 'lucide-react';
+import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets, LineChart, Mic, MicOff, Sparkles, MapPin, Play } from 'lucide-react';
 import { MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity } from '../types';
 import { cn } from '../lib/utils';
 import { formatTime, formatDate } from '../lib/utils';
@@ -458,77 +458,77 @@ const LogActivity: React.FC<LogActivityProps> = ({
           onSubmit={handleLogWorkout}
           className="bg-card p-6 rounded-3xl border border-white/5 space-y-6"
         >
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Start Time</label>
-              <input
-                type="datetime-local"
-                value={workoutStartTime}
-                onChange={(e) => setWorkoutStartTime(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">End Time</label>
-              <input
-                type="datetime-local"
-                value={workoutEndTime}
-                onChange={(e) => setWorkoutEndTime(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Workout Type</label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {(['cardio', 'strength', 'hiit', 'yoga', 'walking', 'swimming', 'cycling', 'sports', 'home', 'other'] as WorkoutType[]).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setWorkoutType(t)}
-                    className={`py-2 px-3 rounded-xl border transition-all capitalize text-[10px] font-bold tracking-wider ${
-                      workoutType === t 
-                        ? 'bg-primary/20 border-primary text-primary' 
-                        : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
-                    }`}
-                  >
-                    {t.replace('-', ' ')}
-                  </button>
-                ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Start Time</label>
+                <input
+                  type="datetime-local"
+                  value={workoutStartTime}
+                  onChange={(e) => setWorkoutStartTime(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-white/40 uppercase tracking-widest">End Time</label>
+                <input
+                  type="datetime-local"
+                  value={workoutEndTime}
+                  onChange={(e) => setWorkoutEndTime(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
+                />
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Intensity</label>
-              <div className="grid grid-cols-3 gap-2">
-                {(['low', 'moderate', 'high'] as WorkoutIntensity[]).map((i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => setWorkoutIntensity(i)}
-                    className={`py-3 rounded-xl border transition-all capitalize font-medium ${
-                      workoutIntensity === i 
-                        ? 'bg-primary/20 border-primary text-primary' 
-                        : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
-                    }`}
-                  >
-                    {i}
-                  </button>
-                ))}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Workout Type</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {(['cardio', 'strength', 'hiit', 'yoga', 'walking', 'swimming', 'cycling', 'sports', 'home', 'other'] as WorkoutType[]).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setWorkoutType(t)}
+                      className={`py-2 px-3 rounded-xl border transition-all capitalize text-[10px] font-bold tracking-wider ${
+                        workoutType === t 
+                          ? 'bg-primary/20 border-primary text-primary' 
+                          : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
+                      }`}
+                    >
+                      {t.replace('-', ' ')}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Intensity</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {(['low', 'moderate', 'high'] as WorkoutIntensity[]).map((i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => setWorkoutIntensity(i)}
+                      className={`py-3 rounded-xl border transition-all capitalize font-medium ${
+                        workoutIntensity === i 
+                          ? 'bg-primary/20 border-primary text-primary' 
+                          : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
+                      }`}
+                    >
+                      {i}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
 
-          <button
-            type="submit"
-            className="w-full bg-primary text-white py-4 rounded-2xl font-bold flex items-center justify-center space-x-2 hover:bg-primary/90 transition-all active:scale-95"
-          >
-            <Plus size={20} />
-            <span>Log Workout</span>
-          </button>
-        </motion.form>
+            <button
+              type="submit"
+              className="w-full bg-primary text-white py-4 rounded-2xl font-bold flex items-center justify-center space-x-2 hover:bg-primary/90 transition-all active:scale-95"
+            >
+              <Plus size={20} />
+              <span>Log Workout</span>
+            </button>
+          </motion.form>
       ) : activeType === 'water' ? (
         <motion.form
           initial={{ opacity: 0, y: 10 }}

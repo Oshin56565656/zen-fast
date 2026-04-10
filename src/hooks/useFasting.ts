@@ -72,95 +72,6 @@ export function useFasting() {
     }
   }, [state.accentColor]);
 
-  // Monitor fasting progress for target reached notification
-  useEffect(() => {
-    if (state.status !== 'fasting' || !state.startTime || hasNotifiedTarget) return;
-
-    const checkTarget = () => {
-      const effectiveStartTime = state.startTime! + state.totalPausedTime;
-      const elapsedMs = Date.now() - effectiveStartTime;
-      
-      let isTargetReached = false;
-      let targetLabel = "";
-
-      if (state.targetEndTime) {
-        // If specific end time is set, check against it
-        // We don't adjust for pauses here because it's a "wall clock" target
-        isTargetReached = Date.now() >= state.targetEndTime;
-        targetLabel = "your target time";
-      } else {
-        // Otherwise use duration
-        const targetMs = state.targetHours * 3600 * 1000;
-        isTargetReached = elapsedMs >= targetMs;
-        targetLabel = `${state.targetHours}h`;
-      }
-
-      if (isTargetReached && !hasNotifiedTarget) {
-        sendNotification("Fast Goal Reached!", {
-          body: `You've reached ${targetLabel}. Great job!`,
-          icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
-        });
-        setHasNotifiedTarget(true);
-      }
-    };
-
-    const interval = setInterval(checkTarget, 60000); // Check every minute
-    checkTarget(); // Check immediately
-
-    return () => clearInterval(interval);
-  }, [state.status, state.startTime, state.totalPausedTime, state.targetHours, hasNotifiedTarget]);
-
-  // Water reminder logic
-  useEffect(() => {
-    if (!isAuthReady || !isWaterLoaded) return;
-
-    const checkWater = () => {
-      const now = new Date();
-      const hour = now.getHours();
-      
-      // Only remind between 8 AM and 10 PM
-      if (hour < 8 || hour > 22) return;
-
-      // Calculate today's total water
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayTotal = water
-        .filter(w => w.time >= today.getTime())
-        .reduce((acc, curr) => acc + curr.amount, 0);
-
-      const goal = state.waterGoal || 2000;
-      if (todayTotal >= goal) return;
-
-      // Check last log time
-      const lastLog = water.length > 0 ? Math.max(...water.map(w => w.time)) : 0;
-      const timeSinceLastLog = Date.now() - lastLog;
-      const timeSinceLastReminder = Date.now() - lastWaterReminder;
-
-      // Remind if no log for 3 hours AND no reminder for 3 hours
-      if (timeSinceLastLog > 3 * 3600 * 1000 && timeSinceLastReminder > 3 * 3600 * 1000) {
-        sendNotification("Time to Hydrate!", {
-          body: `You've drank ${todayTotal}ml today. Aim for ${goal}ml!`,
-          icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
-        });
-        setLastWaterReminder(Date.now());
-      }
-    };
-
-    const interval = setInterval(checkWater, 3600000); // Check every hour
-    checkWater(); // Check immediately
-
-    return () => clearInterval(interval);
-  }, [water, state.waterGoal, lastWaterReminder, isAuthReady, isWaterLoaded]);
-
-  // Reset notification flag when fast ends or status changes
-  useEffect(() => {
-    if (state.status !== 'fasting') {
-      setHasNotifiedTarget(false);
-      // Clear target end time when fast ends if it was a one-time thing
-      // Actually, let's keep it until the user resets it or starts a new one
-    }
-  }, [state.status]);
-
   const sendNotification = async (title: string, options?: NotificationOptions) => {
     try {
       if (!("Notification" in window)) return;
@@ -503,7 +414,7 @@ export function useFasting() {
     });
   };
 
-  const endFast = async () => {
+  const endFast = useCallback(async () => {
     if (state.status !== 'fasting' || !state.startTime || !user) return;
     if ("vibrate" in navigator) navigator.vibrate([50, 30, 50]);
     
@@ -536,12 +447,13 @@ export function useFasting() {
         endTime: now,
         status: 'idle',
         pausedAt: null,
-        totalPausedTime: 0
+        totalPausedTime: 0,
+        targetEndTime: null // Clear specific end time once reached
       });
     } catch (error) {
       handleFirestoreError(error, 'write', `users/${user.uid}/history`);
     }
-  };
+  }, [state.status, state.startTime, state.totalPausedTime, state.targetHours, user, updateState]);
 
   const resetToIdle = () => {
     updateState({
@@ -591,6 +503,100 @@ export function useFasting() {
     updateState({ targetEndTime: time });
   };
 
+  // Reset notification flag when fast ends or status changes
+  useEffect(() => {
+    if (state.status !== 'fasting') {
+      setHasNotifiedTarget(false);
+    }
+  }, [state.status]);
+
+  // Monitor fasting progress for target reached notification and auto-end
+  useEffect(() => {
+    if (state.status !== 'fasting' || !state.startTime) return;
+
+    const checkTarget = () => {
+      const now = Date.now();
+      const effectiveStartTime = state.startTime! + state.totalPausedTime;
+      const elapsedMs = now - effectiveStartTime;
+      
+      let isTargetReached = false;
+      let targetLabel = "";
+
+      if (state.targetEndTime) {
+        // If specific end time is set, check against it
+        isTargetReached = now >= state.targetEndTime;
+        targetLabel = "your target time";
+      } else {
+        // Otherwise use duration
+        const targetMs = state.targetHours * 3600 * 1000;
+        isTargetReached = elapsedMs >= targetMs;
+        targetLabel = `${state.targetHours}h`;
+      }
+
+      if (isTargetReached) {
+        if (!hasNotifiedTarget) {
+          sendNotification("Fast Goal Reached!", {
+            body: `You've reached ${targetLabel}. Great job!`,
+            icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
+          });
+          setHasNotifiedTarget(true);
+        }
+        
+        // Auto-end if targetEndTime was explicitly set and reached
+        if (state.targetEndTime && now >= state.targetEndTime) {
+          endFast();
+        }
+      }
+    };
+
+    const interval = setInterval(checkTarget, 1000); // Check every second for precision
+    checkTarget(); // Check immediately
+
+    return () => clearInterval(interval);
+  }, [state.status, state.startTime, state.totalPausedTime, state.targetHours, state.targetEndTime, hasNotifiedTarget, endFast]);
+
+  // Water reminder logic
+  useEffect(() => {
+    if (!isAuthReady || !isWaterLoaded) return;
+
+    const checkWater = () => {
+      const now = new Date();
+      const hour = now.getHours();
+      
+      // Only remind between 8 AM and 10 PM
+      if (hour < 8 || hour > 22) return;
+
+      // Calculate today's total water
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const todayTotal = water
+        .filter(w => w.time >= today.getTime())
+        .reduce((acc, curr) => acc + curr.amount, 0);
+
+      const goal = state.waterGoal || 2000;
+      if (todayTotal >= goal) return;
+
+      // Check last log time
+      const lastLog = water.length > 0 ? Math.max(...water.map(w => w.time)) : 0;
+      const timeSinceLastLog = Date.now() - lastLog;
+      const timeSinceLastReminder = Date.now() - lastWaterReminder;
+
+      // Remind if no log for 3 hours AND no reminder for 3 hours
+      if (timeSinceLastLog > 3 * 3600 * 1000 && timeSinceLastReminder > 3 * 3600 * 1000) {
+        sendNotification("Time to Hydrate!", {
+          body: `You've drank ${todayTotal}ml today. Aim for ${goal}ml!`,
+          icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
+        });
+        setLastWaterReminder(Date.now());
+      }
+    };
+
+    const interval = setInterval(checkWater, 3600000); // Check every hour
+    checkWater(); // Check immediately
+
+    return () => clearInterval(interval);
+  }, [water, state.waterGoal, lastWaterReminder, isAuthReady, isWaterLoaded]);
+
   const logMeal = async (time: number, scale: 'light' | 'normal' | 'large', description?: string, barcode?: string) => {
     if (!user) return;
     try {
@@ -606,7 +612,12 @@ export function useFasting() {
     }
   };
 
-  const logWorkout = async (startTime: number, endTime: number, intensity: WorkoutIntensity, type: WorkoutType) => {
+  const logWorkout = async (
+    startTime: number, 
+    endTime: number, 
+    intensity: WorkoutIntensity, 
+    type: WorkoutType
+  ) => {
     if (!user) return;
     const duration = Math.floor((endTime - startTime) / (1000 * 60));
     try {

@@ -31,7 +31,13 @@ export const Timer: FC<TimerProps> = ({ state, meals, onStart, onPause, onResume
       interval = window.setInterval(() => {
         const now = Date.now();
         const effectiveStart = state.startTime! + state.totalPausedTime;
-        setElapsed(Math.floor((now - effectiveStart) / 1000));
+        const currentElapsed = Math.floor((now - effectiveStart) / 1000);
+        
+        if (state.targetEndTime && now >= state.targetEndTime) {
+          setElapsed(targetSeconds);
+        } else {
+          setElapsed(currentElapsed);
+        }
       }, 1000);
     } else if (state.pausedAt && state.startTime) {
       const effectiveStart = state.startTime! + state.totalPausedTime;

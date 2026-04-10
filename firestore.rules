@@ -139,11 +139,12 @@ service cloud.firestore {
 
     function isValidWorkout(data) {
       return hasRequiredFields(['startTime', 'endTime', 'duration', 'intensity', 'createdAt']) &&
-             hasOnlyAllowedFields(['startTime', 'endTime', 'duration', 'intensity', 'createdAt']) &&
+             hasOnlyAllowedFields(['startTime', 'endTime', 'duration', 'intensity', 'type', 'createdAt']) &&
              data.startTime is number &&
              data.endTime is number &&
              data.duration is number &&
              data.intensity in ['low', 'moderate', 'high'] &&
+             (!('type' in data) || data.type is string) &&
              data.createdAt is timestamp;
     }
 
