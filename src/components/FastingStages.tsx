@@ -30,29 +30,37 @@ export const FastingStages: FC<FastingStagesProps> = ({ elapsedSeconds, isFastin
       <div className="space-y-3">
         {FASTING_STAGES.map((stage, index) => {
           const isCompleted = elapsedHours >= stage.endHour;
-          const isActive = index === currentStageIndex;
-          const isUpcoming = index > currentStageIndex;
+          const isStarted = elapsedHours >= stage.startHour;
+          const isActive = isStarted && !isCompleted;
           const Icon = stage.icon;
+          
+          // Calculate progress percentage
+          let progress = 0;
+          if (isCompleted) {
+            progress = 100;
+          } else if (isActive) {
+            progress = ((elapsedHours - stage.startHour) / (stage.endHour - stage.startHour)) * 100;
+          }
 
           return (
             <motion.div
               key={stage.id}
               initial={false}
-              animate={{
-                opacity: isActive ? 1 : isUpcoming ? 0.4 : 0.6,
-                scale: isActive ? 1 : 0.98,
+              animate={{ 
+                opacity: isStarted ? 1 : 0.4,
+                scale: isActive ? 1.02 : 1
               }}
               className={cn(
                 "relative p-4 rounded-2xl border transition-all duration-500",
-                isActive ? cn(stage.bgColor, stage.borderColor) : "bg-white/5 border-white/5",
+                isActive ? cn(stage.bgColor, stage.borderColor) : "bg-white/5 border-transparent",
                 isCompleted && "border-green-500/20 bg-green-500/5"
               )}
             >
               <div className="flex items-start space-x-4">
                 <div className={cn(
                   "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors",
-                  isActive ? stage.color : isCompleted ? "text-green-500" : "text-white/20",
-                  isActive ? "bg-white/10" : "bg-white/5"
+                  isStarted ? stage.bgColor : "bg-white/5",
+                  isStarted ? stage.color : "text-white/20"
                 )}>
                   <Icon size={20} />
                 </div>
@@ -61,44 +69,46 @@ export const FastingStages: FC<FastingStagesProps> = ({ elapsedSeconds, isFastin
                   <div className="flex items-center justify-between">
                     <p className={cn(
                       "font-bold text-sm transition-colors",
-                      isActive ? "text-white" : isCompleted ? "text-green-500/80" : "text-white/40"
+                      isStarted ? "text-white" : "text-white/40"
                     )}>
                       {stage.label}
                     </p>
-                    <p className="text-[10px] font-mono text-white/20">
-                      {stage.startHour}h+
-                    </p>
+                    {isCompleted ? (
+                      <ShieldCheck size={14} className="text-green-500" />
+                    ) : (
+                      <p className="text-[10px] font-mono text-white/20">
+                        {stage.startHour}h+
+                      </p>
+                    )}
                   </div>
                   
-                  {isActive && (
-                    <motion.p 
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      className="text-xs text-white/60 mt-1 leading-relaxed"
-                    >
-                      {stage.description}
-                    </motion.p>
-                  )}
+                  <p className="text-xs text-white/60 mt-1 leading-relaxed">
+                    {stage.description}
+                  </p>
 
-                  {isActive && (
-                    <div className="mt-3 h-1 bg-white/10 rounded-full overflow-hidden">
-                      <motion.div 
-                        className={cn("h-full", stage.color.replace('text', 'bg'))}
-                        initial={{ width: 0 }}
-                        animate={{ 
-                          width: `${Math.min(((elapsedHours - stage.startHour) / (stage.endHour - stage.startHour)) * 100, 100)}%` 
-                        }}
-                      />
+                  {isStarted && (
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[8px] font-bold text-white/20 uppercase tracking-widest">
+                          {isCompleted ? 'Completed' : 'In Progress'}
+                        </span>
+                        <span className="text-[10px] font-mono text-white/40">
+                          {Math.round(progress)}%
+                        </span>
+                      </div>
+                      <div className="h-1 bg-white/5 rounded-full overflow-hidden">
+                        <motion.div 
+                          className="h-full"
+                          style={{ backgroundColor: stage.hex }}
+                          initial={false}
+                          animate={{ width: `${Math.min(progress, 100)}%` }}
+                          transition={{ type: "spring", bounce: 0, duration: 0.5 }}
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
               </div>
-
-              {isCompleted && (
-                <div className="absolute top-2 right-2">
-                  <ShieldCheck size={14} className="text-green-500/40" />
-                </div>
-              )}
             </motion.div>
           );
         })}
