@@ -29,13 +29,19 @@ async function startServer() {
   // Gemini Proxy
   app.post("/api/ai/generate", async (req, res) => {
     const { model, contents, config } = req.body;
+    const manualKey = req.headers['x-gemini-api-key'] as string;
     
-    if (!GEMINI_API_KEY) {
-      return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
+    const apiKeyToUse = manualKey || GEMINI_API_KEY;
+    
+    if (!apiKeyToUse) {
+      return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server. Please add it to your app settings or environment variables." });
     }
 
     try {
-      const generativeModel = genAI.getGenerativeModel({ 
+      // Use the manual key if provided, otherwise fallback to the server-side key
+      const client = manualKey ? new GoogleGenAI(manualKey) : genAI;
+      
+      const generativeModel = client.getGenerativeModel({ 
         model: model || "gemini-1.5-flash",
         systemInstruction: config?.systemInstruction
       });

@@ -1,9 +1,14 @@
 import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord } from "../types";
 
 const callAIProxy = async (payload: any) => {
+  const manualKey = typeof window !== 'undefined' ? localStorage.getItem('FT_GEMINI_API_KEY') : null;
+  
   const response = await fetch('/api/ai/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      ...(manualKey ? { 'X-Gemini-API-Key': manualKey } : {})
+    },
     body: JSON.stringify(payload)
   });
 
