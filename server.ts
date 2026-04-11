@@ -13,7 +13,7 @@ const STRAVA_CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET;
 const APP_URL = process.env.APP_URL || "http://localhost:3000";
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.API_KEY;
 
-const genAI = new GoogleGenAI(GEMINI_API_KEY || "");
+const genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY || "" });
 
 async function startServer() {
   const app = express();
@@ -45,23 +45,19 @@ async function startServer() {
 
     try {
       // Use the manual key if provided, otherwise fallback to the server-side key
-      const client = manualKey ? new GoogleGenAI(manualKey) : genAI;
+      const client = manualKey ? new GoogleGenAI({ apiKey: manualKey }) : genAI;
       
-      const generativeModel = client.getGenerativeModel({ 
+      const response = await client.models.generateContent({
         model: model || "gemini-1.5-flash",
-        systemInstruction: config?.systemInstruction
-      });
-      
-      const result = await generativeModel.generateContent({
         contents: contents,
-        generationConfig: {
+        config: {
+          systemInstruction: config?.systemInstruction,
           responseMimeType: config?.responseMimeType,
           responseSchema: config?.responseSchema
         }
       });
       
-      const response = await result.response;
-      res.json({ text: response.text() });
+      res.json({ text: response.text });
     } catch (error: any) {
       console.error("Gemini Proxy Error:", error);
       res.status(error.status || 500).json({ 
