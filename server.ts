@@ -24,11 +24,15 @@ async function startServer() {
 
   // Strava OAuth URL
   app.get("/api/auth/strava/url", (req, res) => {
+    if (!STRAVA_CLIENT_ID) {
+      return res.status(400).json({ error: "STRAVA_CLIENT_ID is not configured in the environment." });
+    }
+    
     const clientRedirectUri = req.query.redirectUri as string;
     const redirectUri = clientRedirectUri || `${APP_URL}/auth/strava/callback`;
     
     const params = new URLSearchParams({
-      client_id: STRAVA_CLIENT_ID!,
+      client_id: STRAVA_CLIENT_ID,
       redirect_uri: redirectUri,
       response_type: "code",
       scope: "read,activity:read_all",

@@ -87,14 +87,41 @@ export function useWorkouts() {
   }, []);
 
   const connectStrava = async () => {
+    // Open window immediately to avoid popup blockers
+    const authWindow = window.open('', 'strava_oauth', 'width=600,height=700');
+    
+    if (!authWindow) {
+      alert("Popup blocked! Please allow popups for this site to connect Strava.");
+      return;
+    }
+
+    authWindow.document.write(`
+      <div style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #09090b; color: white;">
+        <div style="width: 40px; height: 40px; border: 4px solid #FC6100; border-top-color: transparent; border-radius: 50%; animate: spin 1s linear infinite;"></div>
+        <p style="margin-top: 20px; font-weight: bold;">Connecting to Strava...</p>
+        <style>
+          @keyframes spin { to { transform: rotate(360deg); } }
+        </style>
+      </div>
+    `);
+
     try {
       const redirectUri = `${window.location.origin}/auth/strava/callback`;
       const response = await fetch(`/api/auth/strava/url?redirectUri=${encodeURIComponent(redirectUri)}`);
-      const { url } = await response.json();
       
-      const authWindow = window.open(url, 'strava_oauth', 'width=600,height=700');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to get connection URL");
+      }
+
+      const { url } = await response.json();
+      authWindow.location.href = url;
       
       const handleMessage = async (event: MessageEvent) => {
+        // Validate origin
+        const origin = event.origin;
+        if (!origin.endsWith('.run.app') && !origin.includes('localhost')) return;
+
         if (event.data?.type === 'STRAVA_AUTH_SUCCESS') {
           const { access_token, refresh_token, expires_at, athleteId } = event.data.data;
           
@@ -108,7 +135,6 @@ export function useWorkouts() {
             };
             
             await setDoc(doc(db, 'users', auth.currentUser.uid), stravaData, { merge: true });
-            
             setUserProfile((prev: any) => ({ ...prev, ...stravaData }));
           }
           window.removeEventListener('message', handleMessage);
@@ -116,8 +142,10 @@ export function useWorkouts() {
       };
       
       window.addEventListener('message', handleMessage);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Strava connection error:", error);
+      authWindow.close();
+      alert(`Connection failed: ${error.message || "Unknown error"}. Please ensure you have set your Strava API keys in the Settings menu.`);
     }
   };
 
