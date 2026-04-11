@@ -26,8 +26,8 @@ self.addEventListener('push', (event) => {
   const title = data.title ?? 'FastTrack';
   const options = {
     body: data.body ?? '',
-    icon: 'https://img.icons8.com/fluency/512/time.png',
-    badge: 'https://img.icons8.com/fluency/512/time.png',
+    icon: 'https://cdn-icons-png.flaticon.com/512/1048/1048953.png',
+    badge: 'https://cdn-icons-png.flaticon.com/512/1048/1048953.png',
   };
   event.waitUntil(self.registration.showNotification(title, options));
 });
