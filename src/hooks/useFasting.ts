@@ -62,6 +62,30 @@ export function useFasting() {
   const [lastWaterReminder, setLastWaterReminder] = useState<number>(Date.now());
   const [isWaterLoaded, setIsWaterLoaded] = useState(false);
 
+  const handleFirestoreError = (error: any, operationType: string, path: string) => {
+    const errInfo = {
+      error: error instanceof Error ? error.message : String(error),
+      authInfo: {
+        userId: auth.currentUser?.uid,
+        email: auth.currentUser?.email,
+        emailVerified: auth.currentUser?.emailVerified,
+        isAnonymous: auth.currentUser?.isAnonymous,
+        tenantId: auth.currentUser?.tenantId,
+        providerInfo: auth.currentUser?.providerData.map(provider => ({
+          providerId: provider.providerId,
+          displayName: provider.displayName,
+          email: provider.email,
+          photoUrl: provider.photoURL
+        })) || []
+      },
+      operationType,
+      path
+    };
+    console.error('Firestore Error: ', JSON.stringify(errInfo));
+    // We don't throw here to avoid crashing the whole app, 
+    // but we log it clearly for the agent to see.
+  };
+
   // Apply theme color to CSS variable
   useEffect(() => {
     if (state.accentColor) {
@@ -324,30 +348,6 @@ export function useFasting() {
       handleFirestoreError(error, 'write', `users/${user.uid}/dailySummaries/${summary.date}`);
     }
   };
-  const handleFirestoreError = (error: any, operationType: string, path: string) => {
-    const errInfo = {
-      error: error instanceof Error ? error.message : String(error),
-      authInfo: {
-        userId: auth.currentUser?.uid,
-        email: auth.currentUser?.email,
-        emailVerified: auth.currentUser?.emailVerified,
-        isAnonymous: auth.currentUser?.isAnonymous,
-        tenantId: auth.currentUser?.tenantId,
-        providerInfo: auth.currentUser?.providerData.map(provider => ({
-          providerId: provider.providerId,
-          displayName: provider.displayName,
-          email: provider.email,
-          photoUrl: provider.photoURL
-        })) || []
-      },
-      operationType,
-      path
-    };
-    console.error('Firestore Error: ', JSON.stringify(errInfo));
-    // We don't throw here to avoid crashing the whole app, 
-    // but we log it clearly for the agent to see.
-  };
-
   const updateState = useCallback(async (updates: Partial<CurrentFastState>) => {
     if (!user) return;
     const stateDocRef = doc(db, 'users', user.uid, 'settings', 'currentFast');

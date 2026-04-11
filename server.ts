@@ -1,6 +1,7 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
 import path from "path";
+import fs from "fs/promises";
 import { fileURLToPath } from "url";
 import axios from "axios";
 import { GoogleGenAI } from "@google/genai";
@@ -231,6 +232,18 @@ async function startServer() {
       appType: "spa",
     });
     app.use(vite.middlewares);
+    
+    // Explicitly serve index.html for SPA in dev if vite middleware doesn't catch it
+    app.get('*', async (req, res, next) => {
+      const url = req.originalUrl;
+      try {
+        let template = await vite.transformIndexHtml(url, await fs.readFile(path.join(process.cwd(), 'index.html'), 'utf-8'));
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      } catch (e) {
+        vite.ssrFixStacktrace(e as Error);
+        next(e);
+      }
+    });
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     console.log(`Starting server in PRODUCTION mode, serving from: ${distPath}`);
