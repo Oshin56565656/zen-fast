@@ -13,6 +13,7 @@ interface HistoryProps {
 
 export const History: FC<HistoryProps> = ({ history, onDelete, onManualLog }) => {
   const [isLogging, setIsLogging] = useState(false);
+  const [searchDate, setSearchDate] = useState<string>('');
   const [startTime, setStartTime] = useState(format(subHours(new Date(), 16), "yyyy-MM-dd'T'HH:mm"));
   const [endTime, setEndTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   const [targetHours, setTargetHours] = useState(16);
@@ -29,17 +30,48 @@ export const History: FC<HistoryProps> = ({ history, onDelete, onManualLog }) =>
     setIsLogging(false);
   };
 
+  const filteredHistory = (() => {
+    if (!searchDate) return history.slice(0, 6);
+    const targetDate = new Date(searchDate);
+    return history.filter(record => {
+      const logDate = new Date(record.startTime);
+      return (
+        logDate.getFullYear() === targetDate.getFullYear() &&
+        logDate.getMonth() === targetDate.getMonth() &&
+        logDate.getDate() === targetDate.getDate()
+      );
+    });
+  })();
+
   return (
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-bold">Fasting History</h2>
-        <button
-          onClick={() => setIsLogging(true)}
-          className="flex items-center space-x-2 bg-primary/10 text-primary hover:bg-primary/20 px-4 py-2 rounded-full text-sm font-bold transition-all"
-        >
-          <Plus size={16} />
-          <span>Log Fast</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2">
+            <input
+              type="date"
+              value={searchDate}
+              onChange={(e) => setSearchDate(e.target.value)}
+              className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white focus:outline-none focus:border-primary transition-colors"
+            />
+            {searchDate && (
+              <button 
+                onClick={() => setSearchDate('')}
+                className="text-[10px] text-primary font-bold uppercase"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <button
+            onClick={() => setIsLogging(true)}
+            className="flex items-center space-x-2 bg-primary/10 text-primary hover:bg-primary/20 px-4 py-2 rounded-full text-sm font-bold transition-all"
+          >
+            <Plus size={16} />
+            <span>Log Fast</span>
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>
@@ -113,13 +145,13 @@ export const History: FC<HistoryProps> = ({ history, onDelete, onManualLog }) =>
         )}
       </AnimatePresence>
 
-      {history.length === 0 ? (
+      {filteredHistory.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-white/20">
           <Calendar size={64} strokeWidth={1} />
-          <p className="mt-4 font-medium">No fasting history yet</p>
+          <p className="mt-4 font-medium">No fasting history found</p>
         </div>
       ) : (
-        history.map((record) => (
+        filteredHistory.map((record) => (
           <motion.div
             key={record.id}
             initial={{ opacity: 0, y: 10 }}

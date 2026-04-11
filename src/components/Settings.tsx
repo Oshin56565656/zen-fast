@@ -1,7 +1,7 @@
 import React, { FC, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
-import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info, Download, Zap, ChevronDown, User, Target, Cloud, Settings as SettingsIcon, Database, Brain } from 'lucide-react';
+import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info, Download, Zap, ChevronDown, User, Target, Cloud, Settings as SettingsIcon, Database, Brain, Link2, Dumbbell } from 'lucide-react';
 import { FastRecord, MealRecord, WorkoutRecord, SleepRecord } from '../types';
 
 interface SettingsProps {
@@ -34,8 +34,10 @@ interface SettingsProps {
   onTestNotification?: () => void;
   history: FastRecord[];
   meals: MealRecord[];
-  workouts: WorkoutRecord[];
+  workouts: any[];
   sleep: SleepRecord[];
+  userProfile?: any;
+  onConnectStrava?: () => void;
 }
 
 interface CollapsibleSectionProps {
@@ -128,12 +130,16 @@ export const Settings: FC<SettingsProps> = ({
   history,
   meals,
   workouts,
-  sleep
+  sleep,
+  userProfile,
+  onConnectStrava,
+  onImportStrongCSV
 }) => {
   const [hasKey, setHasKey] = useState(false);
   const [manualKey, setManualKey] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showManual, setShowManual] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [notificationStatus, setNotificationStatus] = useState<NotificationPermission | 'unsupported'>('default');
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     profile: false,
@@ -141,10 +147,25 @@ export const Settings: FC<SettingsProps> = ({
     appearance: false,
     weather: false,
     notifications: false,
+    integrations: false,
     data: false,
     ai: false,
     about: false
   });
+
+  const handleStrongUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !onImportStrongCSV) return;
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const content = event.target?.result as string;
+      await onImportStrongCSV(content);
+      setIsUploading(false);
+    };
+    reader.readAsText(file);
+  };
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({
@@ -318,12 +339,12 @@ export const Settings: FC<SettingsProps> = ({
 
     if (type === 'all' || type === 'workouts') {
       csvContent += escapeCSV("WORKOUT LOGS") + "\n";
-      csvContent += `${escapeCSV("Start Date")},${escapeCSV("Start Time")},${escapeCSV("End Date")},${escapeCSV("End Time")},${escapeCSV("Duration (m)")},${escapeCSV("Intensity")}\n`;
+      csvContent += `${escapeCSV("Start Date")},${escapeCSV("Start Time")},${escapeCSV("End Date")},${escapeCSV("End Time")},${escapeCSV("Name")},${escapeCSV("Type")},${escapeCSV("Duration (m)")},${escapeCSV("Distance (km)")},${escapeCSV("Calories")},${escapeCSV("Elevation (m)")},${escapeCSV("Intensity")},${escapeCSV("Source")}\n`;
       const sortedWorkouts = [...workouts].sort((a, b) => b.startTime - a.startTime);
       sortedWorkouts.forEach(record => {
         const start = formatDateTime(record.startTime);
-        const end = formatDateTime(record.endTime);
-        csvContent += `${escapeCSV(start.date)},${escapeCSV(start.time)},${escapeCSV(end.date)},${escapeCSV(end.time)},${escapeCSV(record.duration)},${escapeCSV(record.intensity)}\n`;
+        const end = formatDateTime(record.endTime || (record.startTime + (record.duration || 0) * 60000));
+        csvContent += `${escapeCSV(start.date)},${escapeCSV(start.time)},${escapeCSV(end.date)},${escapeCSV(end.time)},${escapeCSV(record.name || '')},${escapeCSV(record.type || '')},${escapeCSV(record.duration)},${escapeCSV(record.distance ? (record.distance / 1000).toFixed(2) : '')},${escapeCSV(record.calories || '')},${escapeCSV(record.elevation || '')},${escapeCSV(record.intensity)},${escapeCSV(record.source)}\n`;
       });
       csvContent += "\n";
     }
@@ -741,6 +762,43 @@ export const Settings: FC<SettingsProps> = ({
             <Bell size={16} />
             <span>Send Test Notification</span>
           </button>
+        </div>
+      </CollapsibleSection>
+
+      <CollapsibleSection 
+        id="integrations" 
+        title="Integrations" 
+        icon={Link2}
+        isExpanded={expandedSections.integrations}
+        onToggle={() => toggleSection('integrations')}
+      >
+        <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-6">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-[#FC6100]/10 rounded-xl flex items-center justify-center text-[#FC6100]">
+                  <Cloud size={20} />
+                </div>
+                <div>
+                  <p className="font-bold text-sm">Strava</p>
+                  <p className="text-xs text-white/40">Sync your activities</p>
+                </div>
+              </div>
+              {userProfile?.stravaConnected ? (
+                <div className="flex items-center space-x-2 text-green-500 text-sm font-medium">
+                  <CheckCircle2 size={18} />
+                  <span>Connected</span>
+                </div>
+              ) : (
+                <button 
+                  onClick={onConnectStrava}
+                  className="bg-[#FC6100] text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-[#FC6100]/90 transition-all active:scale-95"
+                >
+                  Connect
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </CollapsibleSection>
 

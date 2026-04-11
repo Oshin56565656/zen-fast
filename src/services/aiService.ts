@@ -99,10 +99,14 @@ export async function getFastingInsights(
     .slice(0, 10)
     .map(w => ({
       localTime: formatLocalTime(w.startTime),
-      localEndTime: formatLocalTime(w.endTime),
+      localEndTime: w.endTime ? formatLocalTime(w.endTime) : 'N/A',
       durationMins: w.duration,
       intensity: w.intensity,
       type: w.type || 'other',
+      distance: w.distance ? `${(w.distance / 1000).toFixed(2)}km` : 'N/A',
+      calories: w.calories ? `${Math.round(w.calories)}kcal` : 'N/A',
+      elevation: w.elevation ? `${Math.round(w.elevation)}m` : 'N/A',
+      name: w.name || 'Workout',
       relativeTime: `${Math.round((now.getTime() - w.startTime) / 60000)} minutes ago`
     }));
 
@@ -146,7 +150,7 @@ export async function getFastingInsights(
     4. How their meal choices (descriptions) affect their metabolic health and potentially their sleep.
     5. Hydration: Analyze their water intake patterns and suggest an optimal daily water goal (in ml) based on their physical profile, activity level, and current hydration habits.
     6. Calorie Estimation: Based on the descriptions and scales of the meals logged TODAY (using userLocalTime as reference), provide a rough estimate of their total calorie intake for the current day. If no meals are logged today, provide a general estimate based on their typical patterns or skip if no data.
-    7. Calories Burned: Based on the workouts logged TODAY (duration, intensity, and type) and their physical profile (BMR estimate), provide a rough estimate of their total calories burned for the current day.
+    7. Calories Burned: Use the "Recent Workouts" data (specifically duration, intensity, type, distance, and calories) logged TODAY to provide a rough estimate of their total calories burned for the current day. If Strava provides a "calories" value, prioritize that. Otherwise, estimate based on duration and intensity. Include their physical profile (BMR estimate) in the total.
     
     CRITICAL: 
     1. Use "User's Current Local Time" as the primary reference for "morning", "night", etc.
@@ -155,6 +159,7 @@ export async function getFastingInsights(
     4. Use "relativeTime" fields to understand how long ago events happened relative to "now".
     5. Only use the data provided in the lists below. Do NOT infer or assume meal times.
     6. ALWAYS use 12-hour format (e.g., "10:00 am") when mentioning specific times in your response.
+    7. When analyzing workouts, look at the "name", "type", "distance", and "calories" fields if available.
     
     Fasting History: ${JSON.stringify(historyData)}
     Recent Meals: ${JSON.stringify(mealData)}

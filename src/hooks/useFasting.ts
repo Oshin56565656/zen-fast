@@ -376,8 +376,12 @@ export function useFasting() {
     
     const startTime = customStartTime || Date.now();
     
+    const targetLabel = state.targetEndTime 
+      ? `until ${new Date(state.targetEndTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+      : `${state.targetHours}h`;
+    
     sendNotification("Fast Started!", {
-      body: `Your ${state.targetHours}h fast has begun. Good luck!`,
+      body: `Your fast ${targetLabel} has begun. Good luck!`,
       icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
     });
     
@@ -423,7 +427,10 @@ export function useFasting() {
     const durationMs = now - effectiveStartTime;
     const durationSec = Math.floor(durationMs / 1000);
     
-    const targetSec = state.targetHours * 3600;
+    // Calculate target seconds based on targetEndTime if set, otherwise use targetHours
+    const targetSec = state.targetEndTime 
+      ? Math.floor((state.targetEndTime - effectiveStartTime) / 1000)
+      : state.targetHours * 3600;
 
     const newRecord = {
       startTime: state.startTime,

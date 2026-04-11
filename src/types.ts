@@ -53,6 +53,11 @@ export interface WorkoutRecord {
   duration: number; // calculated in minutes
   intensity: WorkoutIntensity;
   type: WorkoutType;
+  distance?: number;
+  calories?: number;
+  elevation?: number;
+  name?: string;
+  source?: 'strava' | 'manual';
   createdAt?: any;
 }
 

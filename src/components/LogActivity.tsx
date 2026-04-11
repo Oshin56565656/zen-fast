@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets, LineChart, Mic, MicOff, Sparkles, MapPin, Play } from 'lucide-react';
+import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets, LineChart, Mic, MicOff, Sparkles, MapPin, Play, RefreshCw, Cloud, Bike, Footprints } from 'lucide-react';
 import { MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity } from '../types';
 import { cn } from '../lib/utils';
 import { formatTime, formatDate } from '../lib/utils';
@@ -23,6 +23,8 @@ interface LogActivityProps {
   onDeleteSleep: (id: string) => void;
   onDeleteWater: (id: string) => void;
   onDeleteWeight: (id: string) => void;
+  userProfile?: any;
+  onSyncStrava?: () => void;
 }
 
 const LogActivity: React.FC<LogActivityProps> = ({
@@ -40,9 +42,13 @@ const LogActivity: React.FC<LogActivityProps> = ({
   onDeleteWorkout,
   onDeleteSleep,
   onDeleteWater,
-  onDeleteWeight
+  onDeleteWeight,
+  userProfile,
+  onSyncStrava
 }) => {
   const [activeType, setActiveType] = useState<'meal' | 'workout' | 'sleep' | 'water' | 'weight'>('meal');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncStatus, setSyncStatus] = useState<{ type: 'success' | 'error' | 'info', message: string } | null>(null);
   const [searchDate, setSearchDate] = useState<string>('');
   
   // Meal Form State
@@ -235,12 +241,28 @@ const LogActivity: React.FC<LogActivityProps> = ({
     setWeightNote('');
   };
 
-  const filterByDate = <T extends { time?: number; startTime?: number; bedtime?: number; wakeUpTime?: number }>(logs: T[]) => {
-    if (!searchDate) return logs.slice(0, 6);
+  const handleStravaSync = async () => {
+    if (!onSyncStrava) return;
+    setIsSyncing(true);
+    setSyncStatus(null);
+    try {
+      await onSyncStrava();
+      setSyncStatus({ type: 'success', message: 'Workouts synced successfully!' });
+      setTimeout(() => setSyncStatus(null), 3000);
+    } catch (error) {
+      setSyncStatus({ type: 'error', message: 'Failed to sync workouts.' });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const filterByDate = <T extends { time?: number; startTime?: number; bedtime?: number; wakeUpTime?: number; startDate?: string }>(logs: T[]) => {
+    if (!searchDate) return logs.slice(0, 6); // Show only 6 most recent logs unless a date is chosen
     
     const targetDate = new Date(searchDate);
     return logs.filter(log => {
-      const logDate = new Date(log.time || log.startTime || log.bedtime || log.wakeUpTime || 0);
+      const logTime = log.time || log.startTime || log.bedtime || log.wakeUpTime || (log.startDate ? new Date(log.startDate).getTime() : 0);
+      const logDate = new Date(logTime);
       return (
         logDate.getFullYear() === targetDate.getFullYear() &&
         logDate.getMonth() === targetDate.getMonth() &&
@@ -250,7 +272,10 @@ const LogActivity: React.FC<LogActivityProps> = ({
   };
 
   const filteredMeals = ([...filterByDate(meals)] as MealRecord[]).sort((a, b) => b.time - a.time);
-  const filteredWorkouts = ([...filterByDate(workouts)] as WorkoutRecord[]).sort((a, b) => b.startTime - a.startTime);
+  const filteredWorkouts = ([...filterByDate(workouts)] as any[]).sort((a, b) => {
+    const getT = (w: any) => w.startTime || (w.startDate ? new Date(w.startDate).getTime() : 0);
+    return getT(b) - getT(a);
+  });
   const filteredSleep = ([...filterByDate(sleep)] as SleepRecord[]).sort((a, b) => b.wakeUpTime - a.wakeUpTime);
   const filteredWater = ([...filterByDate(water)] as WaterRecord[]).sort((a, b) => b.time - a.time);
   const filteredWeights = ([...filterByDate(weights)] as WeightRecord[]).sort((a, b) => b.time - a.time);
@@ -264,7 +289,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
             activeType === 'meal' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
           }`}
         >
-          <Utensils size={18} />
+          <Utensils size={18} strokeWidth={3} />
           <span className="font-bold">Meal</span>
         </button>
         <button
@@ -273,7 +298,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
             activeType === 'workout' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
           }`}
         >
-          <Dumbbell size={18} />
+          <Dumbbell size={18} strokeWidth={2.5} />
           <span className="font-bold">Workout</span>
         </button>
         <button
@@ -282,7 +307,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
             activeType === 'sleep' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
           }`}
         >
-          <Moon size={18} />
+          <Moon size={18} strokeWidth={2.5} />
           <span className="font-bold">Sleep</span>
         </button>
         <button
@@ -291,7 +316,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
             activeType === 'water' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
           }`}
         >
-          <Droplets size={18} />
+          <Droplets size={18} strokeWidth={2.5} />
           <span className="font-bold">Water</span>
         </button>
         <button
@@ -300,10 +325,52 @@ const LogActivity: React.FC<LogActivityProps> = ({
             activeType === 'weight' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
           }`}
         >
-          <Scale size={18} />
+          <Scale size={18} strokeWidth={2.5} />
           <span className="font-bold">Weight</span>
         </button>
       </div>
+
+      {activeType === 'workout' && userProfile?.stravaConnected && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-[#FC6100]/10 p-4 rounded-2xl border border-[#FC6100]/20 flex items-center justify-between"
+        >
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-[#FC6100] rounded-xl flex items-center justify-center text-white">
+              <Cloud size={20} />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-white">Strava Integration</p>
+              <p className="text-[10px] text-white/60">Sync your latest activities</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleStravaSync}
+            disabled={isSyncing}
+            className="flex items-center space-x-2 bg-[#FC6100] text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-[#FC6100]/90 transition-all active:scale-95 disabled:opacity-50"
+          >
+            <RefreshCw size={14} className={isSyncing ? 'animate-spin' : ''} />
+            <span>{isSyncing ? 'Syncing...' : 'Fetch from Strava'}</span>
+          </button>
+        </motion.div>
+      )}
+
+      {syncStatus && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={cn(
+            "p-3 rounded-xl text-xs font-bold text-center",
+            syncStatus.type === 'success' ? "bg-green-500/10 text-green-500" :
+            syncStatus.type === 'error' ? "bg-red-500/10 text-red-500" :
+            "bg-blue-500/10 text-blue-500"
+          )}
+        >
+          {syncStatus.message}
+        </motion.div>
+      )}
 
       {activeType === 'meal' ? (
         <motion.form
@@ -707,7 +774,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                 <div key={meal.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center text-orange-500">
-                      <Utensils size={20} />
+                      <Utensils size={20} strokeWidth={3} />
                     </div>
                     <div>
                       <p className="font-bold text-white capitalize">{meal.scale} Meal</p>
@@ -732,27 +799,71 @@ const LogActivity: React.FC<LogActivityProps> = ({
             )
           ) : activeType === 'workout' ? (
             filteredWorkouts.length > 0 ? (
-              filteredWorkouts.map((workout) => (
-                <div key={workout.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center text-blue-500">
-                      <Dumbbell size={20} />
+              filteredWorkouts.map((workout: any) => (
+                <div key={workout.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center",
+                        workout.source === 'strava' ? "bg-[#FC6100]/20 text-[#FC6100]" : 
+                        "bg-blue-500/20 text-blue-500"
+                      )}>
+                        {workout.type?.toLowerCase().includes('bike') || workout.type?.toLowerCase().includes('cycle') ? <Bike size={20} strokeWidth={2.5} /> :
+                         workout.type?.toLowerCase().includes('run') || workout.type?.toLowerCase().includes('walk') ? <Footprints size={20} strokeWidth={2.5} /> :
+                         <Dumbbell size={20} strokeWidth={2.5} />}
+                      </div>
+                      <div>
+                        <p className="font-bold text-white capitalize">
+                          {workout.name || workout.type || 'Workout'}
+                        </p>
+                        <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">
+                          {workout.source || 'Manual'} • {workout.intensity || 'moderate'}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-bold text-white capitalize">
-                        {workout.type || 'Workout'} • {workout.intensity}
-                      </p>
-                      <p className="text-xs text-white/40">
-                        {workout.duration} mins • {formatTime(workout.startTime)} - {formatTime(workout.endTime)}
-                      </p>
-                    </div>
+                    <button
+                      onClick={() => onDeleteWorkout(workout.id)}
+                      className="p-2 text-white/20 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 size={18} />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => onDeleteWorkout(workout.id)}
-                    className="p-2 text-white/20 hover:text-red-500 transition-colors"
-                  >
-                    <Trash2 size={18} />
-                  </button>
+                  
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/5">
+                    <div className="text-center">
+                      <p className="text-[10px] text-white/20 font-bold uppercase">Duration</p>
+                      <p className="text-xs font-bold text-white">
+                        {workout.duration || Math.round((workout.endTime - workout.startTime) / 60000)}m
+                      </p>
+                    </div>
+                    {!!workout.distance && (
+                      <div className="text-center">
+                        <p className="text-[10px] text-white/20 font-bold uppercase">Distance</p>
+                        <p className="text-xs font-bold text-white">{(workout.distance / 1000).toFixed(2)}km</p>
+                      </div>
+                    )}
+                    {!!workout.calories && (
+                      <div className="text-center">
+                        <p className="text-[10px] text-white/20 font-bold uppercase">Calories</p>
+                        <p className="text-xs font-bold text-white">{Math.round(workout.calories)}kcal</p>
+                      </div>
+                    )}
+                    {!!workout.elevation && (
+                      <div className="text-center">
+                        <p className="text-[10px] text-white/20 font-bold uppercase">Elevation</p>
+                        <p className="text-xs font-bold text-white">{Math.round(workout.elevation)}m</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex items-center justify-between pt-1">
+                    <p className="text-[10px] text-white/20">
+                      {formatTime(workout.startTime)} - {formatTime(workout.endTime || (workout.startTime + (workout.duration || 0) * 60000))}
+                    </p>
+                    <p className="text-[10px] text-white/20">
+                      {formatDate(workout.startTime || new Date(workout.startDate).getTime())}
+                    </p>
+                  </div>
                 </div>
               ))
             ) : (
@@ -764,7 +875,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                 <div key={s.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-500">
-                      <Moon size={20} />
+                      <Moon size={20} strokeWidth={2.5} />
                     </div>
                     <div>
                       <p className="font-bold text-white capitalize">{s.quality} Sleep</p>
@@ -790,7 +901,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                 <div key={w.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-blue-400/20 rounded-xl flex items-center justify-center text-blue-400">
-                      <Droplets size={20} />
+                      <Droplets size={20} strokeWidth={2.5} />
                     </div>
                     <div>
                       <p className="font-bold text-white">{w.amount}ml Water</p>
@@ -814,7 +925,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                 <div key={w.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-500">
-                      <Scale size={20} />
+                      <Scale size={20} strokeWidth={2.5} />
                     </div>
                     <div>
                       <p className="font-bold text-white">{w.weight} kg</p>

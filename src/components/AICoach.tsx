@@ -370,7 +370,7 @@ const ChatBox: React.FC<{
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
-                          <Utensils size={20} />
+                          <Utensils size={20} strokeWidth={3} />
                         </div>
                         <div>
                           <h3 className="text-lg font-bold text-white">Intake Guess</h3>
@@ -396,7 +396,7 @@ const ChatBox: React.FC<{
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center text-orange-500">
-                          <Dumbbell size={20} />
+                          <Dumbbell size={20} strokeWidth={2.5} />
                         </div>
                         <div>
                           <h3 className="text-lg font-bold text-white">Burned Guess</h3>

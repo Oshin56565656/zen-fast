@@ -1,6 +1,6 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Timer as TimerIcon, History as HistoryIcon, BarChart3, Settings as SettingsIcon, LogOut, Sparkles, PlusCircle, Zap } from 'lucide-react';
+import { Timer as TimerIcon, History as HistoryIcon, BarChart3, Settings as SettingsIcon, LogOut, Sparkles, PlusCircle, Zap, Activity, Link2 } from 'lucide-react';
 import { Timer } from './components/Timer';
 import { History } from './components/History';
 import { Stats } from './components/Stats';
@@ -8,11 +8,12 @@ import { Settings } from './components/Settings';
 import { Auth } from './components/Auth';
 import AICoach from './components/AICoach';
 import LogActivity from './components/LogActivity';
+import { useWorkouts } from './hooks/useWorkouts';
 import { useFasting } from './hooks/useFasting';
 import { auth, signOut } from './firebase';
 import { cn } from './lib/utils';
 
-type Tab = 'timer' | 'history' | 'stats' | 'coach' | 'log' | 'settings';
+type Tab = 'timer' | 'history' | 'stats' | 'workouts' | 'coach' | 'log' | 'settings';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('timer');
@@ -57,6 +58,16 @@ export default function App() {
     dailySummaries,
     saveDailySummary
   } = useFasting();
+
+  const { workouts: stravaWorkouts, userProfile, connectStrava, syncStrava } = useWorkouts();
+
+  // Combine and deduplicate workouts
+  const sortedAllWorkouts = Array.from(
+    new Map([...workouts, ...stravaWorkouts].map(w => [w.id, w])).values()
+  ).sort((a: any, b: any) => {
+    const getT = (w: any) => w.startTime || (w.startDate ? new Date(w.startDate).getTime() : 0);
+    return getT(b) - getT(a);
+  });
 
   useEffect(() => {
     if (state.accentColor) {
@@ -108,17 +119,19 @@ export default function App() {
             sleep={sleep} 
             water={water} 
             weights={weights} 
-            workouts={workouts} 
+            workouts={sortedAllWorkouts} 
             waterGoal={state.waterGoal} 
             dailySummaries={dailySummaries}
           />
         );
+      case 'workouts':
+        return null; // Removed tab
       case 'coach':
         return (
           <AICoach 
             history={history} 
             meals={meals} 
-            workouts={workouts} 
+            workouts={sortedAllWorkouts} 
             sleep={sleep}
             water={water}
             height={state.height}
@@ -133,7 +146,7 @@ export default function App() {
         return (
           <LogActivity 
             meals={meals} 
-            workouts={workouts} 
+            workouts={sortedAllWorkouts} 
             sleep={sleep}
             water={water}
             weights={weights}
@@ -147,6 +160,8 @@ export default function App() {
             onDeleteSleep={deleteSleep}
             onDeleteWater={deleteWater}
             onDeleteWeight={deleteWeight}
+            userProfile={userProfile}
+            onSyncStrava={syncStrava}
           />
         );
       case 'settings':
@@ -177,8 +192,10 @@ export default function App() {
               onTestNotification={testNotification}
               history={history}
               meals={meals}
-              workouts={workouts}
+              workouts={sortedAllWorkouts}
               sleep={sleep}
+              userProfile={userProfile}
+              onConnectStrava={connectStrava}
             />
             <div className="px-6">
               <button
@@ -231,37 +248,37 @@ export default function App() {
         <NavButton 
           active={activeTab === 'timer'} 
           onClick={() => setActiveTab('timer')} 
-          icon={<TimerIcon size={24} />} 
+          icon={<TimerIcon size={24} strokeWidth={2.5} />} 
           label="Timer" 
         />
         <NavButton 
           active={activeTab === 'history'} 
           onClick={() => setActiveTab('history')} 
-          icon={<HistoryIcon size={24} />} 
+          icon={<HistoryIcon size={24} strokeWidth={2.5} />} 
           label="History" 
         />
         <NavButton 
           active={activeTab === 'stats'} 
           onClick={() => setActiveTab('stats')} 
-          icon={<BarChart3 size={24} />} 
+          icon={<BarChart3 size={24} strokeWidth={2.5} />} 
           label="Stats" 
         />
         <NavButton 
           active={activeTab === 'coach'} 
           onClick={() => setActiveTab('coach')} 
-          icon={<Sparkles size={24} />} 
+          icon={<Sparkles size={24} strokeWidth={2.5} />} 
           label="Coach" 
         />
         <NavButton 
           active={activeTab === 'log'} 
           onClick={() => setActiveTab('log')} 
-          icon={<PlusCircle size={24} />} 
+          icon={<PlusCircle size={24} strokeWidth={2.5} />} 
           label="Log" 
         />
         <NavButton 
           active={activeTab === 'settings'} 
           onClick={() => setActiveTab('settings')} 
-          icon={<SettingsIcon size={24} />} 
+          icon={<SettingsIcon size={24} strokeWidth={2.5} />} 
           label="Settings" 
         />
       </nav>
