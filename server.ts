@@ -3,6 +3,7 @@ import { createServer as createViteServer } from "vite";
 import path from "path";
 import { fileURLToPath } from "url";
 import axios from "axios";
+import { GoogleGenAI } from "@google/genai";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,6 +11,9 @@ const __dirname = path.dirname(__filename);
 const STRAVA_CLIENT_ID = process.env.STRAVA_CLIENT_ID;
 const STRAVA_CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET;
 const APP_URL = process.env.APP_URL || "http://localhost:3000";
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.API_KEY;
+
+const genAI = new GoogleGenAI(GEMINI_API_KEY || "");
 
 async function startServer() {
   const app = express();
@@ -20,6 +24,39 @@ async function startServer() {
   // API routes FIRST
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok" });
+  });
+
+  // Gemini Proxy
+  app.post("/api/ai/generate", async (req, res) => {
+    const { model, contents, config } = req.body;
+    
+    if (!GEMINI_API_KEY) {
+      return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server." });
+    }
+
+    try {
+      const generativeModel = genAI.getGenerativeModel({ 
+        model: model || "gemini-1.5-flash",
+        systemInstruction: config?.systemInstruction
+      });
+      
+      const result = await generativeModel.generateContent({
+        contents: contents,
+        generationConfig: {
+          responseMimeType: config?.responseMimeType,
+          responseSchema: config?.responseSchema
+        }
+      });
+      
+      const response = await result.response;
+      res.json({ text: response.text() });
+    } catch (error: any) {
+      console.error("Gemini Proxy Error:", error);
+      res.status(error.status || 500).json({ 
+        error: error.message || "Internal Server Error",
+        details: error.response?.data || error
+      });
+    }
   });
 
   // Strava OAuth URL
