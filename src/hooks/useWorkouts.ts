@@ -109,9 +109,15 @@ export function useWorkouts() {
       const redirectUri = `${window.location.origin}/auth/strava/callback`;
       const response = await fetch(`/api/auth/strava/url?redirectUri=${encodeURIComponent(redirectUri)}`);
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to get connection URL");
+      const contentType = response.headers.get("content-type");
+      if (!response.ok || !contentType || !contentType.includes("application/json")) {
+        const text = await response.text();
+        console.error("Server response was not JSON:", text);
+        throw new Error(
+          !response.ok 
+            ? `Server error (${response.status}). Please ensure you are using the Shared App URL from AI Studio.`
+            : "The server returned an invalid response. This usually happens if the backend server is not running (common on static hosting like Vercel)."
+        );
       }
 
       const { url } = await response.json();

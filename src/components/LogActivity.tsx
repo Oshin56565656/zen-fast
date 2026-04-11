@@ -258,12 +258,17 @@ const LogActivity: React.FC<LogActivityProps> = ({
     }
   };
 
-  const filterByDate = <T extends { time?: number; startTime?: number; bedtime?: number; wakeUpTime?: number; startDate?: string }>(logs: T[]) => {
-    if (!searchDate) return logs.slice(0, 6); // Show only 6 most recent logs unless a date is chosen
+  const filterAndSort = <T extends { time?: number; startTime?: number; bedtime?: number; wakeUpTime?: number; startDate?: string }>(logs: T[]) => {
+    const getLogTime = (log: T) => log.time || log.startTime || log.bedtime || log.wakeUpTime || (log.startDate ? new Date(log.startDate).getTime() : 0);
+    
+    // Always sort by time descending first
+    const sorted = [...logs].sort((a, b) => getLogTime(b) - getLogTime(a));
+
+    if (!searchDate) return sorted.slice(0, 6); // Show only 6 most recent logs unless a date is chosen
     
     const targetDate = new Date(searchDate);
-    return logs.filter(log => {
-      const logTime = log.time || log.startTime || log.bedtime || log.wakeUpTime || (log.startDate ? new Date(log.startDate).getTime() : 0);
+    return sorted.filter(log => {
+      const logTime = getLogTime(log);
       const logDate = new Date(logTime);
       return (
         logDate.getFullYear() === targetDate.getFullYear() &&
@@ -273,14 +278,11 @@ const LogActivity: React.FC<LogActivityProps> = ({
     });
   };
 
-  const filteredMeals = ([...filterByDate(meals)] as MealRecord[]).sort((a, b) => b.time - a.time);
-  const filteredWorkouts = ([...filterByDate(workouts)] as any[]).sort((a, b) => {
-    const getT = (w: any) => w.startTime || (w.startDate ? new Date(w.startDate).getTime() : 0);
-    return getT(b) - getT(a);
-  });
-  const filteredSleep = ([...filterByDate(sleep)] as SleepRecord[]).sort((a, b) => b.wakeUpTime - a.wakeUpTime);
-  const filteredWater = ([...filterByDate(water)] as WaterRecord[]).sort((a, b) => b.time - a.time);
-  const filteredWeights = ([...filterByDate(weights)] as WeightRecord[]).sort((a, b) => b.time - a.time);
+  const filteredMeals = filterAndSort(meals) as MealRecord[];
+  const filteredWorkouts = filterAndSort(workouts) as any[];
+  const filteredSleep = filterAndSort(sleep) as SleepRecord[];
+  const filteredWater = filterAndSort(water) as WaterRecord[];
+  const filteredWeights = filterAndSort(weights) as WeightRecord[];
 
   return (
     <div className="space-y-8 p-6 pb-24">
@@ -291,7 +293,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
             activeType === 'meal' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
           }`}
         >
-          <Utensils size={18} strokeWidth={3} />
+          <Utensils size={18} strokeWidth={2.5} />
           <span className="font-bold">Meal</span>
         </button>
         <button
@@ -776,7 +778,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                 <div key={meal.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center text-orange-500">
-                      <Utensils size={20} strokeWidth={3} />
+                      <Utensils size={20} strokeWidth={2.5} />
                     </div>
                     <div>
                       <p className="font-bold text-white capitalize">{meal.scale} Meal</p>
@@ -791,7 +793,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                       onClick={() => onDeleteMeal(meal.id)}
                       className="p-2 text-white/20 hover:text-red-500 transition-colors"
                     >
-                      <Trash2 size={18} />
+                      <Trash2 size={18} strokeWidth={2.5} />
                     </button>
                   </div>
                 </div>
@@ -839,7 +841,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                         onClick={() => onDeleteWorkout(workout.id)}
                         className="p-2 text-white/20 hover:text-red-500 transition-colors"
                       >
-                        <Trash2 size={18} />
+                        <Trash2 size={18} strokeWidth={2.5} />
                       </button>
                     </div>
                   </div>
@@ -903,7 +905,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                     onClick={() => onDeleteSleep(s.id)}
                     className="p-2 text-white/20 hover:text-red-500 transition-colors"
                   >
-                    <Trash2 size={18} />
+                    <Trash2 size={18} strokeWidth={2.5} />
                   </button>
                 </div>
               ))
@@ -927,7 +929,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                     onClick={() => onDeleteWater(w.id)}
                     className="p-2 text-white/20 hover:text-red-500 transition-colors"
                   >
-                    <Trash2 size={18} />
+                    <Trash2 size={18} strokeWidth={2.5} />
                   </button>
                 </div>
               ))
@@ -954,7 +956,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                     onClick={() => onDeleteWeight(w.id)}
                     className="p-2 text-white/20 hover:text-red-500 transition-colors"
                   >
-                    <Trash2 size={18} />
+                    <Trash2 size={18} strokeWidth={2.5} />
                   </button>
                 </div>
               ))
