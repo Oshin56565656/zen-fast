@@ -88,7 +88,8 @@ export function useWorkouts() {
 
   const connectStrava = async () => {
     try {
-      const response = await fetch('/api/auth/strava/url');
+      const redirectUri = `${window.location.origin}/auth/strava/callback`;
+      const response = await fetch(`/api/auth/strava/url?redirectUri=${encodeURIComponent(redirectUri)}`);
       const { url } = await response.json();
       
       const authWindow = window.open(url, 'strava_oauth', 'width=600,height=700');
@@ -225,11 +226,22 @@ export function useWorkouts() {
     }
   };
 
+  const updateWorkout = async (id: string, updates: Partial<Workout>) => {
+    if (!auth.currentUser) return;
+    try {
+      const workoutRef = doc(db, 'users', auth.currentUser.uid, 'workouts', id);
+      await setDoc(workoutRef, updates, { merge: true });
+    } catch (error) {
+      console.error("Error updating workout:", error);
+    }
+  };
+
   return {
     workouts,
     loading,
     userProfile,
     connectStrava,
-    syncStrava
+    syncStrava,
+    updateWorkout
   };
 }

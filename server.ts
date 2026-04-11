@@ -24,7 +24,9 @@ async function startServer() {
 
   // Strava OAuth URL
   app.get("/api/auth/strava/url", (req, res) => {
-    const redirectUri = `${APP_URL}/auth/strava/callback`;
+    const clientRedirectUri = req.query.redirectUri as string;
+    const redirectUri = clientRedirectUri || `${APP_URL}/auth/strava/callback`;
+    
     const params = new URLSearchParams({
       client_id: STRAVA_CLIENT_ID!,
       redirect_uri: redirectUri,

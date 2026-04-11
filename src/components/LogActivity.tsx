@@ -23,6 +23,7 @@ interface LogActivityProps {
   onDeleteSleep: (id: string) => void;
   onDeleteWater: (id: string) => void;
   onDeleteWeight: (id: string) => void;
+  onUpdateWorkout?: (id: string, updates: any) => void;
   userProfile?: any;
   onSyncStrava?: () => void;
 }
@@ -43,6 +44,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
   onDeleteSleep,
   onDeleteWater,
   onDeleteWeight,
+  onUpdateWorkout,
   userProfile,
   onSyncStrava
 }) => {
@@ -821,12 +823,25 @@ const LogActivity: React.FC<LogActivityProps> = ({
                         </p>
                       </div>
                     </div>
-                    <button
-                      onClick={() => onDeleteWorkout(workout.id)}
-                      className="p-2 text-white/20 hover:text-red-500 transition-colors"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      {onUpdateWorkout && (
+                        <select
+                          value={workout.intensity || 'moderate'}
+                          onChange={(e) => onUpdateWorkout(workout.id, { intensity: e.target.value })}
+                          className="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[10px] font-bold text-white/60 focus:outline-none focus:border-primary transition-colors appearance-none cursor-pointer hover:bg-white/10"
+                        >
+                          <option value="low">Low</option>
+                          <option value="moderate">Med</option>
+                          <option value="high">High</option>
+                        </select>
+                      )}
+                      <button
+                        onClick={() => onDeleteWorkout(workout.id)}
+                        className="p-2 text-white/20 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </div>
                   
                   <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/5">

@@ -59,7 +59,7 @@ export default function App() {
     saveDailySummary
   } = useFasting();
 
-  const { workouts: stravaWorkouts, userProfile, connectStrava, syncStrava } = useWorkouts();
+  const { workouts: stravaWorkouts, userProfile, connectStrava, syncStrava, updateWorkout } = useWorkouts();
 
   // Combine and deduplicate workouts
   const sortedAllWorkouts = Array.from(
@@ -160,6 +160,7 @@ export default function App() {
             onDeleteSleep={deleteSleep}
             onDeleteWater={deleteWater}
             onDeleteWeight={deleteWeight}
+            onUpdateWorkout={updateWorkout}
             userProfile={userProfile}
             onSyncStrava={syncStrava}
           />
