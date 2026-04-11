@@ -961,8 +961,27 @@ export const Settings: FC<SettingsProps> = ({
             Intermittent fasting is an eating pattern where you cycle between periods of eating and fasting. 
             Simply set your target hours and start your fast.
           </p>
-          <div className="pt-4 border-t border-white/5">
-            <p className="text-xs text-white/20">Version 1.1.0</p>
+          <div className="pt-4 border-t border-white/5 space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-white/20">Version 1.2.0</p>
+              <button 
+                onClick={() => {
+                  if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(registrations => {
+                      for(let registration of registrations) {
+                        registration.unregister();
+                      }
+                      window.location.reload();
+                    });
+                  } else {
+                    window.location.reload();
+                  }
+                }}
+                className="text-[10px] text-primary font-bold uppercase hover:underline"
+              >
+                Force Update App
+              </button>
+            </div>
           </div>
         </div>
       </CollapsibleSection>

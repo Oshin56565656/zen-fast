@@ -3,6 +3,10 @@ import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord } from 
 const callAIProxy = async (payload: any) => {
   const manualKey = typeof window !== 'undefined' ? localStorage.getItem('FT_GEMINI_API_KEY') : null;
   
+  if (!manualKey) {
+    throw new Error("Gemini API Key is missing. Please go to Settings > AI Coach and enter your API key.");
+  }
+  
   const response = await fetch('/api/ai/generate', {
     method: 'POST',
     headers: { 

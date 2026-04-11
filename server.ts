@@ -31,10 +31,16 @@ async function startServer() {
     const { model, contents, config } = req.body;
     const manualKey = req.headers['x-gemini-api-key'] as string;
     
+    console.log("AI Proxy Request:", {
+      hasManualKey: !!manualKey,
+      hasServerKey: !!GEMINI_API_KEY,
+      model: model
+    });
+    
     const apiKeyToUse = manualKey || GEMINI_API_KEY;
     
     if (!apiKeyToUse) {
-      return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server. Please add it to your app settings or environment variables." });
+      return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server. If you are using a personal key, please ensure you have entered it in Settings > AI Integration and then REFRESH the app." });
     }
 
     try {
