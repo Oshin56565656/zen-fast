@@ -1,11 +1,10 @@
 import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord } from "../types";
 
 const callAIProxy = async (payload: any) => {
-  const manualKey = typeof window !== 'undefined' ? localStorage.getItem('FT_GEMINI_API_KEY') : null;
+  const rawKey = typeof window !== 'undefined' ? localStorage.getItem('FT_GEMINI_API_KEY') : null;
+  const manualKey = rawKey ? rawKey.trim() : null;
   
-  if (!manualKey) {
-    throw new Error("Gemini API Key is missing. Please go to Settings > AI Coach and enter your API key.");
-  }
+  console.log("Sending AI Proxy Request with manual key prefix:", manualKey ? `${manualKey.substring(0, 4)}...` : 'none');
   
   const response = await fetch('/api/ai/generate', {
     method: 'POST',
@@ -181,7 +180,7 @@ export async function getFastingInsights(
   try {
     const response = await withTimeout(
       callAIProxy({
-        model: "gemini-1.5-flash",
+        model: "gemini-2.0-flash",
         contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: {
           systemInstruction: "You are an expert fasting and fitness coach. Provide data-driven, structured insights based on the user's history and physical profile (age, sex, height, and weight if provided). Be precise about timing relationships. Specifically, recommend the optimal workout time and intensity based on the user's last meal, current fasting state, and body metrics. IMPORTANT: Never hallucinate or infer meal or workout data that is not explicitly provided in the user's logs. ALWAYS use 12-hour time format (e.g., 10:00 am) in your responses.",
@@ -289,7 +288,7 @@ User Question: ${userMessage}` }]
 
   try {
     const response = await callAIProxy({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.0-flash",
       contents: contents,
       config: {
         systemInstruction: "You are an expert fasting and fitness coach. A user is asking you a question about a specific insight you previously provided. Answer their question concisely and accurately based on the context of that insight and their physical profile. Be supportive and data-driven. Keep responses under 3 sentences if possible."
@@ -321,7 +320,7 @@ export async function getPeriodicReview(
 
   try {
     const response = await callAIProxy({
-      model: "gemini-1.5-flash",
+      model: "gemini-2.0-flash",
       contents: [{ role: 'user', parts: [{ text: prompt }] }],
       config: {
         systemInstruction: "You are an expert health and fitness coach providing a high-level periodic review. Be concise, data-driven, and motivating."

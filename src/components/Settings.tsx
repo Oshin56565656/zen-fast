@@ -213,21 +213,18 @@ export const Settings: FC<SettingsProps> = ({
         return;
       }
 
-      // @ts-ignore
-      if (typeof window !== 'undefined' && window.aistudio) {
-        // @ts-ignore
-        const selected = await window.aistudio.hasSelectedApiKey();
-        setHasKey(selected || !!process.env.GEMINI_API_KEY || !!process.env.API_KEY);
-      }
+      setHasKey(false);
     };
     checkKey();
   }, []);
 
   const handleSaveManualKey = () => {
-    if (!manualKey.trim()) return;
+    const trimmedKey = manualKey.trim();
+    if (!trimmedKey) return;
     setIsSaving(true);
-    localStorage.setItem('FT_GEMINI_API_KEY', manualKey.trim());
+    localStorage.setItem('FT_GEMINI_API_KEY', trimmedKey);
     setHasKey(true);
+    setManualKey(trimmedKey);
     setTimeout(() => {
       setIsSaving(false);
       setShowManual(false);
@@ -833,7 +830,8 @@ export const Settings: FC<SettingsProps> = ({
           </div>
 
           <p className="text-xs text-white/60 leading-relaxed">
-            Connect your Gemini API key to get personalized insights, biological stage analysis, and smart motivation.
+            Connect your Gemini API key to get personalized insights, biological stage analysis, and smart motivation. 
+            <span className="block mt-1 text-[10px] text-white/40 italic">Note: The AI Coach may already be active if configured in your server environment.</span>
           </p>
 
           <button
@@ -852,21 +850,32 @@ export const Settings: FC<SettingsProps> = ({
           {showManual && (
             <div className="space-y-3 pt-2 border-t border-white/5 animate-in fade-in slide-in-from-top-2">
               <p className="text-[10px] text-white/40 font-medium uppercase tracking-wider">Paste API Key Manually</p>
-              <div className="flex space-x-2">
-                <input
-                  type="password"
-                  value={manualKey}
-                  onChange={(e) => setManualKey(e.target.value)}
-                  placeholder="AIzaSy..."
-                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-primary/50 transition-colors"
-                />
-                <button
-                  onClick={handleSaveManualKey}
-                  disabled={isSaving}
-                  className="bg-primary text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-primary/90 disabled:opacity-50 transition-all"
-                >
-                  {isSaving ? "Saving..." : "Save"}
-                </button>
+              <div className="space-y-2">
+                <div className="flex space-x-2">
+                  <input
+                    type="password"
+                    value={manualKey}
+                    onChange={(e) => setManualKey(e.target.value)}
+                    placeholder="AIzaSy..."
+                    className={cn(
+                      "flex-1 bg-white/5 border rounded-xl px-4 py-2 text-sm focus:outline-none transition-colors",
+                      manualKey && !manualKey.startsWith('AIza') ? "border-red-500/50" : "border-white/10 focus:border-primary/50"
+                    )}
+                  />
+                  <button
+                    onClick={handleSaveManualKey}
+                    disabled={isSaving}
+                    className="bg-primary text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-primary/90 disabled:opacity-50 transition-all"
+                  >
+                    {isSaving ? "Saving..." : "Save"}
+                  </button>
+                </div>
+                {manualKey && !manualKey.startsWith('AIza') && (
+                  <p className="text-[10px] text-red-400 flex items-center space-x-1">
+                    <AlertCircle size={10} />
+                    <span>Standard Gemini keys usually start with "AIza"</span>
+                  </p>
+                )}
               </div>
             </div>
           )}

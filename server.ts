@@ -11,9 +11,6 @@ const __dirname = path.dirname(__filename);
 const STRAVA_CLIENT_ID = process.env.STRAVA_CLIENT_ID;
 const STRAVA_CLIENT_SECRET = process.env.STRAVA_CLIENT_SECRET;
 const APP_URL = process.env.APP_URL || "http://localhost:3000";
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.API_KEY;
-
-const genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY || "" });
 
 async function startServer() {
   const app = express();
@@ -29,39 +26,86 @@ async function startServer() {
   // Gemini Proxy
   app.post("/api/ai/generate", async (req, res) => {
     const { model, contents, config } = req.body;
-    const manualKey = req.headers['x-gemini-api-key'] as string;
+    let manualKey = req.headers['x-gemini-api-key'] as string;
+    
+    // Clean up manual key
+    if (manualKey) {
+      manualKey = manualKey.trim();
+      if (manualKey === 'null' || manualKey === 'undefined' || manualKey === '') {
+        manualKey = '';
+      }
+    }
+    
+    // Check environment
+    const envGeminiKey = (process.env.GEMINI_API_KEY || '').trim();
+    const envApiKey = (process.env.API_KEY || '').trim();
+    
+    // Prioritize: Manual > GEMINI_API_KEY > API_KEY
+    let apiKeyToUse = manualKey || envGeminiKey || envApiKey;
+    
+    // Validation: Ignore obvious placeholders or variable names
+    if (apiKeyToUse && (
+      apiKeyToUse.startsWith('MY_') || 
+      apiKeyToUse === 'GEMINI_API_KEY' || 
+      apiKeyToUse === 'API_KEY' ||
+      apiKeyToUse.length < 20
+    )) {
+      console.log("Ignoring invalid API key placeholder:", apiKeyToUse);
+      apiKeyToUse = '';
+    }
     
     console.log("AI Proxy Request:", {
       hasManualKey: !!manualKey,
-      hasServerKey: !!GEMINI_API_KEY,
+      hasEnvGeminiKey: !!envGeminiKey,
+      hasEnvApiKey: !!envApiKey,
+      keyUsedPrefix: apiKeyToUse ? `${apiKeyToUse.substring(0, 4)}...` : 'none',
       model: model
     });
     
-    const apiKeyToUse = manualKey || GEMINI_API_KEY;
-    
-    if (!apiKeyToUse) {
-      return res.status(500).json({ error: "GEMINI_API_KEY is not configured on the server. If you are using a personal key, please ensure you have entered it in Settings > AI Integration and then REFRESH the app." });
+    if (!apiKeyToUse || apiKeyToUse === 'null' || apiKeyToUse === 'undefined') {
+      return res.status(500).json({ 
+        error: "Gemini API Key is missing or invalid. Standard Google API keys usually start with 'AIza'. Please check your Settings > AI Integration or server environment variables." 
+      });
     }
 
     try {
-      // Use the manual key if provided, otherwise fallback to the server-side key
-      const client = manualKey ? new GoogleGenAI({ apiKey: manualKey }) : genAI;
+      const client = new GoogleGenAI({ apiKey: apiKeyToUse });
       
-      const response = await client.models.generateContent({
-        model: model || "gemini-1.5-flash",
-        contents: contents,
-        config: {
-          systemInstruction: config?.systemInstruction,
-          responseMimeType: config?.responseMimeType,
-          responseSchema: config?.responseSchema
+      // Try gemini-2.0-flash first, then fallback to 1.5-flash
+      const modelsToTry = [model, "gemini-2.0-flash", "gemini-1.5-flash"].filter(Boolean);
+      let lastError = null;
+
+      for (const modelName of modelsToTry) {
+        try {
+          console.log(`Attempting Gemini API call with model: ${modelName}`);
+          const response = await client.models.generateContent({
+            model: modelName as string,
+            contents: contents,
+            config: {
+              systemInstruction: config?.systemInstruction,
+              responseMimeType: config?.responseMimeType,
+              responseSchema: config?.responseSchema
+            }
+          });
+          
+          return res.json({ text: response.text });
+        } catch (error: any) {
+          lastError = error;
+          if (error.status === 404) {
+            console.warn(`Model ${modelName} not found, trying next...`);
+            continue;
+          }
+          throw error; // Rethrow if it's not a 404
         }
-      });
+      }
       
-      res.json({ text: response.text });
+      // If we get here, all models failed
+      throw lastError;
     } catch (error: any) {
       console.error("Gemini Proxy Error:", error);
+      const keyPrefix = apiKeyToUse ? `${apiKeyToUse.substring(0, 4)}...` : 'none';
       res.status(error.status || 500).json({ 
-        error: error.message || "Internal Server Error",
+        error: `Gemini API Error (Key: ${keyPrefix}): ${error.message || "Internal Server Error"}`,
         details: error.response?.data || error
       });
     }
@@ -181,6 +225,7 @@ async function startServer() {
 
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
+    console.log("Starting server in DEVELOPMENT mode with Vite middleware");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -188,6 +233,7 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.join(process.cwd(), 'dist');
+    console.log(`Starting server in PRODUCTION mode, serving from: ${distPath}`);
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
