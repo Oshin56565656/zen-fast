@@ -38,22 +38,36 @@ export function useWorkouts() {
   const [userProfile, setUserProfile] = useState<any>(null);
 
   useEffect(() => {
+    let unsubscribeWorkouts: (() => void) | undefined;
+    let unsubscribeProfile: (() => void) | undefined;
+
     const unsubscribeAuth = auth.onAuthStateChanged(async (user) => {
       if (user) {
-        // Fetch user profile
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        if (userDoc.exists()) {
-          setUserProfile(userDoc.data());
-        } else {
-          // Create initial profile
-          const initialProfile = {
-            uid: user.uid,
-            email: user.email,
-            stravaConnected: false
-          };
-          await setDoc(doc(db, 'users', user.uid), initialProfile);
-          setUserProfile(initialProfile);
-        }
+        // Listen to user profile in real-time
+        const userRef = doc(db, 'users', user.uid);
+        unsubscribeProfile = onSnapshot(userRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setUserProfile(data);
+            
+            // Auto-sync if connected and not already syncing
+            if (data.stravaConnected && data.stravaAccessToken && !loading) {
+              // We use a small delay to ensure everything is ready
+              setTimeout(() => {
+                syncStrava();
+              }, 1000);
+            }
+          } else {
+            // Create initial profile if it doesn't exist
+            const initialProfile = {
+              uid: user.uid,
+              email: user.email,
+              stravaConnected: false
+            };
+            setDoc(userRef, initialProfile);
+            setUserProfile(initialProfile);
+          }
+        });
 
         // Listen to workouts
         const workoutsRef = collection(db, 'users', user.uid, 'workouts');
@@ -63,7 +77,7 @@ export function useWorkouts() {
           limit(50)
         );
 
-        const unsubscribeWorkouts = onSnapshot(q, (snapshot) => {
+        unsubscribeWorkouts = onSnapshot(q, (snapshot) => {
           const workoutData: Workout[] = [];
           snapshot.forEach((doc) => {
             workoutData.push({ id: doc.id, ...doc.data() } as Workout);
@@ -74,16 +88,20 @@ export function useWorkouts() {
           console.error("Error fetching workouts:", error);
           setLoading(false);
         });
-
-        return () => unsubscribeWorkouts();
       } else {
+        if (unsubscribeProfile) unsubscribeProfile();
+        if (unsubscribeWorkouts) unsubscribeWorkouts();
         setWorkouts([]);
         setUserProfile(null);
         setLoading(false);
       }
     });
 
-    return () => unsubscribeAuth();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeProfile) unsubscribeProfile();
+      if (unsubscribeWorkouts) unsubscribeWorkouts();
+    };
   }, []);
 
   const connectStrava = async () => {
