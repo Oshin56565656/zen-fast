@@ -49,14 +49,6 @@ export function useWorkouts() {
           if (docSnap.exists()) {
             const data = docSnap.data();
             setUserProfile(data);
-            
-            // Auto-sync if connected and not already syncing
-            if (data.stravaConnected && data.stravaAccessToken && !loading) {
-              // We use a small delay to ensure everything is ready
-              setTimeout(() => {
-                syncStrava();
-              }, 1000);
-            }
           } else {
             // Create initial profile if it doesn't exist
             const initialProfile = {
