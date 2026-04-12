@@ -40,7 +40,6 @@ async function startServer() {
     // Check environment
     const envGeminiKey = (process.env.GEMINI_API_KEY || '').trim();
     const envApiKey = (process.env.API_KEY || '').trim();
-    const hardcodedFallback = "AIzaSyBqiNB4ZPtfxo--5HuTb9zoNh5oZnp3MTE";
     
     // Function to check if a key looks valid
     const isValidKey = (key: string | undefined) => {
@@ -60,8 +59,6 @@ async function startServer() {
       apiKeyToUse = envGeminiKey;
     } else if (isValidKey(envApiKey)) {
       apiKeyToUse = envApiKey;
-    } else {
-      apiKeyToUse = hardcodedFallback;
     }
     
     console.log("AI Proxy Request:", {
