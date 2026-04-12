@@ -319,7 +319,7 @@ export const Settings: FC<SettingsProps> = ({
       history.forEach(record => {
         const start = formatDateTime(record.startTime);
         const end = formatDateTime(record.endTime);
-        csvContent += `${escapeCSV(start.date)},${escapeCSV(start.time)},${escapeCSV(end.date)},${escapeCSV(end.time)},${escapeCSV((record.duration / 3600).toFixed(2))},${escapeCSV((record.targetDuration / 3600).toFixed(2))},${escapeCSV(record.completed ? 'Yes' : 'No')}\n`;
+        csvContent += `${escapeCSV(start.date)},${escapeCSV(start.time)},${escapeCSV(end.date)},${escapeCSV(end.time)},${escapeCSV((record.duration / 3600).toFixed(2))},${escapeCSV(Math.round(record.targetDuration / 3600))},${escapeCSV(record.completed ? 'Yes' : 'No')}\n`;
       });
       csvContent += "\n";
     }

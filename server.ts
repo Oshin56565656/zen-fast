@@ -25,7 +25,7 @@ async function startServer() {
   });
 
   // Gemini Proxy
-  app.post("/api/ai/generate", async (req, res) => {
+  app.post(["/api/ai/generate", "*/api/ai/generate"], async (req, res) => {
     const { model, contents, config } = req.body;
     let manualKey = req.headers['x-gemini-api-key'] as string;
     
@@ -40,23 +40,33 @@ async function startServer() {
     // Check environment
     const envGeminiKey = (process.env.GEMINI_API_KEY || '').trim();
     const envApiKey = (process.env.API_KEY || '').trim();
+    const hardcodedFallback = "AIzaSyBqiNB4ZPtfxo--5HuTb9zoNh5oZnp3MTE";
     
-    // Prioritize: Manual > GEMINI_API_KEY > API_KEY
-    let apiKeyToUse = manualKey || envGeminiKey || envApiKey;
-    
-    // Validation: Ignore obvious placeholders or variable names
-    if (apiKeyToUse && (
-      apiKeyToUse.startsWith('MY_') || 
-      apiKeyToUse === 'GEMINI_API_KEY' || 
-      apiKeyToUse === 'API_KEY' ||
-      apiKeyToUse.length < 20
-    )) {
-      console.log("Ignoring invalid API key placeholder:", apiKeyToUse);
-      apiKeyToUse = '';
+    // Function to check if a key looks valid
+    const isValidKey = (key: string | undefined) => {
+      if (!key) return false;
+      const k = key.trim();
+      if (k === '' || k === 'null' || k === 'undefined') return false;
+      if (k.startsWith('MY_') || k === 'GEMINI_API_KEY' || k === 'API_KEY') return false;
+      if (k.length < 20) return false;
+      return true;
+    };
+
+    // Prioritize: Manual > GEMINI_API_KEY > API_KEY > Hardcoded Fallback
+    let apiKeyToUse = '';
+    if (isValidKey(manualKey)) {
+      apiKeyToUse = manualKey;
+    } else if (isValidKey(envGeminiKey)) {
+      apiKeyToUse = envGeminiKey;
+    } else if (isValidKey(envApiKey)) {
+      apiKeyToUse = envApiKey;
+    } else {
+      apiKeyToUse = hardcodedFallback;
     }
     
     console.log("AI Proxy Request:", {
       hasManualKey: !!manualKey,
+      manualKeyValid: isValidKey(manualKey),
       hasEnvGeminiKey: !!envGeminiKey,
       hasEnvApiKey: !!envApiKey,
       keyUsedPrefix: apiKeyToUse ? `${apiKeyToUse.substring(0, 4)}...` : 'none',
@@ -77,26 +87,42 @@ async function startServer() {
       let lastError = null;
 
       for (const modelName of modelsToTry) {
-        try {
-          console.log(`Attempting Gemini API call with model: ${modelName}`);
-          const response = await client.models.generateContent({
-            model: modelName as string,
-            contents: contents,
-            config: {
-              systemInstruction: config?.systemInstruction,
-              responseMimeType: config?.responseMimeType,
-              responseSchema: config?.responseSchema
+        let retries = 0;
+        const maxRetries = 2;
+        
+        while (retries <= maxRetries) {
+          try {
+            console.log(`Attempting Gemini API call with model: ${modelName} (Attempt ${retries + 1})`);
+            const response = await client.models.generateContent({
+              model: modelName as string,
+              contents: contents,
+              config: {
+                systemInstruction: config?.systemInstruction,
+                responseMimeType: config?.responseMimeType,
+                responseSchema: config?.responseSchema
+              }
+            });
+            
+            return res.json({ text: response.text });
+          } catch (error: any) {
+            lastError = error;
+            
+            // Handle 429 (Quota Exceeded) with retry
+            if (error.status === 429 && retries < maxRetries) {
+              const delay = Math.pow(2, retries) * 2000; // 2s, 4s
+              console.warn(`Quota exceeded for ${modelName}, retrying in ${delay}ms...`);
+              await new Promise(resolve => setTimeout(resolve, delay));
+              retries++;
+              continue;
             }
-          });
-          
-          return res.json({ text: response.text });
-        } catch (error: any) {
-          lastError = error;
-          if (error.status === 404) {
-            console.warn(`Model ${modelName} not found, trying next...`);
-            continue;
+
+            if (error.status === 404) {
+              console.warn(`Model ${modelName} not found, trying next...`);
+              break; // Break while, continue for loop to next model
+            }
+            
+            throw error; // Rethrow if it's not a 429 (after retries) or 404
           }
-          throw error; // Rethrow if it's not a 404
         }
       }
       
@@ -105,15 +131,21 @@ async function startServer() {
     } catch (error: any) {
       console.error("Gemini Proxy Error:", error);
       const keyPrefix = apiKeyToUse ? `${apiKeyToUse.substring(0, 4)}...` : 'none';
+      
+      let errorMessage = error.message || "Internal Server Error";
+      if (error.status === 429) {
+        errorMessage = "The Gemini API quota has been exceeded. This usually happens on the free tier. Please wait a few minutes and try again, or provide your own Gemini API key in Settings > AI Integration for higher limits.";
+      }
+
       res.status(error.status || 500).json({ 
-        error: `Gemini API Error (Key: ${keyPrefix}): ${error.message || "Internal Server Error"}`,
+        error: `Gemini API Error (Key: ${keyPrefix}): ${errorMessage}`,
         details: error.response?.data || error
       });
     }
   });
 
   // Strava OAuth URL
-  app.get("/api/auth/strava/url", (req, res) => {
+  app.get(["/api/auth/strava/url", "*/api/auth/strava/url"], (req, res) => {
     if (!STRAVA_CLIENT_ID) {
       return res.status(400).json({ error: "STRAVA_CLIENT_ID is not configured in the environment." });
     }
@@ -172,7 +204,7 @@ async function startServer() {
   });
 
   // Strava Token Refresh
-  app.get("/api/auth/strava/refresh", async (req, res) => {
+  app.get(["/api/auth/strava/refresh", "*/api/auth/strava/refresh"], async (req, res) => {
     const { refreshToken } = req.query;
     if (!refreshToken) return res.status(400).json({ error: "Refresh token required" });
 
@@ -191,7 +223,7 @@ async function startServer() {
   });
 
   // Strava Activity Sync
-  app.get("/api/strava/activities", async (req, res) => {
+  app.get(["/api/strava/activities", "*/api/strava/activities"], async (req, res) => {
     const { accessToken } = req.query;
     if (!accessToken) return res.status(400).json({ error: "Access token required" });
 
@@ -208,7 +240,7 @@ async function startServer() {
   });
 
   // Strava Detailed Activity
-  app.get("/api/strava/activities/:id", async (req, res) => {
+  app.get(["/api/strava/activities/:id", "*/api/strava/activities/:id"], async (req, res) => {
     const { id } = req.params;
     const { accessToken } = req.query;
     if (!accessToken) return res.status(400).json({ error: "Access token required" });

@@ -174,7 +174,7 @@ export const History: FC<HistoryProps> = ({ history, onDelete, onManualLog }) =>
               <div className="text-right">
                 <p className="font-mono font-bold">{formatDurationShort(record.duration)}</p>
                 <p className="text-[10px] text-white/40 uppercase tracking-tighter">
-                  Goal: {record.targetDuration / 3600}h
+                  Goal: {Math.round(record.targetDuration / 3600)}h
                 </p>
               </div>
               <button

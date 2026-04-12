@@ -16,8 +16,22 @@ const callAIProxy = async (payload: any) => {
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || `AI Request failed with status ${response.status}`);
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || `AI Request failed with status ${response.status}`);
+    } else {
+      const text = await response.text();
+      console.error("Non-JSON Error Response:", text.substring(0, 200));
+      throw new Error(`Server returned an unexpected response (Status ${response.status}). This often happens if the API route is not found or the server is restarting.`);
+    }
+  }
+
+  const contentType = response.headers.get('content-type');
+  if (!contentType || !contentType.includes('application/json')) {
+    const text = await response.text();
+    console.error("Expected JSON but got:", text.substring(0, 200));
+    throw new Error("The server returned an invalid response format. Please refresh the page and try again.");
   }
 
   return await response.json();

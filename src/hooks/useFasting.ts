@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, DailySummary } from '../types';
 import { 
   auth, 
@@ -61,6 +61,7 @@ export function useFasting() {
   const [hasNotifiedTarget, setHasNotifiedTarget] = useState(false);
   const [lastWaterReminder, setLastWaterReminder] = useState<number>(Date.now());
   const [isWaterLoaded, setIsWaterLoaded] = useState(false);
+  const isEndingRef = useRef(false);
 
   const handleFirestoreError = (error: any, operationType: string, path: string) => {
     const errInfo = {
@@ -419,7 +420,10 @@ export function useFasting() {
   };
 
   const endFast = useCallback(async () => {
+    if (isEndingRef.current) return;
     if (state.status !== 'fasting' || !state.startTime || !user) return;
+    
+    isEndingRef.current = true;
     if ("vibrate" in navigator) navigator.vibrate([50, 30, 50]);
     
     const now = Date.now();
@@ -428,8 +432,9 @@ export function useFasting() {
     const durationSec = Math.floor(durationMs / 1000);
     
     // Calculate target seconds based on targetEndTime if set, otherwise use targetHours
+    // Round to nearest hour if targetEndTime is used, as requested by user
     const targetSec = state.targetEndTime 
-      ? Math.floor((state.targetEndTime - effectiveStartTime) / 1000)
+      ? Math.round((state.targetEndTime - effectiveStartTime) / 3600000) * 3600
       : state.targetHours * 3600;
 
     const newRecord = {
@@ -459,8 +464,13 @@ export function useFasting() {
       });
     } catch (error) {
       handleFirestoreError(error, 'write', `users/${user.uid}/history`);
+    } finally {
+      // Small delay before allowing another endFast to ensure state has propagated
+      setTimeout(() => {
+        isEndingRef.current = false;
+      }, 2000);
     }
-  }, [state.status, state.startTime, state.totalPausedTime, state.targetHours, user, updateState]);
+  }, [state.status, state.startTime, state.totalPausedTime, state.targetHours, state.targetEndTime, user, updateState]);
 
   const resetToIdle = () => {
     updateState({
