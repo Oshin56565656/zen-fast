@@ -14,6 +14,7 @@ export default defineConfig(({mode}) => {
     build: {
       outDir: 'dist',
     },
+    base: './',
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

@@ -232,9 +232,14 @@ async function startServer() {
       appType: "spa",
     });
     app.use(vite.middlewares);
-    
-    // Explicitly serve index.html for SPA in dev if vite middleware doesn't catch it
+
+    // SPA Fallback for development (must be after vite.middlewares)
     app.get('*', async (req, res, next) => {
+      // Skip if it looks like a file request
+      if (req.path.includes('.') && !req.path.endsWith('.html')) {
+        return next();
+      }
+      
       const url = req.originalUrl;
       try {
         let template = await vite.transformIndexHtml(url, await fs.readFile(path.join(process.cwd(), 'index.html'), 'utf-8'));
