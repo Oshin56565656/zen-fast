@@ -237,6 +237,12 @@ export default function App() {
           label="Log" 
         />
         <NavButton 
+          active={activeTab === 'timer'} 
+          onClick={() => setActiveTab('timer')} 
+          icon={<TimerIcon size={24} />} 
+          label="Timer" 
+        />
+        <NavButton 
           active={activeTab === 'history'} 
           onClick={() => setActiveTab('history')} 
           icon={<HistoryIcon size={24} />} 
@@ -253,12 +259,6 @@ export default function App() {
           onClick={() => setActiveTab('coach')} 
           icon={<Sparkles size={24} />} 
           label="Coach" 
-        />
-        <NavButton 
-          active={activeTab === 'timer'} 
-          onClick={() => setActiveTab('timer')} 
-          icon={<TimerIcon size={24} />} 
-          label="Timer" 
         />
         <NavButton 
           active={activeTab === 'settings'} 
