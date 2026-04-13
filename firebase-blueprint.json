@@ -1,75 +1,131 @@
 {
   "entities": {
-    "User": {
-      "title": "User",
-      "description": "User profile and integration status",
+    "UserFastState": {
+      "title": "User Fast State",
+      "description": "The current fasting state of a user.",
       "type": "object",
       "properties": {
-        "uid": { "type": "string" },
-        "email": { "type": "string" },
-        "stravaConnected": { "type": "boolean" },
-        "stravaAccessToken": { "type": "string" },
-        "stravaRefreshToken": { "type": "string" },
-        "stravaTokenExpiresAt": { "type": "number" },
-        "stravaAthleteId": { "type": "string" }
+        "startTime": { "type": "number", "description": "Timestamp of when the fast started." },
+        "endTime": { "type": "number", "description": "Timestamp of when the fast ended." },
+        "status": { "type": "string", "enum": ["idle", "fasting", "eating"], "description": "Current status." },
+        "targetHours": { "type": "number", "description": "Target duration in hours." },
+        "targetEndTime": { "type": "number", "description": "Specific timestamp to end the fast." },
+        "pausedAt": { "type": "number", "description": "Timestamp of when the fast was paused." },
+        "totalPausedTime": { "type": "number", "description": "Total time the fast has been paused in ms." },
+        "height": { "type": "number", "description": "User height in cm." },
+        "weight": { "type": "number", "description": "User weight in kg." },
+        "sex": { "type": "string", "enum": ["male", "female", "other"], "description": "User sex." },
+        "age": { "type": "number", "description": "User age." },
+        "waterGoal": { "type": "number", "description": "User daily water goal in ml." },
+        "accentColor": { "type": "string", "description": "Hex code of the user's preferred accent color." }
       },
-      "required": ["uid", "email"]
+      "required": ["status", "targetHours", "totalPausedTime"]
     },
-    "Workout": {
-      "title": "Workout",
-      "description": "A workout activity from Strava or Strong app",
+    "FastRecord": {
+      "title": "Fast Record",
+      "description": "A completed fasting session.",
       "type": "object",
       "properties": {
-        "uid": { "type": "string" },
-        "source": { "type": "string", "enum": ["strava", "strong"] },
-        "externalId": { "type": "string" },
-        "name": { "type": "string" },
-        "type": { "type": "string" },
-        "startDate": { "type": "string", "format": "date-time" },
-        "duration": { "type": "number", "description": "Duration in seconds" },
-        "distance": { "type": "number", "description": "Distance in meters" },
-        "calories": { "type": "number" },
-        "data": { "type": "object", "description": "Raw or source-specific data" }
+        "startTime": { "type": "number", "description": "Timestamp of start." },
+        "endTime": { "type": "number", "description": "Timestamp of end." },
+        "duration": { "type": "number", "description": "Total duration in seconds." },
+        "targetDuration": { "type": "number", "description": "Target duration in seconds." },
+        "completed": { "type": "boolean", "description": "Whether the goal was met." },
+        "createdAt": { "type": "object", "description": "Firestore server timestamp." }
       },
-      "required": ["uid", "source", "startDate"]
+      "required": ["startTime", "endTime", "duration", "targetDuration", "completed", "createdAt"]
+    },
+    "MealRecord": {
+      "title": "Meal Record",
+      "description": "A log of a meal consumed.",
+      "type": "object",
+      "properties": {
+        "time": { "type": "number", "description": "Timestamp of the meal." },
+        "scale": { "type": "string", "enum": ["light", "normal", "large"], "description": "Size of the meal." },
+        "description": { "type": "string", "description": "Description of the meal." },
+        "barcode": { "type": "string", "description": "Barcode of the meal." },
+        "createdAt": { "type": "object", "description": "Firestore server timestamp." }
+      },
+      "required": ["time", "scale", "createdAt"]
+    },
+    "WorkoutRecord": {
+      "title": "Workout Record",
+      "description": "A log of a workout session.",
+      "type": "object",
+      "properties": {
+        "startTime": { "type": "number", "description": "Timestamp of when the workout started." },
+        "endTime": { "type": "number", "description": "Timestamp of when the workout ended." },
+        "duration": { "type": "number", "description": "Duration in minutes." },
+        "intensity": { "type": "string", "enum": ["low", "moderate", "high"], "description": "Intensity level." },
+        "createdAt": { "type": "object", "description": "Firestore server timestamp." }
+      },
+      "required": ["startTime", "endTime", "duration", "intensity", "createdAt"]
+    },
+    "SleepRecord": {
+      "title": "Sleep Record",
+      "description": "A log of a sleep session.",
+      "type": "object",
+      "properties": {
+        "bedtime": { "type": "number", "description": "Timestamp of going to bed." },
+        "wakeUpTime": { "type": "number", "description": "Timestamp of waking up." },
+        "duration": { "type": "number", "description": "Duration in hours." },
+        "quality": { "type": "string", "enum": ["poor", "fair", "good", "excellent"], "description": "Quality of sleep." },
+        "createdAt": { "type": "object", "description": "Firestore server timestamp." }
+      },
+      "required": ["bedtime", "wakeUpTime", "duration", "quality", "createdAt"]
+    },
+    "WaterRecord": {
+      "title": "Water Record",
+      "description": "A log of water consumption.",
+      "type": "object",
+      "properties": {
+        "time": { "type": "number", "description": "Timestamp of consumption." },
+        "amount": { "type": "number", "description": "Amount in ml." },
+        "createdAt": { "type": "object", "description": "Firestore server timestamp." }
+      },
+      "required": ["time", "amount", "createdAt"]
+    },
+    "WeightRecord": {
+      "title": "Weight Record",
+      "description": "A log of user weight.",
+      "type": "object",
+      "properties": {
+        "time": { "type": "number", "description": "Timestamp of measurement." },
+        "weight": { "type": "number", "description": "Weight in kg." },
+        "note": { "type": "string", "description": "Optional note." },
+        "createdAt": { "type": "object", "description": "Firestore server timestamp." }
+      },
+      "required": ["time", "weight", "createdAt"]
     }
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": "User",
-      "description": "User profile and settings"
-    },
     "/users/{userId}/settings/currentFast": {
-      "schema": "object",
-      "description": "Current fasting state"
+      "schema": "UserFastState",
+      "description": "Stores the user's current fasting state."
     },
     "/users/{userId}/history/{recordId}": {
-      "schema": "object",
-      "description": "Fasting history records"
+      "schema": "FastRecord",
+      "description": "Stores the user's completed fasts."
     },
     "/users/{userId}/meals/{mealId}": {
-      "schema": "object",
-      "description": "Meal logs"
+      "schema": "MealRecord",
+      "description": "Stores the user's meal logs."
     },
     "/users/{userId}/workouts/{workoutId}": {
-      "schema": "Workout",
-      "description": "Workout activities (Strava, Strong, Manual)"
+      "schema": "WorkoutRecord",
+      "description": "Stores the user's workout logs."
     },
     "/users/{userId}/sleep/{sleepId}": {
-      "schema": "object",
-      "description": "Sleep logs"
+      "schema": "SleepRecord",
+      "description": "Stores the user's sleep logs."
     },
     "/users/{userId}/water/{waterId}": {
-      "schema": "object",
-      "description": "Water intake logs"
+      "schema": "WaterRecord",
+      "description": "Stores the user's water logs."
     },
     "/users/{userId}/weights/{weightId}": {
-      "schema": "object",
-      "description": "Weight tracking logs"
-    },
-    "/users/{userId}/dailySummaries/{date}": {
-      "schema": "object",
-      "description": "AI-generated daily summaries"
+      "schema": "WeightRecord",
+      "description": "Stores the user's weight logs."
     }
   }
 }

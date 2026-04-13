@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, DailySummary } from '../types';
 import { 
   auth, 
@@ -61,31 +61,6 @@ export function useFasting() {
   const [hasNotifiedTarget, setHasNotifiedTarget] = useState(false);
   const [lastWaterReminder, setLastWaterReminder] = useState<number>(Date.now());
   const [isWaterLoaded, setIsWaterLoaded] = useState(false);
-  const isEndingRef = useRef(false);
-
-  const handleFirestoreError = (error: any, operationType: string, path: string) => {
-    const errInfo = {
-      error: error instanceof Error ? error.message : String(error),
-      authInfo: {
-        userId: auth.currentUser?.uid,
-        email: auth.currentUser?.email,
-        emailVerified: auth.currentUser?.emailVerified,
-        isAnonymous: auth.currentUser?.isAnonymous,
-        tenantId: auth.currentUser?.tenantId,
-        providerInfo: auth.currentUser?.providerData.map(provider => ({
-          providerId: provider.providerId,
-          displayName: provider.displayName,
-          email: provider.email,
-          photoUrl: provider.photoURL
-        })) || []
-      },
-      operationType,
-      path
-    };
-    console.error('Firestore Error: ', JSON.stringify(errInfo));
-    // We don't throw here to avoid crashing the whole app, 
-    // but we log it clearly for the agent to see.
-  };
 
   // Apply theme color to CSS variable
   useEffect(() => {
@@ -349,6 +324,30 @@ export function useFasting() {
       handleFirestoreError(error, 'write', `users/${user.uid}/dailySummaries/${summary.date}`);
     }
   };
+  const handleFirestoreError = (error: any, operationType: string, path: string) => {
+    const errInfo = {
+      error: error instanceof Error ? error.message : String(error),
+      authInfo: {
+        userId: auth.currentUser?.uid,
+        email: auth.currentUser?.email,
+        emailVerified: auth.currentUser?.emailVerified,
+        isAnonymous: auth.currentUser?.isAnonymous,
+        tenantId: auth.currentUser?.tenantId,
+        providerInfo: auth.currentUser?.providerData.map(provider => ({
+          providerId: provider.providerId,
+          displayName: provider.displayName,
+          email: provider.email,
+          photoUrl: provider.photoURL
+        })) || []
+      },
+      operationType,
+      path
+    };
+    console.error('Firestore Error: ', JSON.stringify(errInfo));
+    // We don't throw here to avoid crashing the whole app, 
+    // but we log it clearly for the agent to see.
+  };
+
   const updateState = useCallback(async (updates: Partial<CurrentFastState>) => {
     if (!user) return;
     const stateDocRef = doc(db, 'users', user.uid, 'settings', 'currentFast');
@@ -377,12 +376,8 @@ export function useFasting() {
     
     const startTime = customStartTime || Date.now();
     
-    const targetLabel = state.targetEndTime 
-      ? `until ${new Date(state.targetEndTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-      : `${state.targetHours}h`;
-    
     sendNotification("Fast Started!", {
-      body: `Your fast ${targetLabel} has begun. Good luck!`,
+      body: `Your ${state.targetHours}h fast has begun. Good luck!`,
       icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
     });
     
@@ -420,10 +415,7 @@ export function useFasting() {
   };
 
   const endFast = useCallback(async () => {
-    if (isEndingRef.current) return;
     if (state.status !== 'fasting' || !state.startTime || !user) return;
-    
-    isEndingRef.current = true;
     if ("vibrate" in navigator) navigator.vibrate([50, 30, 50]);
     
     const now = Date.now();
@@ -431,11 +423,7 @@ export function useFasting() {
     const durationMs = now - effectiveStartTime;
     const durationSec = Math.floor(durationMs / 1000);
     
-    // Calculate target seconds based on targetEndTime if set, otherwise use targetHours
-    // Round to nearest hour if targetEndTime is used, as requested by user
-    const targetSec = state.targetEndTime 
-      ? Math.round((state.targetEndTime - effectiveStartTime) / 3600000) * 3600
-      : state.targetHours * 3600;
+    const targetSec = state.targetHours * 3600;
 
     const newRecord = {
       startTime: state.startTime,
@@ -464,13 +452,8 @@ export function useFasting() {
       });
     } catch (error) {
       handleFirestoreError(error, 'write', `users/${user.uid}/history`);
-    } finally {
-      // Small delay before allowing another endFast to ensure state has propagated
-      setTimeout(() => {
-        isEndingRef.current = false;
-      }, 2000);
     }
-  }, [state.status, state.startTime, state.totalPausedTime, state.targetHours, state.targetEndTime, user, updateState]);
+  }, [state.status, state.startTime, state.totalPausedTime, state.targetHours, user, updateState]);
 
   const resetToIdle = () => {
     updateState({

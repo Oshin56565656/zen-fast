@@ -1,7 +1,7 @@
 import React, { FC, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
-import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info, Download, Zap, ChevronDown, User, Target, Cloud, Settings as SettingsIcon, Database, Brain, Link2, Dumbbell } from 'lucide-react';
+import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info, Download, Zap, ChevronDown, User, Target, Cloud, Settings as SettingsIcon, Database, Brain } from 'lucide-react';
 import { FastRecord, MealRecord, WorkoutRecord, SleepRecord } from '../types';
 
 interface SettingsProps {
@@ -34,10 +34,8 @@ interface SettingsProps {
   onTestNotification?: () => void;
   history: FastRecord[];
   meals: MealRecord[];
-  workouts: any[];
+  workouts: WorkoutRecord[];
   sleep: SleepRecord[];
-  userProfile?: any;
-  onConnectStrava?: () => void;
 }
 
 interface CollapsibleSectionProps {
@@ -130,16 +128,12 @@ export const Settings: FC<SettingsProps> = ({
   history,
   meals,
   workouts,
-  sleep,
-  userProfile,
-  onConnectStrava,
-  onImportStrongCSV
+  sleep
 }) => {
   const [hasKey, setHasKey] = useState(false);
   const [manualKey, setManualKey] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [showManual, setShowManual] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [notificationStatus, setNotificationStatus] = useState<NotificationPermission | 'unsupported'>('default');
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     profile: false,
@@ -147,25 +141,10 @@ export const Settings: FC<SettingsProps> = ({
     appearance: false,
     weather: false,
     notifications: false,
-    integrations: false,
     data: false,
     ai: false,
     about: false
   });
-
-  const handleStrongUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !onImportStrongCSV) return;
-
-    setIsUploading(true);
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const content = event.target?.result as string;
-      await onImportStrongCSV(content);
-      setIsUploading(false);
-    };
-    reader.readAsText(file);
-  };
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({
@@ -213,18 +192,21 @@ export const Settings: FC<SettingsProps> = ({
         return;
       }
 
-      setHasKey(false);
+      // @ts-ignore
+      if (typeof window !== 'undefined' && window.aistudio) {
+        // @ts-ignore
+        const selected = await window.aistudio.hasSelectedApiKey();
+        setHasKey(selected || !!process.env.GEMINI_API_KEY || !!process.env.API_KEY);
+      }
     };
     checkKey();
   }, []);
 
   const handleSaveManualKey = () => {
-    const trimmedKey = manualKey.trim();
-    if (!trimmedKey) return;
+    if (!manualKey.trim()) return;
     setIsSaving(true);
-    localStorage.setItem('FT_GEMINI_API_KEY', trimmedKey);
+    localStorage.setItem('FT_GEMINI_API_KEY', manualKey.trim());
     setHasKey(true);
-    setManualKey(trimmedKey);
     setTimeout(() => {
       setIsSaving(false);
       setShowManual(false);
@@ -319,7 +301,7 @@ export const Settings: FC<SettingsProps> = ({
       history.forEach(record => {
         const start = formatDateTime(record.startTime);
         const end = formatDateTime(record.endTime);
-        csvContent += `${escapeCSV(start.date)},${escapeCSV(start.time)},${escapeCSV(end.date)},${escapeCSV(end.time)},${escapeCSV((record.duration / 3600).toFixed(2))},${escapeCSV(Math.round(record.targetDuration / 3600))},${escapeCSV(record.completed ? 'Yes' : 'No')}\n`;
+        csvContent += `${escapeCSV(start.date)},${escapeCSV(start.time)},${escapeCSV(end.date)},${escapeCSV(end.time)},${escapeCSV((record.duration / 3600).toFixed(2))},${escapeCSV((record.targetDuration / 3600).toFixed(2))},${escapeCSV(record.completed ? 'Yes' : 'No')}\n`;
       });
       csvContent += "\n";
     }
@@ -336,12 +318,12 @@ export const Settings: FC<SettingsProps> = ({
 
     if (type === 'all' || type === 'workouts') {
       csvContent += escapeCSV("WORKOUT LOGS") + "\n";
-      csvContent += `${escapeCSV("Start Date")},${escapeCSV("Start Time")},${escapeCSV("End Date")},${escapeCSV("End Time")},${escapeCSV("Name")},${escapeCSV("Type")},${escapeCSV("Duration (m)")},${escapeCSV("Distance (km)")},${escapeCSV("Calories")},${escapeCSV("Elevation (m)")},${escapeCSV("Intensity")},${escapeCSV("Source")}\n`;
+      csvContent += `${escapeCSV("Start Date")},${escapeCSV("Start Time")},${escapeCSV("End Date")},${escapeCSV("End Time")},${escapeCSV("Duration (m)")},${escapeCSV("Intensity")}\n`;
       const sortedWorkouts = [...workouts].sort((a, b) => b.startTime - a.startTime);
       sortedWorkouts.forEach(record => {
         const start = formatDateTime(record.startTime);
-        const end = formatDateTime(record.endTime || (record.startTime + (record.duration || 0) * 60000));
-        csvContent += `${escapeCSV(start.date)},${escapeCSV(start.time)},${escapeCSV(end.date)},${escapeCSV(end.time)},${escapeCSV(record.name || '')},${escapeCSV(record.type || '')},${escapeCSV(record.duration)},${escapeCSV(record.distance ? (record.distance / 1000).toFixed(2) : '')},${escapeCSV(record.calories || '')},${escapeCSV(record.elevation || '')},${escapeCSV(record.intensity)},${escapeCSV(record.source)}\n`;
+        const end = formatDateTime(record.endTime);
+        csvContent += `${escapeCSV(start.date)},${escapeCSV(start.time)},${escapeCSV(end.date)},${escapeCSV(end.time)},${escapeCSV(record.duration)},${escapeCSV(record.intensity)}\n`;
       });
       csvContent += "\n";
     }
@@ -763,43 +745,6 @@ export const Settings: FC<SettingsProps> = ({
       </CollapsibleSection>
 
       <CollapsibleSection 
-        id="integrations" 
-        title="Integrations" 
-        icon={Link2}
-        isExpanded={expandedSections.integrations}
-        onToggle={() => toggleSection('integrations')}
-      >
-        <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-6">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-[#FC6100]/10 rounded-xl flex items-center justify-center text-[#FC6100]">
-                  <Cloud size={20} />
-                </div>
-                <div>
-                  <p className="font-bold text-sm">Strava</p>
-                  <p className="text-xs text-white/40">Sync your activities</p>
-                </div>
-              </div>
-              {userProfile?.stravaConnected ? (
-                <div className="flex items-center space-x-2 text-green-500 text-sm font-medium">
-                  <CheckCircle2 size={18} />
-                  <span>Connected</span>
-                </div>
-              ) : (
-                <button 
-                  onClick={onConnectStrava}
-                  className="bg-[#FC6100] text-white px-4 py-2 rounded-xl text-xs font-bold hover:bg-[#FC6100]/90 transition-all active:scale-95"
-                >
-                  Connect
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </CollapsibleSection>
-
-      <CollapsibleSection 
         id="ai" 
         title="AI Integration" 
         icon={Brain}
@@ -830,8 +775,7 @@ export const Settings: FC<SettingsProps> = ({
           </div>
 
           <p className="text-xs text-white/60 leading-relaxed">
-            Connect your Gemini API key to get personalized insights, biological stage analysis, and smart motivation. 
-            <span className="block mt-1 text-[10px] text-white/40 italic">Note: The AI Coach may already be active if configured in your server environment.</span>
+            Connect your Gemini API key to get personalized insights, biological stage analysis, and smart motivation.
           </p>
 
           <button
@@ -850,32 +794,21 @@ export const Settings: FC<SettingsProps> = ({
           {showManual && (
             <div className="space-y-3 pt-2 border-t border-white/5 animate-in fade-in slide-in-from-top-2">
               <p className="text-[10px] text-white/40 font-medium uppercase tracking-wider">Paste API Key Manually</p>
-              <div className="space-y-2">
-                <div className="flex space-x-2">
-                  <input
-                    type="password"
-                    value={manualKey}
-                    onChange={(e) => setManualKey(e.target.value)}
-                    placeholder="AIzaSy..."
-                    className={cn(
-                      "flex-1 bg-white/5 border rounded-xl px-4 py-2 text-sm focus:outline-none transition-colors",
-                      manualKey && !manualKey.startsWith('AIza') ? "border-red-500/50" : "border-white/10 focus:border-primary/50"
-                    )}
-                  />
-                  <button
-                    onClick={handleSaveManualKey}
-                    disabled={isSaving}
-                    className="bg-primary text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-primary/90 disabled:opacity-50 transition-all"
-                  >
-                    {isSaving ? "Saving..." : "Save"}
-                  </button>
-                </div>
-                {manualKey && !manualKey.startsWith('AIza') && (
-                  <p className="text-[10px] text-red-400 flex items-center space-x-1">
-                    <AlertCircle size={10} />
-                    <span>Standard Gemini keys usually start with "AIza"</span>
-                  </p>
-                )}
+              <div className="flex space-x-2">
+                <input
+                  type="password"
+                  value={manualKey}
+                  onChange={(e) => setManualKey(e.target.value)}
+                  placeholder="AIzaSy..."
+                  className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-primary/50 transition-colors"
+                />
+                <button
+                  onClick={handleSaveManualKey}
+                  disabled={isSaving}
+                  className="bg-primary text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-primary/90 disabled:opacity-50 transition-all"
+                >
+                  {isSaving ? "Saving..." : "Save"}
+                </button>
               </div>
             </div>
           )}
@@ -970,27 +903,8 @@ export const Settings: FC<SettingsProps> = ({
             Intermittent fasting is an eating pattern where you cycle between periods of eating and fasting. 
             Simply set your target hours and start your fast.
           </p>
-          <div className="pt-4 border-t border-white/5 space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-white/20">Version 1.2.0</p>
-              <button 
-                onClick={() => {
-                  if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.getRegistrations().then(registrations => {
-                      for(let registration of registrations) {
-                        registration.unregister();
-                      }
-                      window.location.reload();
-                    });
-                  } else {
-                    window.location.reload();
-                  }
-                }}
-                className="text-[10px] text-primary font-bold uppercase hover:underline"
-              >
-                Force Update App
-              </button>
-            </div>
+          <div className="pt-4 border-t border-white/5">
+            <p className="text-xs text-white/20">Version 1.1.0</p>
           </div>
         </div>
       </CollapsibleSection>

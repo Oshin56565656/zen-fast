@@ -1,40 +1,18 @@
+import { GoogleGenAI, Type } from "@google/genai";
 import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord } from "../types";
 
-const callAIProxy = async (payload: any) => {
-  const rawKey = typeof window !== 'undefined' ? localStorage.getItem('FT_GEMINI_API_KEY') : null;
-  const manualKey = rawKey ? rawKey.trim() : null;
+const getAIInstance = () => {
+  let apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
   
-  console.log("Sending AI Proxy Request with manual key prefix:", manualKey ? `${manualKey.substring(0, 4)}...` : 'none');
-  
-  const response = await fetch('/api/ai/generate', {
-    method: 'POST',
-    headers: { 
-      'Content-Type': 'application/json',
-      ...(manualKey ? { 'X-Gemini-API-Key': manualKey } : {})
-    },
-    body: JSON.stringify(payload)
-  });
-
-  if (!response.ok) {
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || `AI Request failed with status ${response.status}`);
-    } else {
-      const text = await response.text();
-      console.error("Non-JSON Error Response:", text.substring(0, 200));
-      throw new Error(`Server returned an unexpected response (Status ${response.status}). This often happens if the API route is not found or the server is restarting.`);
-    }
+  // Fallback to localStorage for manual entry
+  if (!apiKey && typeof window !== 'undefined') {
+    apiKey = localStorage.getItem('FT_GEMINI_API_KEY') || '';
   }
 
-  const contentType = response.headers.get('content-type');
-  if (!contentType || !contentType.includes('application/json')) {
-    const text = await response.text();
-    console.error("Expected JSON but got:", text.substring(0, 200));
-    throw new Error("The server returned an invalid response format. Please refresh the page and try again.");
+  if (!apiKey) {
+    console.warn("No API Key found. AI features will not work.");
   }
-
-  return await response.json();
+  return new GoogleGenAI({ apiKey: apiKey || "" });
 };
 
 const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
@@ -79,6 +57,7 @@ export async function getFastingInsights(
     return [];
   }
 
+  const ai = getAIInstance();
   const now = new Date();
   const fourDaysAgo = now.getTime() - (4 * 24 * 60 * 60 * 1000);
   
@@ -120,14 +99,10 @@ export async function getFastingInsights(
     .slice(0, 10)
     .map(w => ({
       localTime: formatLocalTime(w.startTime),
-      localEndTime: w.endTime ? formatLocalTime(w.endTime) : 'N/A',
+      localEndTime: formatLocalTime(w.endTime),
       durationMins: w.duration,
       intensity: w.intensity,
       type: w.type || 'other',
-      distance: w.distance ? `${(w.distance / 1000).toFixed(2)}km` : 'N/A',
-      calories: w.calories ? `${Math.round(w.calories)}kcal` : 'N/A',
-      elevation: w.elevation ? `${Math.round(w.elevation)}m` : 'N/A',
-      name: w.name || 'Workout',
       relativeTime: `${Math.round((now.getTime() - w.startTime) / 60000)} minutes ago`
     }));
 
@@ -171,7 +146,7 @@ export async function getFastingInsights(
     4. How their meal choices (descriptions) affect their metabolic health and potentially their sleep.
     5. Hydration: Analyze their water intake patterns and suggest an optimal daily water goal (in ml) based on their physical profile, activity level, and current hydration habits.
     6. Calorie Estimation: Based on the descriptions and scales of the meals logged TODAY (using userLocalTime as reference), provide a rough estimate of their total calorie intake for the current day. If no meals are logged today, provide a general estimate based on their typical patterns or skip if no data.
-    7. Calories Burned: Use the "Recent Workouts" data (specifically duration, intensity, type, distance, and calories) logged TODAY to provide a rough estimate of their total calories burned for the current day. If Strava provides a "calories" value, prioritize that. Otherwise, estimate based on duration and intensity. Include their physical profile (BMR estimate) in the total.
+    7. Calories Burned: Based on the workouts logged TODAY (duration, intensity, and type) and their physical profile (BMR estimate), provide a rough estimate of their total calories burned for the current day.
     
     CRITICAL: 
     1. Use "User's Current Local Time" as the primary reference for "morning", "night", etc.
@@ -180,7 +155,6 @@ export async function getFastingInsights(
     4. Use "relativeTime" fields to understand how long ago events happened relative to "now".
     5. Only use the data provided in the lists below. Do NOT infer or assume meal times.
     6. ALWAYS use 12-hour format (e.g., "10:00 am") when mentioning specific times in your response.
-    7. When analyzing workouts, look at the "name", "type", "distance", and "calories" fields if available.
     
     Fasting History: ${JSON.stringify(historyData)}
     Recent Meals: ${JSON.stringify(mealData)}
@@ -193,41 +167,41 @@ export async function getFastingInsights(
 
   try {
     const response = await withTimeout(
-      callAIProxy({
-        model: "gemini-2.0-flash",
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
         config: {
           systemInstruction: "You are an expert fasting and fitness coach. Provide data-driven, structured insights based on the user's history and physical profile (age, sex, height, and weight if provided). Be precise about timing relationships. Specifically, recommend the optimal workout time and intensity based on the user's last meal, current fasting state, and body metrics. IMPORTANT: Never hallucinate or infer meal or workout data that is not explicitly provided in the user's logs. ALWAYS use 12-hour time format (e.g., 10:00 am) in your responses.",
           responseMimeType: "application/json",
           responseSchema: {
-            type: "object",
+            type: Type.OBJECT,
             properties: {
               insights: {
-                type: "array",
+                type: Type.ARRAY,
                 items: {
-                  type: "object",
+                  type: Type.OBJECT,
                   properties: {
-                    category: { type: "string", description: "Category (e.g., Timing, Nutrition, Performance)" },
-                    title: { type: "string", description: "Short title" },
-                    content: { type: "string", description: "Detailed insight" },
-                    impact: { type: "string", enum: ["positive", "neutral", "improvement"] }
+                    category: { type: Type.STRING, description: "Category (e.g., Timing, Nutrition, Performance)" },
+                    title: { type: Type.STRING, description: "Short title" },
+                    content: { type: Type.STRING, description: "Detailed insight" },
+                    impact: { type: Type.STRING, enum: ["positive", "neutral", "improvement"] }
                   },
                   required: ["category", "title", "content", "impact"]
                 }
               },
               calorieGuess: {
-                type: "object",
+                type: Type.OBJECT,
                 properties: {
-                  amount: { type: "number", description: "Estimated calories consumed today" },
-                  reasoning: { type: "string", description: "Brief explanation of how this was calculated" }
+                  amount: { type: Type.NUMBER, description: "Estimated calories consumed today" },
+                  reasoning: { type: Type.STRING, description: "Brief explanation of how this was calculated" }
                 },
                 required: ["amount", "reasoning"]
               },
               caloriesBurned: {
-                type: "object",
+                type: Type.OBJECT,
                 properties: {
-                  amount: { type: "number", description: "Estimated calories burned today (BMR + Activity)" },
-                  reasoning: { type: "string", description: "Brief explanation of how this was calculated" }
+                  amount: { type: Type.NUMBER, description: "Estimated calories burned today (BMR + Activity)" },
+                  reasoning: { type: Type.STRING, description: "Brief explanation of how this was calculated" }
                 },
                 required: ["amount", "reasoning"]
               }
@@ -236,7 +210,7 @@ export async function getFastingInsights(
           }
         }
       }),
-      45000,
+      45000, // Increase to 45 seconds
       "The AI analysis is taking longer than expected. Please try again in a moment."
     );
     
@@ -252,7 +226,7 @@ export async function getFastingInsights(
     }
   } catch (error) {
     console.error("AI Insights Error:", error);
-    throw error;
+    throw error; // Re-throw to let the UI handle the error state
   }
 }
 
@@ -265,6 +239,8 @@ export async function chatWithCoach(
   sex?: string,
   age?: number
 ) {
+  const ai = getAIInstance();
+  
   const historyParts = chatHistory.map(msg => ({
     role: msg.role,
     parts: [{ text: msg.text }]
@@ -301,8 +277,8 @@ User Question: ${userMessage}` }]
   ];
 
   try {
-    const response = await callAIProxy({
-      model: "gemini-2.0-flash",
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
       contents: contents,
       config: {
         systemInstruction: "You are an expert fasting and fitness coach. A user is asking you a question about a specific insight you previously provided. Answer their question concisely and accurately based on the context of that insight and their physical profile. Be supportive and data-driven. Keep responses under 3 sentences if possible."
@@ -320,6 +296,7 @@ export async function getPeriodicReview(
   data: any[],
   type: 'monthly' | 'yearly'
 ) {
+  const ai = getAIInstance();
   const prompt = `
     Analyze the following ${type} health data and provide a concise, motivating summary of the user's progress.
     Data: ${JSON.stringify(data)}
@@ -333,9 +310,9 @@ export async function getPeriodicReview(
   `;
 
   try {
-    const response = await callAIProxy({
-      model: "gemini-2.0-flash",
-      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
       config: {
         systemInstruction: "You are an expert health and fitness coach providing a high-level periodic review. Be concise, data-driven, and motivating."
       }

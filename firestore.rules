@@ -1,37 +1,54 @@
-// ===============================================================
-// Assumed Data Model
-// ===============================================================
-//
-// Collection: users
-// Document ID: {userId}
-// Fields:
-//   - uid: string (required) - User's unique ID
-//   - email: string (required) - User's email
-//   - stravaConnected: boolean (optional) - Whether Strava is connected
-//   - stravaAccessToken: string (optional) - Strava access token
-//   - stravaRefreshToken: string (optional) - Strava refresh token
-//   - stravaTokenExpiresAt: number (optional) - Strava token expiration timestamp
-//   - stravaAthleteId: string (optional) - Strava athlete ID
-//
-// Collection: workouts
-// Document ID: {workoutId}
-// Fields:
-//   - uid: string (required) - Owner's user ID
-//   - source: string (required) - 'strava' or 'strong'
-//   - externalId: string (optional) - ID from source system
-//   - name: string (optional) - Workout name
-//   - type: string (optional) - Workout type (e.g., Run, Ride, Weightlifting)
-//   - startDate: string (required) - ISO 8601 date string
-//   - duration: number (optional) - Duration in seconds
-//   - distance: number (optional) - Distance in meters
-//   - calories: number (optional) - Calories burned
-//   - data: map (optional) - Additional source-specific data
-//
-// ===============================================================
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users/{userId}/settings/currentFast
+    // Fields:
+    //   - startTime: number (optional)
+    //   - endTime: number (optional)
+    //   - status: string (required, ['idle', 'fasting', 'eating'])
+    //   - targetHours: number (required, 1-48)
+    //   - pausedAt: number (optional)
+    //   - totalPausedTime: number (required)
+    //   - height: number (optional)
+    //   - weight: number (optional)
+    //
+    // Collection: users/{userId}/history/{recordId}
+    // Fields:
+    //   - startTime: number (required)
+    //   - endTime: number (required)
+    //   - duration: number (required)
+    //   - targetDuration: number (required)
+    //   - completed: bool (required)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: users/{userId}/meals/{mealId}
+    // Fields:
+    //   - time: number (required)
+    //   - scale: string (required, ['light', 'normal', 'large'])
+    //   - description: string (optional)
+    //   - barcode: string (optional)
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: users/{userId}/workouts/{workoutId}
+    // Fields:
+    //   - time: number (required)
+    //   - duration: number (required)
+    //   - intensity: string (required, ['low', 'moderate', 'high'])
+    //   - createdAt: timestamp (required)
+    //
+    // Collection: users/{userId}/sleep/{sleepId}
+    // Fields:
+    //   - time: number (required)
+    //   - duration: number (required)
+    //   - quality: string (required, ['poor', 'fair', 'good', 'excellent'])
+    //   - createdAt: timestamp (required)
+    //
+    // ===============================================================
 
     // ===============================================================
     // Helper Functions
@@ -45,16 +62,22 @@ service cloud.firestore {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    function isDocOwner() {
-      return isAuthenticated() && request.auth.uid == resource.data.uid;
+    function isAdmin() {
+      return isAuthenticated() &&
+        (
+          (request.auth.token.email == "oshinashok56565656@gmail.com" && 
+           (request.auth.token.email_verified == true || !('email_verified' in request.auth.token))) ||
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+        );
     }
 
-    function isValidEmail(email) {
-      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
     }
 
-    function isValidDateString(dateStr) {
-      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
     }
 
     // ===============================================================
@@ -62,26 +85,84 @@ service cloud.firestore {
     // ===============================================================
 
     function isValidUser(data) {
-      return data.keys().hasAll(['uid', 'email']) &&
-             data.uid == request.auth.uid &&
-             isValidEmail(data.email) &&
-             (!('stravaConnected' in data) || data.stravaConnected is bool) &&
-             (!('stravaAccessToken' in data) || data.stravaAccessToken is string) &&
-             (!('stravaRefreshToken' in data) || data.stravaRefreshToken is string) &&
-             (!('stravaTokenExpiresAt' in data) || data.stravaTokenExpiresAt is number) &&
-             (!('stravaAthleteId' in data) || data.stravaAthleteId is string);
+      return hasOnlyAllowedFields(['email', 'lastLogin', 'role']) &&
+             data.email is string &&
+             data.lastLogin is timestamp &&
+             data.role in ['admin', 'client'];
+    }
+
+    function isValidFastState(data) {
+      return hasRequiredFields(['status', 'targetHours', 'totalPausedTime']) &&
+             hasOnlyAllowedFields(['startTime', 'endTime', 'status', 'targetHours', 'targetEndTime', 'pausedAt', 'totalPausedTime', 'height', 'weight', 'sex', 'age', 'waterGoal', 'accentColor']) &&
+             data.status in ['idle', 'fasting', 'eating'] &&
+             data.targetHours is number && data.targetHours >= 1 && data.targetHours <= 48 &&
+             (!('targetEndTime' in data) || data.targetEndTime == null || data.targetEndTime is number) &&
+             data.totalPausedTime is number &&
+             (!('height' in data) || data.height is number) &&
+             (!('weight' in data) || data.weight is number) &&
+             (!('sex' in data) || data.sex in ['male', 'female', 'other']) &&
+             (!('age' in data) || data.age is number) &&
+             (!('waterGoal' in data) || data.waterGoal is number) &&
+             (!('accentColor' in data) || data.accentColor is string);
+    }
+
+    function isValidFastRecord(data) {
+      return hasRequiredFields(['startTime', 'endTime', 'duration', 'targetDuration', 'completed', 'createdAt']) &&
+             hasOnlyAllowedFields(['startTime', 'endTime', 'duration', 'targetDuration', 'completed', 'createdAt']) &&
+             data.startTime is number &&
+             data.endTime is number &&
+             data.duration is number &&
+             data.targetDuration is number &&
+             data.completed is bool &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidSleep(data) {
+      return hasRequiredFields(['bedtime', 'wakeUpTime', 'duration', 'quality', 'createdAt']) &&
+             hasOnlyAllowedFields(['bedtime', 'wakeUpTime', 'duration', 'quality', 'createdAt']) &&
+             data.bedtime is number &&
+             data.wakeUpTime is number &&
+             data.duration is number &&
+             data.quality in ['poor', 'fair', 'good', 'excellent'] &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidMeal(data) {
+      return hasRequiredFields(['time', 'scale', 'createdAt']) &&
+             hasOnlyAllowedFields(['time', 'scale', 'description', 'barcode', 'createdAt']) &&
+             data.time is number &&
+             data.scale in ['light', 'normal', 'large'] &&
+             (!('description' in data) || data.description is string) &&
+             (!('barcode' in data) || data.barcode is string) &&
+             data.createdAt is timestamp;
     }
 
     function isValidWorkout(data) {
-      return data.keys().hasAll(['uid', 'source', 'startDate']) &&
-             data.uid == request.auth.uid &&
-             data.source in ['strava', 'strong'] &&
-             isValidDateString(data.startDate) &&
-             (!('duration' in data) || data.duration is number) &&
-             (!('distance' in data) || data.distance is number) &&
-             (!('calories' in data) || data.calories is number) &&
-             (!('name' in data) || (data.name is string && data.name.size() < 200)) &&
-             (!('type' in data) || (data.type is string && data.type.size() < 50));
+      return hasRequiredFields(['startTime', 'endTime', 'duration', 'intensity', 'createdAt']) &&
+             hasOnlyAllowedFields(['startTime', 'endTime', 'duration', 'intensity', 'type', 'createdAt']) &&
+             data.startTime is number &&
+             data.endTime is number &&
+             data.duration is number &&
+             data.intensity in ['low', 'moderate', 'high'] &&
+             (!('type' in data) || data.type is string) &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidWater(data) {
+      return hasRequiredFields(['time', 'amount', 'createdAt']) &&
+             hasOnlyAllowedFields(['time', 'amount', 'createdAt']) &&
+             data.time is number &&
+             data.amount is number &&
+             data.createdAt is timestamp;
+    }
+
+    function isValidWeight(data) {
+      return hasRequiredFields(['time', 'weight', 'createdAt']) &&
+             hasOnlyAllowedFields(['time', 'weight', 'note', 'createdAt']) &&
+             data.time is number &&
+             data.weight is number &&
+             (!('note' in data) || data.note is string) &&
+             data.createdAt is timestamp;
     }
 
     // ===============================================================
@@ -89,13 +170,61 @@ service cloud.firestore {
     // ===============================================================
 
     match /users/{userId} {
-      // Users can only read and write their own profile and all subcollections
-      allow read, write: if isOwner(userId);
+      allow read: if request.auth.uid == userId || isAdmin();
+      allow create: if request.auth.uid == userId && isValidUser(request.resource.data) && request.resource.data.role == 'client';
+      allow update: if request.auth.uid == userId && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role;
+      allow delete: if isAdmin();
 
-      // Recursive match for all subcollections under the user
-      match /{allSubcollections=**} {
-        allow read, write: if isOwner(userId);
+      match /settings/currentFast {
+        allow read: if request.auth.uid == userId || isAdmin();
+        allow write: if request.auth.uid == userId || isAdmin();
       }
+
+      match /history/{recordId} {
+        allow read: if request.auth.uid == userId || isAdmin();
+        allow create, update: if (request.auth.uid == userId || isAdmin()) && isValidFastRecord(request.resource.data);
+        allow delete: if request.auth.uid == userId || isAdmin();
+      }
+
+      match /meals/{mealId} {
+        allow read: if request.auth.uid == userId || isAdmin();
+        allow create, update: if (request.auth.uid == userId || isAdmin()) && isValidMeal(request.resource.data);
+        allow delete: if request.auth.uid == userId || isAdmin();
+      }
+
+      match /workouts/{workoutId} {
+        allow read: if request.auth.uid == userId || isAdmin();
+        allow create, update: if (request.auth.uid == userId || isAdmin()) && isValidWorkout(request.resource.data);
+        allow delete: if request.auth.uid == userId || isAdmin();
+      }
+
+      match /sleep/{sleepId} {
+        allow read: if request.auth.uid == userId || isAdmin();
+        allow create, update: if (request.auth.uid == userId || isAdmin()) && isValidSleep(request.resource.data);
+        allow delete: if request.auth.uid == userId || isAdmin();
+      }
+
+      match /water/{waterId} {
+        allow read: if request.auth.uid == userId || isAdmin();
+        allow create, update: if (request.auth.uid == userId || isAdmin()) && isValidWater(request.resource.data);
+        allow delete: if request.auth.uid == userId || isAdmin();
+      }
+
+      match /weights/{weightId} {
+        allow read: if request.auth.uid == userId || isAdmin();
+        allow create, update: if (request.auth.uid == userId || isAdmin()) && isValidWeight(request.resource.data);
+        allow delete: if request.auth.uid == userId || isAdmin();
+      }
+
+      // Catch-all for any other subcollections
+      match /{allSubcollections=**} {
+        allow read, write: if request.auth.uid == userId || isAdmin();
+      }
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
