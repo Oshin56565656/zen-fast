@@ -15,7 +15,7 @@ import { cn } from './lib/utils';
 type Tab = 'timer' | 'history' | 'stats' | 'coach' | 'log' | 'settings';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('timer');
+  const [activeTab, setActiveTab] = useState<Tab>('log');
   const { 
     user,
     isAuthReady,
@@ -202,7 +202,7 @@ export default function App() {
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
             <TimerIcon size={20} className="text-white fill-white/20" />
           </div>
-          <h1 className="text-xl font-bold tracking-tight">FastTrack <span className="text-primary">AI</span></h1>
+          <h1 className="text-xl font-bold tracking-tight">AllRound <span className="text-primary">AI</span></h1>
         </div>
         {state.status === 'fasting' && (
           <div className="px-3 py-1 bg-primary/20 text-primary text-[10px] font-bold rounded-full uppercase tracking-widest animate-pulse">

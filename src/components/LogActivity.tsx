@@ -42,9 +42,27 @@ const LogActivity: React.FC<LogActivityProps> = ({
   onDeleteWater,
   onDeleteWeight
 }) => {
-  const [activeType, setActiveType] = useState<'meal' | 'workout' | 'sleep' | 'water' | 'weight'>('meal');
+  const [activeType, setActiveType] = useState<'water' | 'meal' | 'workout' | 'sleep' | 'weight'>('water');
   const [searchDate, setSearchDate] = useState<string>('');
   
+  // Water Form State
+  const [waterAmount, setWaterAmount] = useState(250);
+  const [customWater, setCustomWater] = useState('');
+
+  // Calculate today's water for the progress bar
+  const todayWater = water
+    .filter(w => {
+      const d = new Date(w.time);
+      const today = new Date();
+      return d.getDate() === today.getDate() && 
+             d.getMonth() === today.getMonth() && 
+             d.getFullYear() === today.getFullYear();
+    })
+    .reduce((acc, curr) => acc + curr.amount, 0);
+
+  const waterGoal = 2000; // Default goal for visual progress
+  const waterPercentage = Math.min((todayWater / waterGoal) * 100, 100);
+
   // Meal Form State
   const [mealScale, setMealScale] = useState<'light' | 'normal' | 'large'>('normal');
   const [mealTime, setMealTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
@@ -171,10 +189,6 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const [bedtime, setBedtime] = useState(format(subHours(new Date(), 8), "yyyy-MM-dd'T'HH:mm"));
   const [wakeUpTime, setWakeUpTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
 
-  // Water Form State
-  const [waterAmount, setWaterAmount] = useState(250);
-  const [waterTime, setWaterTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
-
   // Weight Form State
   const [weightValue, setWeightValue] = useState<string>('');
   const [weightNote, setWeightNote] = useState('');
@@ -224,7 +238,10 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
   const handleLogWater = (e: React.FormEvent) => {
     e.preventDefault();
-    onLogWater(new Date(waterTime).getTime(), waterAmount);
+    const amount = customWater ? Number(customWater) : waterAmount;
+    if (amount <= 0) return;
+    onLogWater(Date.now(), amount);
+    setCustomWater('');
   };
 
   const handleLogWeight = (e: React.FormEvent) => {
@@ -259,6 +276,15 @@ const LogActivity: React.FC<LogActivityProps> = ({
     <div className="space-y-8 p-6 pb-24">
       <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 overflow-x-auto no-scrollbar">
         <button
+          onClick={() => setActiveType('water')}
+          className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
+            activeType === 'water' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
+          }`}
+        >
+          <Droplets size={18} />
+          <span className="font-bold">Water</span>
+        </button>
+        <button
           onClick={() => setActiveType('meal')}
           className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
             activeType === 'meal' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
@@ -286,15 +312,6 @@ const LogActivity: React.FC<LogActivityProps> = ({
           <span className="font-bold">Sleep</span>
         </button>
         <button
-          onClick={() => setActiveType('water')}
-          className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
-            activeType === 'water' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
-          }`}
-        >
-          <Droplets size={18} />
-          <span className="font-bold">Water</span>
-        </button>
-        <button
           onClick={() => setActiveType('weight')}
           className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
             activeType === 'weight' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
@@ -305,7 +322,98 @@ const LogActivity: React.FC<LogActivityProps> = ({
         </button>
       </div>
 
-      {activeType === 'meal' ? (
+      {activeType === 'water' ? (
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-card p-6 rounded-3xl border border-white/5 space-y-8"
+        >
+          {/* Fun Tube Progress Bar */}
+          <div className="flex flex-col items-center space-y-4">
+            <div className="relative w-24 h-64 bg-white/5 border-4 border-white/10 rounded-full overflow-hidden shadow-inner">
+              {/* Water Fill */}
+              <motion.div 
+                initial={{ height: 0 }}
+                animate={{ height: `${waterPercentage}%` }}
+                transition={{ type: "spring", stiffness: 50, damping: 15 }}
+                className="absolute bottom-0 left-0 right-0 bg-blue-500/80 backdrop-blur-sm"
+              >
+                {/* Bubbles Effect */}
+                <div className="absolute top-0 left-0 right-0 h-4 bg-white/20 blur-sm" />
+                <div className="absolute inset-0 overflow-hidden">
+                  {[...Array(5)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      animate={{ 
+                        y: [-20, -100],
+                        opacity: [0, 1, 0],
+                        x: [Math.random() * 20, Math.random() * -20]
+                      }}
+                      transition={{ 
+                        duration: 2 + Math.random() * 2,
+                        repeat: Infinity,
+                        delay: Math.random() * 2
+                      }}
+                      className="absolute bottom-0 w-1 h-1 bg-white/40 rounded-full"
+                      style={{ left: `${20 + i * 15}%` }}
+                    />
+                  ))}
+                </div>
+              </motion.div>
+              
+              {/* Measurement Lines */}
+              <div className="absolute inset-0 flex flex-col justify-between py-8 pointer-events-none">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="w-4 h-0.5 bg-white/10 ml-auto mr-2" />
+                ))}
+              </div>
+            </div>
+            <div className="text-center">
+              <p className="text-3xl font-black text-white">{todayWater}ml</p>
+              <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Today's Hydration</p>
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="grid grid-cols-4 gap-3">
+              {[100, 250, 500, 750].map((amt) => (
+                <button
+                  key={amt}
+                  type="button"
+                  onClick={() => {
+                    onLogWater(Date.now(), amt);
+                    if ("vibrate" in navigator) navigator.vibrate(50);
+                  }}
+                  className="group relative flex flex-col items-center space-y-2 p-3 bg-white/5 border border-white/5 rounded-2xl hover:bg-primary/10 hover:border-primary/30 transition-all active:scale-90"
+                >
+                  <Droplets size={20} className="text-blue-400 group-hover:scale-110 transition-transform" />
+                  <span className="text-[10px] font-black text-white/60">{amt}ml</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest block text-center">Custom Amount</label>
+              <div className="flex space-x-2">
+                <input
+                  type="number"
+                  value={customWater}
+                  onChange={(e) => setCustomWater(e.target.value)}
+                  placeholder="e.g. 330"
+                  className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors text-center font-bold"
+                />
+                <button
+                  onClick={handleLogWater}
+                  disabled={!customWater}
+                  className="bg-primary text-white px-6 rounded-2xl font-bold disabled:opacity-50 transition-all active:scale-95"
+                >
+                  Log
+                </button>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      ) : activeType === 'meal' ? (
         <motion.form
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -529,106 +637,6 @@ const LogActivity: React.FC<LogActivityProps> = ({
               <span>Log Workout</span>
             </button>
           </motion.form>
-      ) : activeType === 'water' ? (
-        <motion.form
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          onSubmit={handleLogWater}
-          className="bg-card p-6 rounded-3xl border border-white/5 space-y-6"
-        >
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Time</label>
-            <input
-              type="datetime-local"
-              value={waterTime}
-              onChange={(e) => setWaterTime(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
-            />
-          </div>
-
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Amount (ml)</label>
-              <span className="text-xl font-black text-primary">{waterAmount}ml</span>
-            </div>
-            
-            <div className="grid grid-cols-4 gap-2">
-              {[250, 500, 750, 1000].map((amt) => (
-                <button
-                  key={amt}
-                  type="button"
-                  onClick={() => setWaterAmount(amt)}
-                  className={`py-3 rounded-xl border transition-all font-bold text-xs ${
-                    waterAmount === amt 
-                      ? 'bg-primary/20 border-primary text-primary' 
-                      : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
-                  }`}
-                >
-                  {amt}ml
-                </button>
-              ))}
-            </div>
-
-            <div className="space-y-4 pt-2">
-              <input
-                type="range"
-                min="0"
-                max="2000"
-                step="50"
-                value={waterAmount}
-                onChange={(e) => setWaterAmount(Number(e.target.value))}
-                className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
-              />
-              <div className="flex justify-between text-[10px] font-bold text-white/20 uppercase tracking-tighter">
-                <span>0ml</span>
-                <span>500ml</span>
-                <span>1000ml</span>
-                <span>1500ml</span>
-                <span>2000ml</span>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setWaterAmount(prev => Math.max(0, prev - 100))}
-                className="flex-1 py-3 bg-white/5 border border-white/5 rounded-xl text-white/60 font-bold text-xs hover:bg-white/10 transition-colors"
-              >
-                -100ml
-              </button>
-              <button
-                type="button"
-                onClick={() => setWaterAmount(prev => prev + 100)}
-                className="flex-1 py-3 bg-white/5 border border-white/5 rounded-xl text-white/60 font-bold text-xs hover:bg-white/10 transition-colors"
-              >
-                +100ml
-              </button>
-              <button
-                type="button"
-                onClick={() => setWaterAmount(prev => prev + 250)}
-                className="flex-1 py-3 bg-white/5 border border-white/5 rounded-xl text-white/60 font-bold text-xs hover:bg-white/10 transition-colors"
-              >
-                +250ml
-              </button>
-            </div>
-
-            <input
-              type="number"
-              value={waterAmount}
-              onChange={(e) => setWaterAmount(Number(e.target.value))}
-              placeholder="Custom amount..."
-              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors text-center font-bold"
-            />
-          </div>
-
-          <button
-            type="submit"
-            className="w-full bg-primary text-white py-4 rounded-2xl font-bold flex items-center justify-center space-x-2 hover:bg-primary/90 transition-all active:scale-95"
-          >
-            <Droplets size={20} />
-            <span>Log Water</span>
-          </button>
-        </motion.form>
       ) : activeType === 'weight' ? (
         <motion.form
           initial={{ opacity: 0, y: 10 }}
