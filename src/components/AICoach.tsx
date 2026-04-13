@@ -30,6 +30,11 @@ interface Insight {
 interface CalorieGuess {
   amount: number;
   reasoning: string;
+  macros?: {
+    protein: number;
+    carbs: number;
+    fats: number;
+  };
 }
 
 interface CaloriesBurned {
@@ -382,6 +387,24 @@ const ChatBox: React.FC<{
                         <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">kcal</p>
                       </div>
                     </div>
+
+                    {calorieGuess.macros && (
+                      <div className="grid grid-cols-3 gap-2 mb-4">
+                        <div className="bg-white/5 p-2 rounded-xl border border-white/5 text-center">
+                          <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">Protein</p>
+                          <p className="text-sm font-black text-white">{calorieGuess.macros.protein}g</p>
+                        </div>
+                        <div className="bg-white/5 p-2 rounded-xl border border-white/5 text-center">
+                          <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">Carbs</p>
+                          <p className="text-sm font-black text-white">{calorieGuess.macros.carbs}g</p>
+                        </div>
+                        <div className="bg-white/5 p-2 rounded-xl border border-white/5 text-center">
+                          <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">Fats</p>
+                          <p className="text-sm font-black text-white">{calorieGuess.macros.fats}g</p>
+                        </div>
+                      </div>
+                    )}
+
                     <p className="text-white/70 text-xs leading-relaxed italic">
                       "{calorieGuess.reasoning}"
                     </p>

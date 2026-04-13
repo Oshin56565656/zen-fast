@@ -137,6 +137,7 @@ export default function App() {
             sleep={sleep}
             water={water}
             weights={weights}
+            waterGoal={state.waterGoal}
             onLogMeal={logMeal} 
             onLogWorkout={logWorkout} 
             onLogSleep={logSleep}

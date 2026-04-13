@@ -34,6 +34,11 @@ interface InsightResponse {
   calorieGuess?: {
     amount: number;
     reasoning: string;
+    macros?: {
+      protein: number;
+      carbs: number;
+      fats: number;
+    };
   };
   caloriesBurned?: {
     amount: number;
@@ -145,7 +150,7 @@ export async function getFastingInsights(
     3. How their sleep patterns (bedtime, wake-up time, duration, and quality) are affecting their fasting performance and metabolic health.
     4. How their meal choices (descriptions) affect their metabolic health and potentially their sleep.
     5. Hydration: Analyze their water intake patterns and suggest an optimal daily water goal (in ml) based on their physical profile, activity level, and current hydration habits.
-    6. Calorie Estimation: Based on the descriptions and scales of the meals logged TODAY (using userLocalTime as reference), provide a rough estimate of their total calorie intake for the current day. If no meals are logged today, provide a general estimate based on their typical patterns or skip if no data.
+    6. Calorie & Macro Estimation: Based on the descriptions and scales of the meals logged TODAY (using userLocalTime as reference), provide a rough estimate of their total calorie intake and macro breakdown (Protein, Carbs, Fats in grams) for the current day. If no meals are logged today, provide a general estimate based on their typical patterns or skip if no data.
     7. Calories Burned: Based on the workouts logged TODAY (duration, intensity, and type) and their physical profile (BMR estimate), provide a rough estimate of their total calories burned for the current day.
     
     CRITICAL: 
@@ -193,9 +198,18 @@ export async function getFastingInsights(
                 type: Type.OBJECT,
                 properties: {
                   amount: { type: Type.NUMBER, description: "Estimated calories consumed today" },
-                  reasoning: { type: Type.STRING, description: "Brief explanation of how this was calculated" }
+                  reasoning: { type: Type.STRING, description: "Brief explanation of how this was calculated" },
+                  macros: {
+                    type: Type.OBJECT,
+                    properties: {
+                      protein: { type: Type.NUMBER, description: "Estimated protein in grams" },
+                      carbs: { type: Type.NUMBER, description: "Estimated carbohydrates in grams" },
+                      fats: { type: Type.NUMBER, description: "Estimated fats in grams" }
+                    },
+                    required: ["protein", "carbs", "fats"]
+                  }
                 },
-                required: ["amount", "reasoning"]
+                required: ["amount", "reasoning", "macros"]
               },
               caloriesBurned: {
                 type: Type.OBJECT,

@@ -13,6 +13,7 @@ interface LogActivityProps {
   sleep: SleepRecord[];
   water: WaterRecord[];
   weights: WeightRecord[];
+  waterGoal: number;
   onLogMeal: (time: number, scale: 'light' | 'normal' | 'large', description?: string, barcode?: string) => void;
   onLogWorkout: (startTime: number, endTime: number, intensity: WorkoutIntensity, type: WorkoutType) => void;
   onLogSleep: (bedtime: number, wakeUpTime: number, quality: 'poor' | 'fair' | 'good' | 'excellent') => void;
@@ -31,6 +32,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
   sleep,
   water,
   weights,
+  waterGoal,
   onLogMeal,
   onLogWorkout,
   onLogSleep,
@@ -60,12 +62,13 @@ const LogActivity: React.FC<LogActivityProps> = ({
     })
     .reduce((acc, curr) => acc + curr.amount, 0);
 
-  const waterGoal = 2000; // Default goal for visual progress
-  const waterPercentage = Math.min((todayWater / waterGoal) * 100, 100);
+  const remainingWater = Math.max(0, waterGoal - todayWater);
+  const waterPercentage = (remainingWater / waterGoal) * 100;
 
   // Meal Form State
   const [mealScale, setMealScale] = useState<'light' | 'normal' | 'large'>('normal');
   const [mealTime, setMealTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+  const [isMealTimeDirty, setIsMealTimeDirty] = useState(false);
   const [mealDescription, setMealDescription] = useState('');
   const [mealBarcode, setMealBarcode] = useState('');
   const [showScanner, setShowScanner] = useState(false);
@@ -73,6 +76,27 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const [isSpeechSupported, setIsSpeechSupported] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
   const recognitionRef = useRef<any>(null);
+
+  // Workout Form State
+  const [workoutIntensity, setWorkoutIntensity] = useState<WorkoutIntensity>('moderate');
+  const [workoutType, setWorkoutType] = useState<WorkoutType>('cardio');
+  const [workoutStartTime, setWorkoutStartTime] = useState(format(subHours(new Date(), 0.5), "yyyy-MM-dd'T'HH:mm"));
+  const [isWorkoutStartTimeDirty, setIsWorkoutStartTimeDirty] = useState(false);
+  const [workoutEndTime, setWorkoutEndTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+  const [isWorkoutEndTimeDirty, setIsWorkoutEndTimeDirty] = useState(false);
+
+  // Sleep Form State
+  const [sleepQuality, setSleepQuality] = useState<'poor' | 'fair' | 'good' | 'excellent'>('good');
+  const [bedtime, setBedtime] = useState(format(subHours(new Date(), 8), "yyyy-MM-dd'T'HH:mm"));
+  const [isBedtimeDirty, setIsBedtimeDirty] = useState(false);
+  const [wakeUpTime, setWakeUpTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+  const [isWakeUpTimeDirty, setIsWakeUpTimeDirty] = useState(false);
+
+  // Weight Form State
+  const [weightValue, setWeightValue] = useState<string>('');
+  const [weightNote, setWeightNote] = useState('');
+  const [weightTime, setWeightTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+  const [isWeightTimeDirty, setIsWeightTimeDirty] = useState(false);
 
   React.useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -178,27 +202,26 @@ const LogActivity: React.FC<LogActivityProps> = ({
     }
   };
 
-  // Workout Form State
-  const [workoutIntensity, setWorkoutIntensity] = useState<WorkoutIntensity>('moderate');
-  const [workoutType, setWorkoutType] = useState<WorkoutType>('cardio');
-  const [workoutStartTime, setWorkoutStartTime] = useState(format(subHours(new Date(), 0.5), "yyyy-MM-dd'T'HH:mm"));
-  const [workoutEndTime, setWorkoutEndTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
-
-  // Sleep Form State
-  const [sleepQuality, setSleepQuality] = useState<'poor' | 'fair' | 'good' | 'excellent'>('good');
-  const [bedtime, setBedtime] = useState(format(subHours(new Date(), 8), "yyyy-MM-dd'T'HH:mm"));
-  const [wakeUpTime, setWakeUpTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
-
-  // Weight Form State
-  const [weightValue, setWeightValue] = useState<string>('');
-  const [weightNote, setWeightNote] = useState('');
-  const [weightTime, setWeightTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+  // Live Time Updates
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      if (!isMealTimeDirty) setMealTime(format(now, "yyyy-MM-dd'T'HH:mm"));
+      if (!isWorkoutStartTimeDirty) setWorkoutStartTime(format(subHours(now, 0.5), "yyyy-MM-dd'T'HH:mm"));
+      if (!isWorkoutEndTimeDirty) setWorkoutEndTime(format(now, "yyyy-MM-dd'T'HH:mm"));
+      if (!isBedtimeDirty) setBedtime(format(subHours(now, 8), "yyyy-MM-dd'T'HH:mm"));
+      if (!isWakeUpTimeDirty) setWakeUpTime(format(now, "yyyy-MM-dd'T'HH:mm"));
+      if (!isWeightTimeDirty) setWeightTime(format(now, "yyyy-MM-dd'T'HH:mm"));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isMealTimeDirty, isWorkoutStartTimeDirty, isWorkoutEndTimeDirty, isBedtimeDirty, isWakeUpTimeDirty, isWeightTimeDirty]);
 
   const handleLogMeal = (e: React.FormEvent) => {
     e.preventDefault();
     onLogMeal(new Date(mealTime).getTime(), mealScale, mealDescription, mealBarcode);
     setMealDescription('');
     setMealBarcode('');
+    setIsMealTimeDirty(false);
   };
 
   const handleScan = (barcode: string, product: any) => {
@@ -229,11 +252,15 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const handleLogWorkout = (e: React.FormEvent) => {
     e.preventDefault();
     onLogWorkout(new Date(workoutStartTime).getTime(), new Date(workoutEndTime).getTime(), workoutIntensity, workoutType);
+    setIsWorkoutStartTimeDirty(false);
+    setIsWorkoutEndTimeDirty(false);
   };
 
   const handleLogSleep = (e: React.FormEvent) => {
     e.preventDefault();
     onLogSleep(new Date(bedtime).getTime(), new Date(wakeUpTime).getTime(), sleepQuality);
+    setIsBedtimeDirty(false);
+    setIsWakeUpTimeDirty(false);
   };
 
   const handleLogWater = (e: React.FormEvent) => {
@@ -250,6 +277,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
     onLogWeight(new Date(weightTime).getTime(), Number(weightValue), weightNote);
     setWeightValue('');
     setWeightNote('');
+    setIsWeightTimeDirty(false);
   };
 
   const filterByDate = <T extends { time?: number; startTime?: number; bedtime?: number; wakeUpTime?: number }>(logs: T[]) => {
@@ -363,14 +391,22 @@ const LogActivity: React.FC<LogActivityProps> = ({
               
               {/* Measurement Lines */}
               <div className="absolute inset-0 flex flex-col justify-between py-8 pointer-events-none">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="w-4 h-0.5 bg-white/10 ml-auto mr-2" />
-                ))}
+                {[...Array(5)].map((_, i) => {
+                  const percentage = 100 - (i * 25);
+                  const value = Math.round((waterGoal * percentage) / 100);
+                  return (
+                    <div key={i} className="flex items-center justify-end pr-2 space-x-1">
+                      <span className="text-[8px] font-bold text-white/20">{value}</span>
+                      <div className="w-2 h-0.5 bg-white/10" />
+                    </div>
+                  );
+                })}
               </div>
             </div>
             <div className="text-center">
-              <p className="text-3xl font-black text-white">{todayWater}ml</p>
-              <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Today's Hydration</p>
+              <p className="text-3xl font-black text-white">{remainingWater}ml</p>
+              <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Remaining to Goal</p>
+              <p className="text-[10px] font-medium text-primary mt-1 uppercase tracking-tighter">Total Drunk: {todayWater}ml</p>
             </div>
           </div>
 
@@ -421,11 +457,26 @@ const LogActivity: React.FC<LogActivityProps> = ({
           className="bg-card p-6 rounded-3xl border border-white/5 space-y-6"
         >
           <div className="space-y-2">
-            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Meal Time</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Meal Time</label>
+              <button 
+                type="button"
+                onClick={() => setIsMealTimeDirty(false)}
+                className={cn(
+                  "text-[10px] font-bold uppercase px-2 py-1 rounded-lg transition-all",
+                  !isMealTimeDirty ? "text-primary bg-primary/10" : "text-white/20 hover:text-white/40"
+                )}
+              >
+                Live Now
+              </button>
+            </div>
             <input
               type="datetime-local"
               value={mealTime}
-              onChange={(e) => setMealTime(e.target.value)}
+              onChange={(e) => {
+                setMealTime(e.target.value);
+                setIsMealTimeDirty(true);
+              }}
               className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
             />
           </div>
@@ -518,20 +569,50 @@ const LogActivity: React.FC<LogActivityProps> = ({
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Bedtime</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Bedtime</label>
+                <button 
+                  type="button"
+                  onClick={() => setIsBedtimeDirty(false)}
+                  className={cn(
+                    "text-[10px] font-bold uppercase px-2 py-1 rounded-lg transition-all",
+                    !isBedtimeDirty ? "text-primary bg-primary/10" : "text-white/20 hover:text-white/40"
+                  )}
+                >
+                  Live
+                </button>
+              </div>
               <input
                 type="datetime-local"
                 value={bedtime}
-                onChange={(e) => setBedtime(e.target.value)}
+                onChange={(e) => {
+                  setBedtime(e.target.value);
+                  setIsBedtimeDirty(true);
+                }}
                 className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Wake Up Time</label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Wake Up Time</label>
+                <button 
+                  type="button"
+                  onClick={() => setIsWakeUpTimeDirty(false)}
+                  className={cn(
+                    "text-[10px] font-bold uppercase px-2 py-1 rounded-lg transition-all",
+                    !isWakeUpTimeDirty ? "text-primary bg-primary/10" : "text-white/20 hover:text-white/40"
+                  )}
+                >
+                  Live
+                </button>
+              </div>
               <input
                 type="datetime-local"
                 value={wakeUpTime}
-                onChange={(e) => setWakeUpTime(e.target.value)}
+                onChange={(e) => {
+                  setWakeUpTime(e.target.value);
+                  setIsWakeUpTimeDirty(true);
+                }}
                 className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
               />
             </div>
@@ -568,20 +649,50 @@ const LogActivity: React.FC<LogActivityProps> = ({
         >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Start Time</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Start Time</label>
+                  <button 
+                    type="button"
+                    onClick={() => setIsWorkoutStartTimeDirty(false)}
+                    className={cn(
+                      "text-[10px] font-bold uppercase px-2 py-1 rounded-lg transition-all",
+                      !isWorkoutStartTimeDirty ? "text-primary bg-primary/10" : "text-white/20 hover:text-white/40"
+                    )}
+                  >
+                    Live
+                  </button>
+                </div>
                 <input
                   type="datetime-local"
                   value={workoutStartTime}
-                  onChange={(e) => setWorkoutStartTime(e.target.value)}
+                  onChange={(e) => {
+                    setWorkoutStartTime(e.target.value);
+                    setIsWorkoutStartTimeDirty(true);
+                  }}
                   className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-xs font-bold text-white/40 uppercase tracking-widest">End Time</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-white/40 uppercase tracking-widest">End Time</label>
+                  <button 
+                    type="button"
+                    onClick={() => setIsWorkoutEndTimeDirty(false)}
+                    className={cn(
+                      "text-[10px] font-bold uppercase px-2 py-1 rounded-lg transition-all",
+                      !isWorkoutEndTimeDirty ? "text-primary bg-primary/10" : "text-white/20 hover:text-white/40"
+                    )}
+                  >
+                    Live
+                  </button>
+                </div>
                 <input
                   type="datetime-local"
                   value={workoutEndTime}
-                  onChange={(e) => setWorkoutEndTime(e.target.value)}
+                  onChange={(e) => {
+                    setWorkoutEndTime(e.target.value);
+                    setIsWorkoutEndTimeDirty(true);
+                  }}
                   className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
                 />
               </div>
@@ -645,11 +756,26 @@ const LogActivity: React.FC<LogActivityProps> = ({
           className="bg-card p-6 rounded-3xl border border-white/5 space-y-6"
         >
           <div className="space-y-2">
-            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Time</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Time</label>
+              <button 
+                type="button"
+                onClick={() => setIsWeightTimeDirty(false)}
+                className={cn(
+                  "text-[10px] font-bold uppercase px-2 py-1 rounded-lg transition-all",
+                  !isWeightTimeDirty ? "text-primary bg-primary/10" : "text-white/20 hover:text-white/40"
+                )}
+              >
+                Live
+              </button>
+            </div>
             <input
               type="datetime-local"
               value={weightTime}
-              onChange={(e) => setWeightTime(e.target.value)}
+              onChange={(e) => {
+                setWeightTime(e.target.value);
+                setIsWeightTimeDirty(true);
+              }}
               className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
             />
           </div>
@@ -751,7 +877,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                         {workout.type || 'Workout'} • {workout.intensity}
                       </p>
                       <p className="text-xs text-white/40">
-                        {workout.duration} mins • {formatTime(workout.startTime)} - {formatTime(workout.endTime)}
+                        {formatDate(workout.startTime)}, {workout.duration} mins • {formatTime(workout.startTime)} - {formatTime(workout.endTime)}
                       </p>
                     </div>
                   </div>
@@ -777,7 +903,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                     <div>
                       <p className="font-bold text-white capitalize">{s.quality} Sleep</p>
                       <p className="text-xs text-white/40">
-                        {s.duration.toFixed(1)} hours • {formatTime(s.bedtime)} - {formatTime(s.wakeUpTime)}
+                        {formatDate(s.wakeUpTime)}, {s.duration.toFixed(1)} hours • {formatTime(s.bedtime)} - {formatTime(s.wakeUpTime)}
                       </p>
                     </div>
                   </div>
