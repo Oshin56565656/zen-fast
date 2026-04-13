@@ -231,10 +231,10 @@ export default function App() {
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-card/80 backdrop-blur-xl border-t border-white/5 px-6 py-4 flex items-center justify-between z-50">
         <NavButton 
-          active={activeTab === 'timer'} 
-          onClick={() => setActiveTab('timer')} 
-          icon={<TimerIcon size={24} />} 
-          label="Timer" 
+          active={activeTab === 'log'} 
+          onClick={() => setActiveTab('log')} 
+          icon={<PlusCircle size={24} />} 
+          label="Log" 
         />
         <NavButton 
           active={activeTab === 'history'} 
@@ -255,10 +255,10 @@ export default function App() {
           label="Coach" 
         />
         <NavButton 
-          active={activeTab === 'log'} 
-          onClick={() => setActiveTab('log')} 
-          icon={<PlusCircle size={24} />} 
-          label="Log" 
+          active={activeTab === 'timer'} 
+          onClick={() => setActiveTab('timer')} 
+          icon={<TimerIcon size={24} />} 
+          label="Timer" 
         />
         <NavButton 
           active={activeTab === 'settings'} 
