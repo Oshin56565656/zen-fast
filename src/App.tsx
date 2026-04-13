@@ -180,6 +180,7 @@ export default function App() {
               meals={meals}
               workouts={workouts}
               sleep={sleep}
+              dailySummaries={dailySummaries}
             />
             <div className="px-6">
               <button

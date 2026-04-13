@@ -387,8 +387,9 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
           <div className="bg-card p-6 rounded-3xl border border-white/5">
             <h3 className="text-lg font-bold mb-6">Daily Goals Consistency</h3>
             <div className="space-y-6">
-              {Array.from({ length: 14 }).map((_, i) => {
-                const date = subDays(new Date(), i);
+              {Array.from({ length: 6 }).map((_, i) => {
+                // Start from yesterday (i + 1) to only show completed days
+                const date = subDays(new Date(), i + 1);
                 const dateStr = format(date, 'yyyy-MM-dd');
                 
                 // Water check

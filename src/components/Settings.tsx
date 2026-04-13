@@ -36,6 +36,7 @@ interface SettingsProps {
   meals: MealRecord[];
   workouts: WorkoutRecord[];
   sleep: SleepRecord[];
+  dailySummaries?: any[];
 }
 
 interface CollapsibleSectionProps {
@@ -128,7 +129,8 @@ export const Settings: FC<SettingsProps> = ({
   history,
   meals,
   workouts,
-  sleep
+  sleep,
+  dailySummaries = []
 }) => {
   const [hasKey, setHasKey] = useState(false);
   const [manualKey, setManualKey] = useState('');
@@ -264,7 +266,7 @@ export const Settings: FC<SettingsProps> = ({
     }
   };
 
-  const downloadCSV = (type: 'all' | 'fasting' | 'meals' | 'workouts' | 'sleep') => {
+  const downloadCSV = (type: 'all' | 'fasting' | 'meals' | 'workouts' | 'sleep' | 'consistency') => {
     const escapeCSV = (val: any) => {
       if (val === null || val === undefined) return '""';
       const str = String(val);
@@ -335,6 +337,15 @@ export const Settings: FC<SettingsProps> = ({
         const start = formatDateTime(record.bedtime);
         const end = formatDateTime(record.wakeUpTime);
         csvContent += `${escapeCSV(start.date)},${escapeCSV(start.time)},${escapeCSV(end.date)},${escapeCSV(end.time)},${escapeCSV(record.duration.toFixed(2))},${escapeCSV(record.quality)}\n`;
+      });
+      csvContent += "\n";
+    }
+
+    if (type === 'all' || type === 'consistency') {
+      csvContent += escapeCSV("DAILY GOALS CONSISTENCY") + "\n";
+      csvContent += `${escapeCSV("Date")},${escapeCSV("Calories Consumed")},${escapeCSV("Calories Burned")},${escapeCSV("Water Intake (ml)")},${escapeCSV("Water Goal (ml)")},${escapeCSV("Calorie Deficit Met")},${escapeCSV("Water Goal Met")}\n`;
+      dailySummaries.forEach(record => {
+        csvContent += `${escapeCSV(record.date)},${escapeCSV(record.intake)},${escapeCSV(record.burn)},${escapeCSV(record.waterTotal)},${escapeCSV(record.waterGoal)},${escapeCSV(record.isDeficit ? 'Yes' : 'No')},${escapeCSV(record.isWaterGoalMet ? 'Yes' : 'No')}\n`;
       });
     }
 
@@ -885,6 +896,13 @@ export const Settings: FC<SettingsProps> = ({
               >
                 <Download size={14} className="text-primary" />
                 <span>Sleep</span>
+              </button>
+              <button
+                onClick={() => downloadCSV('consistency')}
+                className="py-3 bg-white/5 hover:bg-white/10 text-white/80 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition-all active:scale-95 border border-white/5"
+              >
+                <Download size={14} className="text-primary" />
+                <span>Consistency</span>
               </button>
             </div>
           </div>
