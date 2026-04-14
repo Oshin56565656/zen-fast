@@ -153,8 +153,31 @@ const ChatBox: React.FC<{
       return null;
     });
     const [loading, setLoading] = useState<boolean>(false);
+    const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
     const [error, setError] = useState<string | null>(null);
     const [hasKey, setHasKey] = useState<boolean>(true);
+
+    const loadingMessages = [
+      "Analyzing your fasting patterns...",
+      "Calculating calorie intake...",
+      "Estimating metabolic burn...",
+      "Reviewing sleep quality...",
+      "Checking hydration levels...",
+      "Synthesizing personalized advice...",
+      "Consulting the health database...",
+      "Finalizing your daily insights..."
+    ];
+
+    useEffect(() => {
+      let interval: NodeJS.Timeout;
+      if (loading) {
+        setLoadingMessageIndex(0);
+        interval = setInterval(() => {
+          setLoadingMessageIndex((prev) => (prev + 1) % loadingMessages.length);
+        }, 2000);
+      }
+      return () => clearInterval(interval);
+    }, [loading]);
   
     useEffect(() => {
       localStorage.setItem('fasttrack_insights', JSON.stringify({ insights, calorieGuess, caloriesBurned }));
@@ -292,7 +315,19 @@ const ChatBox: React.FC<{
               className="bg-white/5 p-12 rounded-3xl border border-white/10 flex flex-col items-center justify-center space-y-4"
             >
               <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <p className="text-white/40 text-sm font-medium animate-pulse">Analyzing your fasting patterns...</p>
+              <div className="h-6 flex items-center justify-center">
+                <AnimatePresence mode="wait">
+                  <motion.p 
+                    key={loadingMessageIndex}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -5 }}
+                    className="text-white/40 text-sm font-medium"
+                  >
+                    {loadingMessages[loadingMessageIndex]}
+                  </motion.p>
+                </AnimatePresence>
+              </div>
             </motion.div>
           ) : error ? (
             <motion.div
