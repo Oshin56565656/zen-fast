@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { formatDurationShort } from '../lib/utils';
 import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, DailySummary } from '../types';
 import { 
   auth, 
@@ -383,8 +384,18 @@ export function useFasting() {
     
     const startTime = customStartTime || Date.now();
     
+    // If we have a target end time, recalculate target hours based on the actual start time
+    let updatedTargetHours = state.targetHours;
+    if (state.targetEndTime) {
+      const durationMs = state.targetEndTime - startTime;
+      // If the target end time is in the past relative to start, it's invalid or for next day
+      // But usually targetEndTime is set for "today/tomorrow" relative to when it was set.
+      // We'll trust the timestamp but ensure it's at least 1h.
+      updatedTargetHours = Math.max(1, durationMs / 3600000);
+    }
+    
     sendNotification("Fast Started!", {
-      body: `Your ${state.targetHours}h fast has begun. Good luck!`,
+      body: `Your ${formatDurationShort(updatedTargetHours * 3600)} fast has begun. Good luck!`,
       icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
     });
     
@@ -393,7 +404,8 @@ export function useFasting() {
       endTime: null,
       status: 'fasting',
       pausedAt: null,
-      totalPausedTime: 0
+      totalPausedTime: 0,
+      targetHours: updatedTargetHours
     });
   };
 
@@ -566,7 +578,8 @@ export function useFasting() {
         }
         
         // Auto-end if targetEndTime was explicitly set and reached
-        if (state.targetEndTime && now >= state.targetEndTime) {
+        // Added a check for isEndingRef to prevent double execution from interval
+        if (state.targetEndTime && now >= state.targetEndTime && !isEndingRef.current) {
           endFast();
         }
       }
