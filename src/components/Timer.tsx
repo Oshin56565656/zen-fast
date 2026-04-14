@@ -105,7 +105,7 @@ export const Timer: FC<TimerProps> = ({ state, meals, onStart, onPause, onResume
           </p>
           <button 
             onClick={() => setDisplayMode(prev => prev === 'elapsed' ? 'remaining' : 'elapsed')}
-            className="text-5xl font-bold font-mono tabular-nums hover:text-primary transition-colors"
+            className="text-4xl font-bold font-mono tabular-nums hover:text-primary transition-colors"
           >
             {displayTime}
           </button>

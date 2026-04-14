@@ -48,10 +48,46 @@ const LogActivity: React.FC<LogActivityProps> = ({
 }) => {
   const [activeType, setActiveType] = useState<'water' | 'meal' | 'workout' | 'sleep' | 'weight'>('water');
   const [searchDate, setSearchDate] = useState<string>('');
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [motionPermission, setMotionPermission] = useState<'default' | 'granted' | 'denied'>('default');
   
   // Water Form State
   const [waterAmount, setWaterAmount] = useState(250);
   const [customWater, setCustomWater] = useState('');
+
+  const requestMotionPermission = async () => {
+    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
+      try {
+        const permission = await (DeviceOrientationEvent as any).requestPermission();
+        setMotionPermission(permission);
+        if (permission === 'granted') {
+          window.addEventListener('deviceorientation', handleOrientation);
+        }
+      } catch (e) {
+        console.error('Motion permission error:', e);
+        setMotionPermission('denied');
+      }
+    }
+  };
+
+  const handleOrientation = (e: DeviceOrientationEvent) => {
+    // Gamma is left-to-right tilt in degrees [-90, 90]
+    // Beta is front-to-back tilt in degrees [-180, 180]
+    const x = e.gamma ? Math.max(-30, Math.min(30, e.gamma)) : 0;
+    const y = e.beta ? Math.max(-30, Math.min(30, e.beta - 45)) : 0; // Offset beta for natural viewing angle
+    setTilt({ x, y });
+  };
+
+  // Device Orientation for Water Tube
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && 'DeviceOrientationEvent' in window) {
+      if (typeof (DeviceOrientationEvent as any).requestPermission !== 'function') {
+        // Non-iOS devices
+        window.addEventListener('deviceorientation', handleOrientation);
+      }
+    }
+    return () => window.removeEventListener('deviceorientation', handleOrientation);
+  }, []);
 
   // Calculate today's water for the progress bar
   const todayWater = water
@@ -361,15 +397,39 @@ const LogActivity: React.FC<LogActivityProps> = ({
           {/* Fun Tube Progress Bar */}
           <div className="flex flex-col items-center space-y-4">
             <div className="relative w-24 h-64 bg-white/5 border-4 border-white/10 rounded-full overflow-hidden shadow-inner">
+              {/* Motion Permission Overlay (iOS) */}
+              {typeof (DeviceOrientationEvent as any).requestPermission === 'function' && motionPermission !== 'granted' && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
+                  <button 
+                    onClick={requestMotionPermission}
+                    className="bg-primary text-white text-[10px] font-black uppercase px-3 py-2 rounded-xl shadow-xl active:scale-95 transition-all"
+                  >
+                    Enable Motion
+                  </button>
+                </div>
+              )}
+              
               {/* Water Fill */}
               <motion.div 
                 initial={{ height: 0 }}
-                animate={{ height: `${waterPercentage}%` }}
-                transition={{ type: "spring", stiffness: 50, damping: 15 }}
-                className="absolute bottom-0 left-0 right-0 bg-blue-500/80 backdrop-blur-sm"
+                animate={{ 
+                  height: `${waterPercentage}%`,
+                  rotate: tilt.x * 0.1,
+                  skewX: tilt.x * 0.05,
+                }}
+                transition={{ type: "spring", stiffness: 40, damping: 12 }}
+                className="absolute bottom-0 left-[-20%] right-[-20%] bg-blue-500/80 backdrop-blur-sm origin-bottom"
               >
+                {/* Surface Wave Effect */}
+                <motion.div 
+                  animate={{ 
+                    rotate: -tilt.x * 0.2,
+                    y: Math.abs(tilt.x) * 0.1
+                  }}
+                  className="absolute top-0 left-[-50%] right-[-50%] h-6 bg-white/30 blur-md" 
+                />
+                
                 {/* Bubbles Effect */}
-                <div className="absolute top-0 left-0 right-0 h-4 bg-white/20 blur-sm" />
                 <div className="absolute inset-0 overflow-hidden">
                   {[...Array(5)].map((_, i) => (
                     <motion.div

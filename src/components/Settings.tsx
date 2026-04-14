@@ -975,7 +975,7 @@ export const Settings: FC<SettingsProps> = ({
 
       <CollapsibleSection 
         id="about" 
-        title="About FastTrack" 
+        title="About AllRound" 
         icon={Info}
         isExpanded={expandedSections.about}
         onToggle={() => toggleSection('about')}

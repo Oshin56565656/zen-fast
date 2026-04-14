@@ -85,7 +85,7 @@ export const Auth: FC = () => {
         transition={{ delay: 0.1 }}
         className="text-4xl font-bold tracking-tight mb-4"
       >
-        FastTrack <span className="text-primary">AI</span>
+        AllRound <span className="text-primary">AI</span>
       </motion.h1>
 
       <motion.p

@@ -53,7 +53,10 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
     .filter(w => isSameDay(new Date(w.time), new Date()))
     .reduce((acc, curr) => acc + curr.amount, 0);
   const remainingWater = Math.max(0, waterGoal - todayWaterAmount);
-  const avgWaterPerDay = totalWaterLogs > 0 ? totalWaterAmount / 7 : 0; // Rough avg over 7 days
+  
+  const waterDays = new Set(water.map(w => format(new Date(w.time), 'yyyy-MM-dd')));
+  const avgWaterPerDay = waterDays.size > 0 ? totalWaterAmount / waterDays.size : 0;
+  
   const maxWaterDay = Math.max(...Array.from({ length: 7 }).map((_, i) => {
     const date = subDays(new Date(), i);
     return water
