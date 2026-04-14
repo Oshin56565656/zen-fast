@@ -1,7 +1,7 @@
 import React, { FC, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { cn } from '../lib/utils';
-import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info, Download, Zap, ChevronDown, User, Target, Cloud, Settings as SettingsIcon, Database, Brain } from 'lucide-react';
+import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info, Download, Zap, ChevronDown, User, Target, Cloud, Settings as SettingsIcon, Database, Brain, Plus } from 'lucide-react';
 import { FastRecord, MealRecord, WorkoutRecord, SleepRecord } from '../types';
 
 interface SettingsProps {
@@ -30,6 +30,8 @@ interface SettingsProps {
     lastUpdated: number;
   };
   suggestedWaterGoal?: number;
+  waterPresets?: number[];
+  onWaterPresetsChange?: (presets: number[]) => void;
   onRefreshWeather?: () => void;
   onTestNotification?: () => void;
   history: FastRecord[];
@@ -124,6 +126,8 @@ export const Settings: FC<SettingsProps> = ({
   onNotificationsEnabledChange,
   weatherData,
   suggestedWaterGoal,
+  waterPresets = [100, 150, 250, 300],
+  onWaterPresetsChange,
   onRefreshWeather,
   onTestNotification,
   history,
@@ -147,6 +151,8 @@ export const Settings: FC<SettingsProps> = ({
     ai: false,
     about: false
   });
+
+  const [newPreset, setNewPreset] = useState<string>('');
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({
@@ -264,6 +270,24 @@ export const Settings: FC<SettingsProps> = ({
     if (suggestedWaterGoal) {
       onWaterGoalChange(suggestedWaterGoal);
     }
+  };
+
+  const handleAddPreset = () => {
+    if (!newPreset || !onWaterPresetsChange) return;
+    const val = parseInt(newPreset);
+    if (isNaN(val) || val <= 0) return;
+    if (waterPresets.includes(val)) return;
+    if (waterPresets.length >= 8) return;
+    
+    const updated = [...waterPresets, val].sort((a, b) => a - b);
+    onWaterPresetsChange(updated);
+    setNewPreset('');
+  };
+
+  const handleRemovePreset = (preset: number) => {
+    if (!onWaterPresetsChange) return;
+    const updated = waterPresets.filter(p => p !== preset);
+    onWaterPresetsChange(updated);
   };
 
   const downloadCSV = (type: 'all' | 'fasting' | 'meals' | 'workouts' | 'sleep' | 'consistency') => {
@@ -662,6 +686,46 @@ export const Settings: FC<SettingsProps> = ({
               Enable location access to get personalized hydration goals based on your local weather.
             </p>
           )}
+
+          <div className="pt-6 border-t border-white/5 space-y-4">
+            <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest block">Quick Log Presets (ml)</label>
+            <div className="grid grid-cols-4 gap-2">
+              {waterPresets.map((preset) => (
+                <div key={preset} className="relative group">
+                  <div className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-center text-xs font-bold text-white/80">
+                    {preset}
+                  </div>
+                  <button
+                    onClick={() => handleRemovePreset(preset)}
+                    className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                  >
+                    <Plus size={8} className="rotate-45" />
+                  </button>
+                </div>
+              ))}
+              {waterPresets.length < 8 && (
+                <div className="flex space-x-1 col-span-2">
+                  <input
+                    type="number"
+                    value={newPreset}
+                    onChange={(e) => setNewPreset(e.target.value)}
+                    placeholder="Add..."
+                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-2 py-1 text-xs text-white focus:outline-none focus:border-primary transition-colors"
+                  />
+                  <button
+                    onClick={handleAddPreset}
+                    disabled={!newPreset}
+                    className="bg-primary/20 text-primary p-2 rounded-xl hover:bg-primary/30 transition-colors disabled:opacity-50"
+                  >
+                    <Plus size={14} />
+                  </button>
+                </div>
+              )}
+            </div>
+            <p className="text-[8px] text-white/20 font-medium italic">
+              Customize the quick-log buttons in your Water section (Max 8).
+            </p>
+          </div>
         </div>
       </CollapsibleSection>
 

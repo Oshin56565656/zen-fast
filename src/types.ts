@@ -25,6 +25,7 @@ export interface CurrentFastState {
   waterGoal?: number; // in ml
   accentColor?: string;
   notificationsEnabled?: boolean;
+  waterPresets?: number[];
   weatherData?: {
     temp: number;
     condition: string;

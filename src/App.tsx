@@ -50,6 +50,7 @@ export default function App() {
     setAge,
     setSex,
     setWaterGoal,
+    setWaterPresets,
     setAccentColor,
     setNotificationsEnabled,
     refreshWeather,
@@ -138,6 +139,7 @@ export default function App() {
             water={water}
             weights={weights}
             waterGoal={state.waterGoal}
+            waterPresets={state.waterPresets}
             onLogMeal={logMeal} 
             onLogWorkout={logWorkout} 
             onLogSleep={logSleep}
@@ -168,6 +170,8 @@ export default function App() {
               onSexChange={setSex}
               waterGoal={state.waterGoal}
               onWaterGoalChange={setWaterGoal}
+              waterPresets={state.waterPresets}
+              onWaterPresetsChange={setWaterPresets}
               accentColor={state.accentColor}
               onAccentColorChange={setAccentColor}
               notificationsEnabled={state.notificationsEnabled}

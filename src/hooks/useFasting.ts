@@ -875,6 +875,7 @@ export function useFasting() {
     setAge: (age: number) => updateState({ age }),
     setSex: (sex: 'male' | 'female' | 'other') => updateState({ sex }),
     setWaterGoal: (goal: number) => updateState({ waterGoal: goal }),
+    setWaterPresets: (presets: number[]) => updateState({ waterPresets: presets }),
     setAccentColor: (color: string) => updateState({ accentColor: color }),
     setNotificationsEnabled: (enabled: boolean) => updateState({ notificationsEnabled: enabled }),
     refreshWeather,

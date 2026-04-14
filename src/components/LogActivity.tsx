@@ -14,6 +14,7 @@ interface LogActivityProps {
   water: WaterRecord[];
   weights: WeightRecord[];
   waterGoal: number;
+  waterPresets?: number[];
   onLogMeal: (time: number, scale: 'light' | 'normal' | 'large', description?: string, barcode?: string) => void;
   onLogWorkout: (startTime: number, endTime: number, intensity: WorkoutIntensity, type: WorkoutType) => void;
   onLogSleep: (bedtime: number, wakeUpTime: number, quality: 'poor' | 'fair' | 'good' | 'excellent') => void;
@@ -33,6 +34,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
   water,
   weights,
   waterGoal,
+  waterPresets = [100, 150, 250, 300],
   onLogMeal,
   onLogWorkout,
   onLogSleep,
@@ -412,7 +414,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
           <div className="space-y-6">
             <div className="grid grid-cols-4 gap-3">
-              {[100, 250, 500, 750].map((amt) => (
+              {waterPresets.map((amt) => (
                 <button
                   key={amt}
                   type="button"
