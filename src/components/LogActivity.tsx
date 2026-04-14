@@ -414,38 +414,47 @@ const LogActivity: React.FC<LogActivityProps> = ({
                 initial={{ height: 0 }}
                 animate={{ 
                   height: `${waterPercentage}%`,
-                  rotate: tilt.x * 0.1,
-                  skewX: tilt.x * 0.05,
+                  rotate: tilt.x * 0.15,
+                  skewX: tilt.x * 0.08,
                 }}
-                transition={{ type: "spring", stiffness: 40, damping: 12 }}
-                className="absolute bottom-0 left-[-20%] right-[-20%] bg-blue-500/80 backdrop-blur-sm origin-bottom"
+                transition={{ type: "spring", stiffness: 25, damping: 15 }}
+                className="absolute bottom-0 left-[-30%] right-[-30%] bg-gradient-to-t from-blue-600/90 to-blue-400/80 backdrop-blur-md origin-bottom"
               >
                 {/* Surface Wave Effect */}
                 <motion.div 
                   animate={{ 
-                    rotate: -tilt.x * 0.2,
-                    y: Math.abs(tilt.x) * 0.1
+                    rotate: -tilt.x * 0.3,
+                    y: [0, -2, 0],
                   }}
-                  className="absolute top-0 left-[-50%] right-[-50%] h-6 bg-white/30 blur-md" 
+                  transition={{
+                    y: { duration: 2, repeat: Infinity, ease: "easeInOut" }
+                  }}
+                  className="absolute top-0 left-[-50%] right-[-50%] h-8 bg-white/40 blur-lg" 
                 />
                 
+                {/* Surface Highlight */}
+                <div className="absolute top-0 left-0 right-0 h-[2px] bg-white/50 shadow-[0_0_15px_rgba(255,255,255,0.5)]" />
+
                 {/* Bubbles Effect */}
-                <div className="absolute inset-0 overflow-hidden">
-                  {[...Array(5)].map((_, i) => (
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                  {[...Array(6)].map((_, i) => (
                     <motion.div
                       key={i}
+                      initial={{ y: "110%", opacity: 0 }}
                       animate={{ 
-                        y: [-20, -100],
-                        opacity: [0, 1, 0],
-                        x: [Math.random() * 20, Math.random() * -20]
+                        y: ["110%", "-10%"],
+                        opacity: [0, 0.6, 0],
+                        x: [0, (i % 2 === 0 ? 10 : -10), 0]
                       }}
                       transition={{ 
-                        duration: 2 + Math.random() * 2,
+                        duration: 3 + i,
                         repeat: Infinity,
-                        delay: Math.random() * 2
+                        delay: i * 0.8,
+                        ease: "linear",
+                        x: { duration: 2, repeat: Infinity, ease: "easeInOut" }
                       }}
-                      className="absolute bottom-0 w-1 h-1 bg-white/40 rounded-full"
-                      style={{ left: `${20 + i * 15}%` }}
+                      className="absolute w-1.5 h-1.5 bg-white/30 rounded-full blur-[0.5px]"
+                      style={{ left: `${15 + i * 14}%` }}
                     />
                   ))}
                 </div>
