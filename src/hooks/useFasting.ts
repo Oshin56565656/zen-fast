@@ -61,6 +61,7 @@ export function useFasting() {
   const [hasNotifiedTarget, setHasNotifiedTarget] = useState(false);
   const [lastWaterReminder, setLastWaterReminder] = useState<number>(Date.now());
   const [isWaterLoaded, setIsWaterLoaded] = useState(false);
+  const [firestoreError, setFirestoreError] = useState<string | null>(null);
   const isEndingRef = useRef(false);
 
   // Apply theme color to CSS variable
@@ -345,6 +346,11 @@ export function useFasting() {
       path
     };
     console.error('Firestore Error: ', JSON.stringify(errInfo));
+    
+    if (errInfo.error.includes('unavailable') || errInfo.error.includes('offline')) {
+      setFirestoreError("Could not reach Firestore. Please check your internet connection or Firebase configuration.");
+    }
+    
     // We don't throw here to avoid crashing the whole app, 
     // but we log it clearly for the agent to see.
   };
@@ -508,12 +514,12 @@ export function useFasting() {
     if (time && state.startTime) {
       // Calculate hours based on current fast start time
       const durationMs = time - state.startTime;
-      const hours = Math.round(durationMs / 3600000);
+      const hours = durationMs / 3600000;
       updateState({ targetEndTime: time, targetHours: hours });
     } else if (time) {
       // If not fasting yet, calculate from "now" as a preview/default
       const durationMs = time - Date.now();
-      const hours = Math.max(1, Math.round(durationMs / 3600000));
+      const hours = Math.max(1, durationMs / 3600000);
       updateState({ targetEndTime: time, targetHours: hours });
     } else {
       updateState({ targetEndTime: time });
@@ -898,6 +904,7 @@ export function useFasting() {
     refreshWeather,
     testNotification,
     dailySummaries,
-    saveDailySummary
+    saveDailySummary,
+    firestoreError
   };
 }

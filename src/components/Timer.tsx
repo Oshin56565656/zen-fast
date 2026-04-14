@@ -2,7 +2,7 @@ import React, { useState, useEffect, FC } from 'react';
 import { motion } from 'motion/react';
 import { Timer as TimerIcon, Play, Pause, Square, Zap, Sparkles } from 'lucide-react';
 import { CurrentFastState, MealRecord } from '../types';
-import { formatDuration, cn, formatTime } from '../lib/utils';
+import { formatDuration, cn, formatTime, formatDurationShort } from '../lib/utils';
 import { FastingStages } from './FastingStages';
 
 import { FASTING_STAGES } from '../constants/fastingStages';
@@ -112,7 +112,7 @@ export const Timer: FC<TimerProps> = ({ state, meals, onStart, onPause, onResume
           <p className="text-sm text-white/40 mt-2">
             Goal: {state.targetEndTime 
               ? new Date(state.targetEndTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
-              : `${state.targetHours}h`}
+              : formatDurationShort(state.targetHours * 3600)}
           </p>
         </div>
       </div>

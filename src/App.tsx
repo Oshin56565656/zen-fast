@@ -56,7 +56,8 @@ export default function App() {
     refreshWeather,
     testNotification,
     dailySummaries,
-    saveDailySummary
+    saveDailySummary,
+    firestoreError
   } = useFasting();
 
   useEffect(() => {
@@ -216,6 +217,28 @@ export default function App() {
           </div>
         )}
       </header>
+
+      {/* Error Banner */}
+      <AnimatePresence>
+        {firestoreError && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="px-6 pb-4"
+          >
+            <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 flex items-start space-x-3">
+              <div className="bg-red-500 rounded-full p-1 mt-0.5">
+                <Zap size={12} className="text-white" />
+              </div>
+              <div className="flex-1">
+                <p className="text-xs font-bold text-red-500">Connection Issue</p>
+                <p className="text-[10px] text-red-400/80 leading-tight mt-0.5">{firestoreError}</p>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto pb-24">

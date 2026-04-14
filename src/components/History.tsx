@@ -125,7 +125,7 @@ export const History: FC<HistoryProps> = ({ history, onDelete, onManualLog }) =>
                       onChange={(e) => setTargetHours(parseInt(e.target.value))}
                       className="flex-1 accent-primary"
                     />
-                    <span className="font-mono font-bold w-8">{targetHours}h</span>
+                    <span className="font-mono font-bold w-16 text-right whitespace-nowrap">{formatDurationShort(targetHours * 3600)}</span>
                   </div>
                 </div>
 
@@ -170,7 +170,7 @@ export const History: FC<HistoryProps> = ({ history, onDelete, onManualLog }) =>
               <div className="text-right">
                 <p className="font-mono font-bold">{formatDurationShort(record.duration)}</p>
                 <p className="text-[10px] text-white/40 uppercase tracking-tighter">
-                  Goal: {Math.round(record.targetDuration / 3600)}h
+                  Goal: {formatDurationShort(record.targetDuration)}
                 </p>
               </div>
               <button

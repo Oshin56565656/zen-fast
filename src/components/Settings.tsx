@@ -1,6 +1,6 @@
 import React, { FC, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { cn } from '../lib/utils';
+import { cn, formatDurationShort } from '../lib/utils';
 import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info, Download, Zap, ChevronDown, User, Target, Cloud, Settings as SettingsIcon, Database, Brain, Plus } from 'lucide-react';
 import { FastRecord, MealRecord, WorkoutRecord, SleepRecord } from '../types';
 
@@ -401,7 +401,7 @@ export const Settings: FC<SettingsProps> = ({
           <div className="space-y-6">
             <div className="text-center">
               <p className={cn("text-5xl font-bold transition-colors", !targetEndTime ? "text-primary" : "text-white/20")}>
-                {targetHours}h
+                {formatDurationShort(targetHours * 3600)}
               </p>
               <p className="text-xs text-white/40 mt-1 uppercase tracking-widest">Target Duration</p>
             </div>

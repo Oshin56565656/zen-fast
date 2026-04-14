@@ -48,37 +48,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
 }) => {
   const [activeType, setActiveType] = useState<'water' | 'meal' | 'workout' | 'sleep' | 'weight'>('water');
   const [searchDate, setSearchDate] = useState<string>('');
-  const [tilt, setTilt] = useState(0);
 
-  // Handle tilt for realism
-  React.useEffect(() => {
-    const handleOrientation = (e: DeviceOrientationEvent) => {
-      if (e.gamma !== null) {
-        // Gamma is left-to-right tilt in degrees [-90, 90]
-        setTilt(e.gamma / 3);
-      }
-    };
-    
-    // Fallback animation if no orientation data
-    let frame: number;
-    let angle = 0;
-    const animate = () => {
-      angle += 0.02;
-      if (window.self === window.top) { // Only fallback if not in iframe or if we want subtle movement
-        // We'll just use a very subtle oscillation as a base
-      }
-      frame = requestAnimationFrame(animate);
-    };
-
-    window.addEventListener('deviceorientation', handleOrientation);
-    animate();
-    
-    return () => {
-      window.removeEventListener('deviceorientation', handleOrientation);
-      cancelAnimationFrame(frame);
-    };
-  }, []);
-  
   // Water Form State
   const [waterAmount, setWaterAmount] = useState(250);
   const [customWater, setCustomWater] = useState('');
@@ -411,11 +381,9 @@ const LogActivity: React.FC<LogActivityProps> = ({
                 <motion.div 
                   className="absolute top-0 left-[-50%] w-[200%] h-12 z-20"
                   animate={{ 
-                    rotate: tilt,
                     y: [0, -2, 0]
                   }}
                   transition={{
-                    rotate: { type: "spring", stiffness: 100, damping: 10 },
                     y: { duration: 3, repeat: Infinity, ease: "easeInOut" }
                   }}
                   style={{
@@ -428,8 +396,6 @@ const LogActivity: React.FC<LogActivityProps> = ({
                 {/* Crisp Surface Line */}
                 <motion.div 
                   className="absolute top-0 left-0 right-0 h-[1.5px] bg-white/60 z-30"
-                  animate={{ rotate: tilt }}
-                  transition={{ type: "spring", stiffness: 100, damping: 10 }}
                 />
 
                 {/* Soft Wavy Reflection */}
@@ -438,7 +404,6 @@ const LogActivity: React.FC<LogActivityProps> = ({
                   style={{
                     background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%, rgba(255,255,255,0.1) 100%)',
                   }}
-                  animate={{ skewX: tilt / 2 }}
                 />
 
                 {/* Bubbles Effect */}
@@ -492,8 +457,6 @@ const LogActivity: React.FC<LogActivityProps> = ({
                     <motion.div 
                       key={i} 
                       className="flex items-center justify-end pr-2 space-x-1 opacity-40 blur-[0.5px]"
-                      animate={{ x: tilt / 4 }}
-                      transition={{ type: "spring", stiffness: 100, damping: 10 }}
                     >
                       <span className="text-[8px] font-bold text-white">{value}</span>
                       <div className="w-2 h-0.5 bg-white" />
