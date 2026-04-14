@@ -1,4 +1,4 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
 import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord } from "../types";
 
 const getAIInstance = () => {
@@ -167,13 +167,27 @@ export async function getFastingInsights(
     Recent Sleep: ${JSON.stringify(sleepData)}
     Recent Water Intake: ${JSON.stringify(waterData)}
     
-    Structure the response as a list of insights.
+    Structure the response as a JSON object with the following structure:
+    {
+      "insights": [
+        { "category": "string", "title": "string", "content": "string", "impact": "positive" | "neutral" | "improvement" }
+      ],
+      "calorieGuess": { 
+        "amount": number, 
+        "reasoning": "string", 
+        "macros": { "protein": number, "carbs": number, "fats": number } 
+      },
+      "caloriesBurned": { 
+        "amount": number, 
+        "reasoning": "string" 
+      }
+    }
   `;
 
   try {
     const response = await withTimeout(
       ai.models.generateContent({
-        model: "gemini-1.5-flash",
+        model: "gemini-flash-latest",
         contents: prompt,
         config: {
           systemInstruction: "You are an expert fasting and fitness coach. Provide data-driven, structured insights based on the user's history and physical profile (age, sex, height, and weight if provided). Be precise about timing relationships. Specifically, recommend the optimal workout time and intensity based on the user's last meal, current fasting state, and body metrics. IMPORTANT: Never hallucinate or infer meal or workout data that is not explicitly provided in the user's logs. ALWAYS use 12-hour time format (e.g., 10:00 am) in your responses.",
@@ -189,7 +203,7 @@ export async function getFastingInsights(
                     category: { type: Type.STRING, description: "Category (e.g., Timing, Nutrition, Performance)" },
                     title: { type: Type.STRING, description: "Short title" },
                     content: { type: Type.STRING, description: "Detailed insight" },
-                    impact: { type: Type.STRING, enum: ["positive", "neutral", "improvement"] }
+                    impact: { type: Type.STRING, description: "Impact level: positive, neutral, or improvement" }
                   },
                   required: ["category", "title", "content", "impact"]
                 }
@@ -220,22 +234,23 @@ export async function getFastingInsights(
                 required: ["amount", "reasoning"]
               }
             },
-            required: ["insights"]
+            required: ["insights", "calorieGuess", "caloriesBurned"]
           }
         }
       }),
       45000, // Increase to 45 seconds
       "The AI analysis is taking longer than expected. Please try again in a moment."
-    );
+    ) as GenerateContentResponse;
     
-    if (!response.text) {
+    const responseText = response.text;
+    if (!responseText) {
       throw new Error("The AI returned an empty response. Please try again.");
     }
 
     try {
-      return JSON.parse(response.text);
+      return JSON.parse(responseText);
     } catch (e) {
-      console.error("JSON Parse Error:", response.text);
+      console.error("JSON Parse Error:", responseText);
       throw new Error("The AI response was not in the expected format. Please try again.");
     }
   } catch (error) {
@@ -292,7 +307,7 @@ User Question: ${userMessage}` }]
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-flash-latest",
       contents: contents,
       config: {
         systemInstruction: "You are an expert fasting and fitness coach. A user is asking you a question about a specific insight you previously provided. Answer their question concisely and accurately based on the context of that insight and their physical profile. Be supportive and data-driven. Keep responses under 3 sentences if possible."
@@ -325,7 +340,7 @@ export async function getPeriodicReview(
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-flash-latest",
       contents: prompt,
       config: {
         systemInstruction: "You are an expert health and fitness coach providing a high-level periodic review. Be concise, data-driven, and motivating."
