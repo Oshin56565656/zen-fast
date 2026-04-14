@@ -414,47 +414,47 @@ const LogActivity: React.FC<LogActivityProps> = ({
                 initial={{ height: 0 }}
                 animate={{ 
                   height: `${waterPercentage}%`,
-                  rotate: tilt.x * 0.15,
-                  skewX: tilt.x * 0.08,
+                  rotate: tilt.x * 0.2,
+                  skewX: tilt.x * 0.1,
                 }}
-                transition={{ type: "spring", stiffness: 25, damping: 15 }}
-                className="absolute bottom-0 left-[-30%] right-[-30%] bg-gradient-to-t from-blue-600/90 to-blue-400/80 backdrop-blur-md origin-bottom"
+                transition={{ type: "spring", stiffness: 80, damping: 10 }}
+                className="absolute bottom-0 left-[-40%] right-[-40%] bg-gradient-to-t from-blue-600/90 to-blue-400/80 backdrop-blur-md origin-bottom"
               >
                 {/* Surface Wave Effect */}
                 <motion.div 
                   animate={{ 
-                    rotate: -tilt.x * 0.3,
-                    y: [0, -2, 0],
+                    rotate: -tilt.x * 0.4,
+                    y: [0, -3, 0],
                   }}
                   transition={{
-                    y: { duration: 2, repeat: Infinity, ease: "easeInOut" }
+                    y: { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
                   }}
-                  className="absolute top-0 left-[-50%] right-[-50%] h-8 bg-white/40 blur-lg" 
+                  className="absolute top-0 left-[-50%] right-[-50%] h-10 bg-white/40 blur-xl" 
                 />
                 
                 {/* Surface Highlight */}
-                <div className="absolute top-0 left-0 right-0 h-[2px] bg-white/50 shadow-[0_0_15px_rgba(255,255,255,0.5)]" />
+                <div className="absolute top-0 left-0 right-0 h-[3px] bg-white/60 shadow-[0_0_20px_rgba(255,255,255,0.6)]" />
 
                 {/* Bubbles Effect */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                  {[...Array(6)].map((_, i) => (
+                  {[...Array(8)].map((_, i) => (
                     <motion.div
                       key={i}
-                      initial={{ y: "110%", opacity: 0 }}
+                      initial={{ y: "100%", opacity: 0 }}
                       animate={{ 
-                        y: ["110%", "-10%"],
-                        opacity: [0, 0.6, 0],
-                        x: [0, (i % 2 === 0 ? 10 : -10), 0]
+                        y: ["100%", "0%"],
+                        opacity: [0, 0.4, 0],
+                        x: [0, (i % 2 === 0 ? 15 : -15), 0]
                       }}
                       transition={{ 
-                        duration: 3 + i,
+                        duration: 1.5 + Math.random() * 2,
                         repeat: Infinity,
-                        delay: i * 0.8,
-                        ease: "linear",
-                        x: { duration: 2, repeat: Infinity, ease: "easeInOut" }
+                        delay: i * 0.4,
+                        ease: "easeOut",
+                        x: { duration: 1, repeat: Infinity, ease: "easeInOut" }
                       }}
-                      className="absolute w-1.5 h-1.5 bg-white/30 rounded-full blur-[0.5px]"
-                      style={{ left: `${15 + i * 14}%` }}
+                      className="absolute w-1 h-1 bg-white/40 rounded-full blur-[0.3px]"
+                      style={{ left: `${10 + i * 11}%` }}
                     />
                   ))}
                 </div>
