@@ -48,46 +48,40 @@ const LogActivity: React.FC<LogActivityProps> = ({
 }) => {
   const [activeType, setActiveType] = useState<'water' | 'meal' | 'workout' | 'sleep' | 'weight'>('water');
   const [searchDate, setSearchDate] = useState<string>('');
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
-  const [motionPermission, setMotionPermission] = useState<'default' | 'granted' | 'denied'>('default');
+  const [tilt, setTilt] = useState(0);
+
+  // Handle tilt for realism
+  React.useEffect(() => {
+    const handleOrientation = (e: DeviceOrientationEvent) => {
+      if (e.gamma !== null) {
+        // Gamma is left-to-right tilt in degrees [-90, 90]
+        setTilt(e.gamma / 3);
+      }
+    };
+    
+    // Fallback animation if no orientation data
+    let frame: number;
+    let angle = 0;
+    const animate = () => {
+      angle += 0.02;
+      if (window.self === window.top) { // Only fallback if not in iframe or if we want subtle movement
+        // We'll just use a very subtle oscillation as a base
+      }
+      frame = requestAnimationFrame(animate);
+    };
+
+    window.addEventListener('deviceorientation', handleOrientation);
+    animate();
+    
+    return () => {
+      window.removeEventListener('deviceorientation', handleOrientation);
+      cancelAnimationFrame(frame);
+    };
+  }, []);
   
   // Water Form State
   const [waterAmount, setWaterAmount] = useState(250);
   const [customWater, setCustomWater] = useState('');
-
-  const requestMotionPermission = async () => {
-    if (typeof (DeviceOrientationEvent as any).requestPermission === 'function') {
-      try {
-        const permission = await (DeviceOrientationEvent as any).requestPermission();
-        setMotionPermission(permission);
-        if (permission === 'granted') {
-          window.addEventListener('deviceorientation', handleOrientation);
-        }
-      } catch (e) {
-        console.error('Motion permission error:', e);
-        setMotionPermission('denied');
-      }
-    }
-  };
-
-  const handleOrientation = (e: DeviceOrientationEvent) => {
-    // Gamma is left-to-right tilt in degrees [-90, 90]
-    // Beta is front-to-back tilt in degrees [-180, 180]
-    const x = e.gamma ? Math.max(-30, Math.min(30, e.gamma)) : 0;
-    const y = e.beta ? Math.max(-30, Math.min(30, e.beta - 45)) : 0; // Offset beta for natural viewing angle
-    setTilt({ x, y });
-  };
-
-  // Device Orientation for Water Tube
-  React.useEffect(() => {
-    if (typeof window !== 'undefined' && 'DeviceOrientationEvent' in window) {
-      if (typeof (DeviceOrientationEvent as any).requestPermission !== 'function') {
-        // Non-iOS devices
-        window.addEventListener('deviceorientation', handleOrientation);
-      }
-    }
-    return () => window.removeEventListener('deviceorientation', handleOrientation);
-  }, []);
 
   // Calculate today's water for the progress bar
   const todayWater = water
@@ -396,80 +390,114 @@ const LogActivity: React.FC<LogActivityProps> = ({
         >
           {/* Fun Tube Progress Bar */}
           <div className="flex flex-col items-center space-y-4">
-            <div className="relative w-24 h-64 bg-white/5 border-4 border-white/10 rounded-full overflow-hidden shadow-inner">
-              {/* Motion Permission Overlay (iOS) */}
-              {typeof (DeviceOrientationEvent as any).requestPermission === 'function' && motionPermission !== 'granted' && (
-                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-[2px]">
-                  <button 
-                    onClick={requestMotionPermission}
-                    className="bg-primary text-white text-[10px] font-black uppercase px-3 py-2 rounded-xl shadow-xl active:scale-95 transition-all"
-                  >
-                    Enable Motion
-                  </button>
-                </div>
-              )}
-              
-              {/* Water Fill */}
+            <div className="relative w-24 h-64 bg-white/5 border-4 border-white/10 rounded-[40px] overflow-hidden shadow-2xl">
+              {/* Glass Reflection */}
+              <div className="absolute inset-0 z-30 pointer-events-none">
+                <div className="absolute top-0 left-[15%] w-[20%] h-full bg-gradient-to-r from-white/10 to-transparent opacity-50" />
+                <div className="absolute top-0 right-[5%] w-[10%] h-full bg-gradient-to-l from-black/20 to-transparent" />
+              </div>
+
+              {/* Water Fill Container */}
               <motion.div 
                 initial={{ height: 0 }}
-                animate={{ 
-                  height: `${waterPercentage}%`,
-                  rotate: tilt.x * 0.2,
-                  skewX: tilt.x * 0.1,
-                }}
-                transition={{ type: "spring", stiffness: 80, damping: 10 }}
-                className="absolute bottom-0 left-[-40%] right-[-40%] bg-gradient-to-t from-blue-600/90 to-blue-400/80 backdrop-blur-md origin-bottom"
+                animate={{ height: `${waterPercentage}%` }}
+                transition={{ type: "spring", stiffness: 50, damping: 15 }}
+                className="absolute bottom-0 left-0 right-0 z-10"
               >
-                {/* Surface Wave Effect */}
+                {/* Deep Liquid Gradient */}
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-700 via-blue-500 to-blue-800" />
+                
+                {/* Surface Highlight & Wave */}
                 <motion.div 
+                  className="absolute top-0 left-[-50%] w-[200%] h-12 z-20"
                   animate={{ 
-                    rotate: -tilt.x * 0.4,
-                    y: [0, -3, 0],
+                    rotate: tilt,
+                    y: [0, -2, 0]
                   }}
                   transition={{
-                    y: { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
+                    rotate: { type: "spring", stiffness: 100, damping: 10 },
+                    y: { duration: 3, repeat: Infinity, ease: "easeInOut" }
                   }}
-                  className="absolute top-0 left-[-50%] right-[-50%] h-10 bg-white/40 blur-xl" 
+                  style={{
+                    top: '-6px',
+                    background: 'radial-gradient(ellipse at center, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 70%)',
+                    borderRadius: '50%'
+                  }}
                 />
-                
-                {/* Surface Highlight */}
-                <div className="absolute top-0 left-0 right-0 h-[3px] bg-white/60 shadow-[0_0_20px_rgba(255,255,255,0.6)]" />
+
+                {/* Crisp Surface Line */}
+                <motion.div 
+                  className="absolute top-0 left-0 right-0 h-[1.5px] bg-white/60 z-30"
+                  animate={{ rotate: tilt }}
+                  transition={{ type: "spring", stiffness: 100, damping: 10 }}
+                />
+
+                {/* Soft Wavy Reflection */}
+                <motion.div 
+                  className="absolute inset-0 opacity-20 z-10"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.3) 0%, transparent 50%, rgba(255,255,255,0.1) 100%)',
+                  }}
+                  animate={{ skewX: tilt / 2 }}
+                />
 
                 {/* Bubbles Effect */}
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                  {[...Array(8)].map((_, i) => (
+                <div className="absolute inset-0 overflow-hidden z-20">
+                  {[...Array(6)].map((_, i) => (
                     <motion.div
                       key={i}
-                      initial={{ y: "100%", opacity: 0 }}
                       animate={{ 
-                        y: ["100%", "0%"],
-                        opacity: [0, 0.4, 0],
-                        x: [0, (i % 2 === 0 ? 15 : -15), 0]
+                        y: [-20, -120],
+                        opacity: [0, 0.8, 0],
+                        x: [Math.random() * 10, Math.random() * -10]
                       }}
                       transition={{ 
-                        duration: 1.5 + Math.random() * 2,
+                        duration: 3 + Math.random() * 3,
                         repeat: Infinity,
-                        delay: i * 0.4,
-                        ease: "easeOut",
-                        x: { duration: 1, repeat: Infinity, ease: "easeInOut" }
+                        delay: Math.random() * 5
                       }}
-                      className="absolute w-1 h-1 bg-white/40 rounded-full blur-[0.3px]"
-                      style={{ left: `${10 + i * 11}%` }}
+                      className="absolute bottom-0 w-1.5 h-1.5 bg-white/30 rounded-full blur-[0.5px]"
+                      style={{ left: `${15 + i * 14}%` }}
                     />
                   ))}
                 </div>
               </motion.div>
               
-              {/* Measurement Lines */}
-              <div className="absolute inset-0 flex flex-col justify-between py-8 pointer-events-none">
+              {/* Measurement Lines - Above Water */}
+              <div 
+                className="absolute inset-0 flex flex-col justify-between py-8 pointer-events-none z-20"
+                style={{ clipPath: `inset(0 0 ${waterPercentage}% 0)` }}
+              >
                 {[...Array(5)].map((_, i) => {
                   const percentage = 100 - (i * 25);
                   const value = Math.round((waterGoal * percentage) / 100);
                   return (
-                    <div key={i} className="flex items-center justify-end pr-2 space-x-1">
-                      <span className="text-[8px] font-bold text-white/20">{value}</span>
-                      <div className="w-2 h-0.5 bg-white/10" />
+                    <div key={i} className="flex items-center justify-end pr-2 space-x-1 opacity-20">
+                      <span className="text-[8px] font-bold text-white">{value}</span>
+                      <div className="w-2 h-0.5 bg-white" />
                     </div>
+                  );
+                })}
+              </div>
+
+              {/* Measurement Lines - Submerged (Refracted) */}
+              <div 
+                className="absolute inset-0 flex flex-col justify-between py-8 pointer-events-none z-20"
+                style={{ clipPath: `inset(${100 - waterPercentage}% 0 0 0)` }}
+              >
+                {[...Array(5)].map((_, i) => {
+                  const percentage = 100 - (i * 25);
+                  const value = Math.round((waterGoal * percentage) / 100);
+                  return (
+                    <motion.div 
+                      key={i} 
+                      className="flex items-center justify-end pr-2 space-x-1 opacity-40 blur-[0.5px]"
+                      animate={{ x: tilt / 4 }}
+                      transition={{ type: "spring", stiffness: 100, damping: 10 }}
+                    >
+                      <span className="text-[8px] font-bold text-white">{value}</span>
+                      <div className="w-2 h-0.5 bg-white" />
+                    </motion.div>
                   );
                 })}
               </div>

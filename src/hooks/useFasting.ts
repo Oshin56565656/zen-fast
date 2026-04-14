@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, DailySummary } from '../types';
 import { 
   auth, 
@@ -61,6 +61,7 @@ export function useFasting() {
   const [hasNotifiedTarget, setHasNotifiedTarget] = useState(false);
   const [lastWaterReminder, setLastWaterReminder] = useState<number>(Date.now());
   const [isWaterLoaded, setIsWaterLoaded] = useState(false);
+  const isEndingRef = useRef(false);
 
   // Apply theme color to CSS variable
   useEffect(() => {
@@ -415,7 +416,9 @@ export function useFasting() {
   };
 
   const endFast = useCallback(async () => {
-    if (state.status !== 'fasting' || !state.startTime || !user) return;
+    if (state.status !== 'fasting' || !state.startTime || !user || isEndingRef.current) return;
+    isEndingRef.current = true;
+    
     if ("vibrate" in navigator) navigator.vibrate([50, 30, 50]);
     
     const now = Date.now();
@@ -452,6 +455,8 @@ export function useFasting() {
       });
     } catch (error) {
       handleFirestoreError(error, 'write', `users/${user.uid}/history`);
+    } finally {
+      isEndingRef.current = false;
     }
   }, [state.status, state.startTime, state.totalPausedTime, state.targetHours, user, updateState]);
 
@@ -500,7 +505,19 @@ export function useFasting() {
   };
 
   const setTargetEndTime = (time: number | null) => {
-    updateState({ targetEndTime: time });
+    if (time && state.startTime) {
+      // Calculate hours based on current fast start time
+      const durationMs = time - state.startTime;
+      const hours = Math.round(durationMs / 3600000);
+      updateState({ targetEndTime: time, targetHours: hours });
+    } else if (time) {
+      // If not fasting yet, calculate from "now" as a preview/default
+      const durationMs = time - Date.now();
+      const hours = Math.max(1, Math.round(durationMs / 3600000));
+      updateState({ targetEndTime: time, targetHours: hours });
+    } else {
+      updateState({ targetEndTime: time });
+    }
   };
 
   // Reset notification flag when fast ends or status changes
