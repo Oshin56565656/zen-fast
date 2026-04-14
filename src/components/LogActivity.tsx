@@ -561,11 +561,12 @@ const LogActivity: React.FC<LogActivityProps> = ({
                   key={s}
                   type="button"
                   onClick={() => setMealScale(s)}
-                  className={`py-3 rounded-xl border transition-all capitalize font-medium ${
+                  className={cn(
+                    "py-3 rounded-xl border transition-all capitalize font-medium",
                     mealScale === s 
                       ? 'bg-primary/20 border-primary text-primary' 
                       : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
-                  }`}
+                  )}
                 >
                   {s}
                 </button>
@@ -902,7 +903,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
               filteredMeals.map((meal) => (
                 <div key={meal.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center text-orange-500">
+                    <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center text-orange-500 shrink-0">
                       <Utensils size={20} />
                     </div>
                     <div>
