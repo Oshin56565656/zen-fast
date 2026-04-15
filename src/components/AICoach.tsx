@@ -406,10 +406,10 @@ const ChatBox: React.FC<{
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {calorieGuess && (
-                  <div className="bg-primary/10 p-6 rounded-3xl border border-primary/20 relative overflow-hidden group">
+                  <div className="bg-orange-500/10 p-6 rounded-3xl border border-orange-500/20 relative overflow-hidden group">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
+                        <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center text-orange-500">
                           <Utensils size={20} />
                         </div>
                         <div>
@@ -418,7 +418,7 @@ const ChatBox: React.FC<{
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="text-2xl font-black text-primary">~{calorieGuess.amount}</p>
+                        <p className="text-2xl font-black text-orange-500">~{calorieGuess.amount}</p>
                         <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">kcal</p>
                       </div>
                     </div>
@@ -444,7 +444,7 @@ const ChatBox: React.FC<{
                       "{calorieGuess.reasoning}"
                     </p>
                     <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-                      <Sparkles size={40} className="text-primary" />
+                      <Sparkles size={40} className="text-orange-500" />
                     </div>
                   </div>
                 )}

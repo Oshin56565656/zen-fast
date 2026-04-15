@@ -36,9 +36,11 @@ service cloud.firestore {
     //
     // Collection: users/{userId}/workouts/{workoutId}
     // Fields:
-    //   - time: number (required)
+    //   - startTime: number (required)
+    //   - endTime: number (required)
     //   - duration: number (required)
     //   - intensity: string (required, ['low', 'moderate', 'high'])
+    //   - type: string (optional, ['cardio', 'strength', 'hiit', 'running', 'walking', 'swimming', 'cycling', 'sports', 'home', 'custom'])
     //   - createdAt: timestamp (required)
     //
     // Collection: users/{userId}/sleep/{sleepId}
@@ -139,12 +141,13 @@ service cloud.firestore {
 
     function isValidWorkout(data) {
       return hasRequiredFields(['startTime', 'endTime', 'duration', 'intensity', 'createdAt']) &&
-             hasOnlyAllowedFields(['startTime', 'endTime', 'duration', 'intensity', 'type', 'createdAt']) &&
+             hasOnlyAllowedFields(['startTime', 'endTime', 'duration', 'intensity', 'type', 'description', 'createdAt']) &&
              data.startTime is number &&
              data.endTime is number &&
              data.duration is number &&
              data.intensity in ['low', 'moderate', 'high'] &&
-             (!('type' in data) || data.type is string) &&
+             (!('type' in data) || data.type in ['cardio', 'strength', 'hiit', 'running', 'walking', 'swimming', 'cycling', 'sports', 'home', 'custom']) &&
+             (!('description' in data) || data.description is string) &&
              data.createdAt is timestamp;
     }
 
@@ -170,7 +173,7 @@ service cloud.firestore {
     // ===============================================================
 
     match /test/connection {
-      allow read: if isAuthenticated();
+      allow read: if true;
     }
 
     match /users/{userId} {

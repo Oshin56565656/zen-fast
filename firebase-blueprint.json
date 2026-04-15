@@ -57,6 +57,8 @@
         "endTime": { "type": "number", "description": "Timestamp of when the workout ended." },
         "duration": { "type": "number", "description": "Duration in minutes." },
         "intensity": { "type": "string", "enum": ["low", "moderate", "high"], "description": "Intensity level." },
+        "type": { "type": "string", "enum": ["cardio", "strength", "hiit", "running", "walking", "swimming", "cycling", "sports", "home", "custom"], "description": "Type of workout." },
+        "description": { "type": "string", "description": "Description of the workout (especially for custom workouts)." },
         "createdAt": { "type": "object", "description": "Firestore server timestamp." }
       },
       "required": ["startTime", "endTime", "duration", "intensity", "createdAt"]

@@ -142,7 +142,7 @@ export default function App() {
             waterGoal={state.waterGoal}
             waterPresets={state.waterPresets}
             onLogMeal={logMeal} 
-            onLogWorkout={logWorkout} 
+            onLogWorkout={(startTime, endTime, intensity, type, description) => logWorkout(startTime, endTime, intensity, type, description)} 
             onLogSleep={logSleep}
             onLogWater={logWater}
             onLogWeight={logWeight}

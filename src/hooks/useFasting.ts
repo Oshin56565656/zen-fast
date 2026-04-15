@@ -652,7 +652,8 @@ export function useFasting() {
     startTime: number, 
     endTime: number, 
     intensity: WorkoutIntensity, 
-    type: WorkoutType
+    type: WorkoutType,
+    description?: string
   ) => {
     if (!user) return;
     const duration = Math.floor((endTime - startTime) / (1000 * 60));
@@ -663,6 +664,7 @@ export function useFasting() {
         duration,
         intensity,
         type,
+        description: description || '',
         createdAt: Timestamp.now()
       });
     } catch (error) {

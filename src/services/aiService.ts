@@ -107,7 +107,8 @@ export async function getFastingInsights(
       localEndTime: formatLocalTime(w.endTime),
       durationMins: w.duration,
       intensity: w.intensity,
-      type: w.type || 'other',
+      type: w.type || 'custom',
+      description: w.description || '',
       relativeTime: `${Math.round((now.getTime() - w.startTime) / 60000)} minutes ago`
     }));
 
