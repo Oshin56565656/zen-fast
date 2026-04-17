@@ -643,16 +643,18 @@ export function useFasting() {
       const intervalMs = (state.waterReminderInterval ?? 1) * 3600 * 1000;
 
       // Remind if no log for interval AND no reminder for interval
-      if (timeSinceLastLog > intervalMs && timeSinceLastReminder > intervalMs) {
-        sendNotification("Time to Hydrate!", {
-          body: `You haven't logged water lately. You've drank ${todayTotal}ml today. Aim for ${goal}ml!`,
-          icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
+      if (timeSinceLastLog >= intervalMs && timeSinceLastReminder >= intervalMs) {
+        sendNotification("Stay Hydrated! 💧", {
+          body: `It's been over ${state.waterReminderInterval} hour${state.waterReminderInterval !== 1 ? 's' : ''} since your last drink. You've had ${todayTotal}ml today!`,
+          icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png",
+          silent: false,
+          tag: 'hydration-reminder'
         });
         setLastWaterReminder(Date.now());
       }
     };
 
-    const interval = setInterval(checkWater, 900000); // Check every 15 minutes
+    const interval = setInterval(checkWater, 60000); // Check every minute for precision
     checkWater(); // Check immediately
 
     return () => clearInterval(interval);

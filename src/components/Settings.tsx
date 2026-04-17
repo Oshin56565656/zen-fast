@@ -704,42 +704,62 @@ export const Settings: FC<SettingsProps> = ({
           )}
 
           <div className="pt-6 border-t border-white/5 space-y-4">
-            <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest block">Quick Log Presets (ml)</label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                Quick Log Presets (ml)
+              </label>
+              <span className="text-[10px] font-medium text-white/20">
+                {waterPresets.length}/8 active
+              </span>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
               {waterPresets.map((preset) => (
-                <div key={preset} className="relative group">
-                  <div className="w-full py-3 bg-white/5 border border-white/10 rounded-xl text-center text-xs font-bold text-white/80">
-                    {preset}
-                  </div>
+                <div 
+                  key={preset}
+                  className="group flex items-center bg-white/5 border border-white/10 rounded-xl overflow-hidden hover:border-primary/50 transition-all"
+                >
+                  <span className="pl-3 pr-2 py-2 text-xs font-bold text-white">
+                    {preset}ml
+                  </span>
                   <button
                     onClick={() => handleRemovePreset(preset)}
-                    className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                    className="p-2 bg-white/5 text-white/20 hover:text-red-500 hover:bg-red-500/10 transition-colors border-l border-white/10"
                   >
-                    <Plus size={8} className="rotate-45" />
+                    <Plus size={14} className="rotate-45" />
                   </button>
                 </div>
               ))}
+              
               {waterPresets.length < 8 && (
-                <div className="flex space-x-1 col-span-2">
+                <div className="flex items-center bg-white/5 border border-white/10 rounded-xl focus-within:border-primary/50 transition-all">
                   <input
                     type="number"
                     value={newPreset}
                     onChange={(e) => setNewPreset(e.target.value)}
-                    placeholder="Add..."
-                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-2 py-1 text-xs text-white focus:outline-none focus:border-primary transition-colors"
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddPreset()}
+                    placeholder="Value..."
+                    className="w-20 pl-3 pr-1 py-2 bg-transparent text-xs text-white focus:outline-none placeholder:text-white/10"
                   />
                   <button
                     onClick={handleAddPreset}
                     disabled={!newPreset}
-                    className="bg-primary/20 text-primary p-2 rounded-xl hover:bg-primary/30 transition-colors disabled:opacity-50"
+                    className="p-2 text-primary hover:bg-primary/10 transition-colors disabled:opacity-0"
                   >
-                    <Plus size={14} />
+                    <Plus size={16} />
                   </button>
                 </div>
               )}
             </div>
+            
+            {waterPresets.length === 0 && (
+              <p className="text-[10px] text-white/20 italic text-center py-2 bg-white/2 rounded-xl">
+                Add presets to log water quickly from the main screen.
+              </p>
+            )}
+
             <p className="text-[8px] text-white/20 font-medium italic">
-              Customize the quick-log buttons in your Water section (Max 8).
+              Values like 100, 250, 500 work best. Your top {waterPresets.length} are visible on the dashboard.
             </p>
           </div>
         </div>
@@ -852,53 +872,62 @@ export const Settings: FC<SettingsProps> = ({
                 animate={{ opacity: 1, height: 'auto' }}
                 className="space-y-6 pt-2"
               >
-                {/* Frequency */}
-                <div className="space-y-3">
-                  <div className="flex justify-between items-end">
-                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Remind every</label>
-                    <span className="text-sm font-bold text-primary">{waterReminderInterval} hour{waterReminderInterval !== 1 ? 's' : ''}</span>
+                {/* Frequency & Times */}
+                <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-6">
+                  {/* Frequency */}
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-end">
+                      <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Interval</label>
+                      <span className="text-sm font-bold text-primary">Every {waterReminderInterval} hour{waterReminderInterval !== 1 ? 's' : ''}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="6"
+                      step="1"
+                      value={waterReminderInterval}
+                      onChange={(e) => onWaterReminderIntervalChange?.(parseInt(e.target.value))}
+                      className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary"
+                    />
                   </div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="6"
-                    step="1"
-                    value={waterReminderInterval}
-                    onChange={(e) => onWaterReminderIntervalChange?.(parseInt(e.target.value))}
-                    className="w-full h-1.5 bg-white/5 rounded-lg appearance-none cursor-pointer accent-primary"
-                  />
-                </div>
 
-                {/* Hours grid */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest text-center block">Start Hour</label>
-                    <select
-                      value={waterReminderStartHour}
-                      onChange={(e) => onWaterReminderStartHourChange?.(parseInt(e.target.value))}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary appearance-none text-center"
-                    >
-                      {Array.from({ length: 24 }).map((_, i) => (
-                        <option key={i} value={i} className="bg-background">
-                          {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i-12} PM`}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-white/5">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest block">From</label>
+                      <select
+                        value={waterReminderStartHour}
+                        onChange={(e) => onWaterReminderStartHourChange?.(parseInt(e.target.value))}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-primary appearance-none"
+                      >
+                        {Array.from({ length: 24 }).map((_, i) => (
+                          <option key={i} value={i} className="bg-background">
+                            {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i-12} PM`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest block">To</label>
+                      <select
+                        value={waterReminderEndHour}
+                        onChange={(e) => onWaterReminderEndHourChange?.(parseInt(e.target.value))}
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-primary appearance-none"
+                      >
+                        {Array.from({ length: 24 }).map((_, i) => (
+                          <option key={i} value={i} className="bg-background">
+                            {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i-12} PM`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest text-center block">End Hour</label>
-                    <select
-                      value={waterReminderEndHour}
-                      onChange={(e) => onWaterReminderEndHourChange?.(parseInt(e.target.value))}
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary appearance-none text-center"
-                    >
-                      {Array.from({ length: 24 }).map((_, i) => (
-                        <option key={i} value={i} className="bg-background">
-                          {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i-12} PM`}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  
+                  {waterReminderStartHour !== undefined && waterReminderEndHour !== undefined && waterReminderStartHour >= waterReminderEndHour && (
+                    <div className="p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-center space-x-2">
+                      <AlertCircle className="text-yellow-500 shrink-0" size={12} />
+                      <p className="text-[9px] text-yellow-500/80">Reminders will only fire during the day.</p>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}
