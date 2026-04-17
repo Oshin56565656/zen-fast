@@ -3,6 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { FastRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutRecord, DailySummary } from '../types';
 import { format, subDays, isSameDay, startOfDay, eachDayOfInterval } from 'date-fns';
 import { Trophy, Clock, Flame, Target, Moon, Zap, Star, Droplets, Scale, TrendingDown, TrendingUp, Minus, Calendar, Award, CheckCircle2, XCircle } from 'lucide-react';
+import { cn } from '../lib/utils';
 import { Milestones } from './Milestones';
 import { Review } from './Review';
 
@@ -18,9 +19,35 @@ interface StatsProps {
 
 export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts, waterGoal = 2000, dailySummaries = [] }) => {
   const [activeTab, setActiveTab] = React.useState<'fasting' | 'sleep' | 'water' | 'weight' | 'milestones' | 'review' | 'consistency'>('fasting');
-
-  // Fasting Stats
+  const [searchDate, setSearchDate] = React.useState<string>('');
+  
   const totalFasts = history.length;
+
+  // Consistency Stats (Total Met vs Total Logged)
+  const waterDaysLogged = new Set(water.map(w => format(new Date(w.time), 'yyyy-MM-dd')));
+  const waterStats = Array.from(waterDaysLogged).reduce<{ met: number, total: number }>((acc, dateStr) => {
+    const summary = dailySummaries.find(s => s.date === dateStr);
+    const dayAmount = water
+      .filter(w => format(new Date(w.time), 'yyyy-MM-dd') === dateStr)
+      .reduce((sum, curr) => sum + curr.amount, 0);
+    const goal = summary ? summary.waterGoal : waterGoal;
+    const met = summary ? summary.isWaterGoalMet : dayAmount >= goal;
+    
+    return {
+      met: acc.met + (met ? 1 : 0),
+      total: acc.total + 1
+    };
+  }, { met: 0, total: 0 });
+
+  const calorieStats = dailySummaries.reduce<{ met: number, total: number }>((acc, curr) => {
+    if (curr.isDeficit !== null) {
+      return {
+        met: acc.met + (curr.isDeficit ? 1 : 0),
+        total: acc.total + 1
+      };
+    }
+    return acc;
+  }, { met: 0, total: 0 });
   const avgFastDuration = totalFasts > 0 
     ? history.reduce((acc, curr) => acc + curr.duration, 0) / totalFasts 
     : 0;
@@ -387,22 +414,63 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
         </div>
       ) : activeTab === 'consistency' ? (
         <div className="space-y-8">
-          <div className="bg-card p-6 rounded-3xl border border-white/5">
-            <h3 className="text-lg font-bold mb-6">Daily Goals Consistency</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-card p-4 rounded-3xl border border-white/5 flex flex-col items-center justify-center space-y-1">
+              <div className="flex items-center space-x-2">
+                <Droplets size={14} className="text-blue-400" />
+                <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">Water Success</span>
+              </div>
+              <div className="text-xl font-bold">{waterStats.met} <span className="text-sm text-white/20 font-medium">/ {waterStats.total} days</span></div>
+            </div>
+            <div className="bg-card p-4 rounded-3xl border border-white/5 flex flex-col items-center justify-center space-y-1">
+              <div className="flex items-center space-x-2">
+                <Flame size={14} className="text-orange-500" />
+                <span className="text-[10px] font-bold text-white/40 uppercase tracking-wider">Deficit Success</span>
+              </div>
+              <div className="text-xl font-bold">{calorieStats.met} <span className="text-sm text-white/20 font-medium">/ {calorieStats.total} days</span></div>
+            </div>
+          </div>
+
+          <div className="bg-card p-6 rounded-3xl border border-white/5 space-y-6">
+            <div className="flex flex-col space-y-4">
+              <h3 className="text-lg font-bold">Daily Goals Consistency</h3>
+              
+              <div className="relative">
+                <input
+                  type="date"
+                  value={searchDate}
+                  onChange={(e) => setSearchDate(e.target.value)}
+                  max={format(subDays(new Date(), 1), 'yyyy-MM-dd')}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary transition-colors appearance-none"
+                />
+                {searchDate && (
+                  <button 
+                    onClick={() => setSearchDate('')}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-primary font-bold uppercase"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+
             <div className="space-y-6">
-              {Array.from({ length: 6 }).map((_, i) => {
-                // Start from yesterday (i + 1) to only show completed days
-                const date = subDays(new Date(), i + 1);
+              {(searchDate ? [new Date(searchDate)] : Array.from({ length: 6 }).map((_, i) => subDays(new Date(), i + 1))).map((date) => {
                 const dateStr = format(date, 'yyyy-MM-dd');
                 
+                // Fetch historical data from summary if available
+                const summary = dailySummaries.find(s => s.date === dateStr);
+                
                 // Water check
-                const dayWater = water
+                const dayWaterAmount = water
                   .filter(w => isSameDay(new Date(w.time), date))
                   .reduce((acc, curr) => acc + curr.amount, 0);
-                const waterMet = dayWater >= waterGoal;
+                
+                // Use historical goal from summary if available, otherwise current goal
+                const relevantWaterGoal = summary ? summary.waterGoal : waterGoal;
+                const waterMet = summary ? summary.isWaterGoalMet : dayWaterAmount >= relevantWaterGoal;
 
                 // Calorie check (from dailySummaries)
-                const summary = dailySummaries.find(s => s.date === dateStr);
                 const deficitMet = summary ? summary.isDeficit : null;
 
                 return (
@@ -415,7 +483,11 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
                       <div className="flex flex-col items-center space-y-1">
                         <Droplets size={16} className={waterMet ? "text-blue-400" : "text-white/10"} />
                         <span className={`text-[8px] font-bold uppercase ${waterMet ? "text-blue-400" : "text-white/20"}`}>Water</span>
-                        {waterMet ? <CheckCircle2 size={12} className="text-green-500" /> : <XCircle size={12} className="text-white/10" />}
+                        {waterMet ? (
+                          <CheckCircle2 size={12} className="text-green-500" />
+                        ) : (
+                          <XCircle size={12} className="text-red-500/50" />
+                        )}
                       </div>
                       <div className="flex flex-col items-center space-y-1">
                         <Flame size={16} className={deficitMet === true ? "text-orange-500" : "text-white/10"} />

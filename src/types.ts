@@ -25,6 +25,10 @@ export interface CurrentFastState {
   waterGoal?: number; // in ml
   accentColor?: string;
   notificationsEnabled?: boolean;
+  waterReminderEnabled?: boolean;
+  waterReminderInterval?: number; // in hours
+  waterReminderStartHour?: number; // 0-23
+  waterReminderEndHour?: number; // 0-23
   waterPresets?: number[];
   weatherData?: {
     temp: number;

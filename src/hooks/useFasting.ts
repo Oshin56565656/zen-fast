@@ -47,6 +47,10 @@ export function useFasting() {
       waterGoal: 2000, // Default 2L
       accentColor: '#3b82f6', // Default blue
       notificationsEnabled: true,
+      waterReminderEnabled: true,
+      waterReminderInterval: 1,
+      waterReminderStartHour: 8,
+      waterReminderEndHour: 22,
       weatherData: undefined,
       suggestedWaterGoal: 2000
     };
@@ -596,11 +600,16 @@ export function useFasting() {
     if (!isAuthReady || !isWaterLoaded) return;
 
     const checkWater = () => {
+      if (!state.notificationsEnabled || !state.waterReminderEnabled) return;
+      
       const now = new Date();
       const hour = now.getHours();
       
-      // Only remind between 8 AM and 10 PM
-      if (hour < 8 || hour > 22) return;
+      const startHour = state.waterReminderStartHour ?? 8;
+      const endHour = state.waterReminderEndHour ?? 22;
+
+      // Only remind between start and end hours
+      if (hour < startHour || hour > endHour) return;
 
       // Calculate today's total water
       const today = new Date();
@@ -617,8 +626,10 @@ export function useFasting() {
       const timeSinceLastLog = Date.now() - lastLog;
       const timeSinceLastReminder = Date.now() - lastWaterReminder;
 
-      // Remind if no log for 1 hour AND no reminder for 1 hour
-      if (timeSinceLastLog > 1 * 3600 * 1000 && timeSinceLastReminder > 1 * 3600 * 1000) {
+      const intervalMs = (state.waterReminderInterval ?? 1) * 3600 * 1000;
+
+      // Remind if no log for interval AND no reminder for interval
+      if (timeSinceLastLog > intervalMs && timeSinceLastReminder > intervalMs) {
         sendNotification("Time to Hydrate!", {
           body: `You haven't logged water lately. You've drank ${todayTotal}ml today. Aim for ${goal}ml!`,
           icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
@@ -627,7 +638,7 @@ export function useFasting() {
       }
     };
 
-    const interval = setInterval(checkWater, 900000); // Check every 15 minutes for better accuracy
+    const interval = setInterval(checkWater, 900000); // Check every 15 minutes
     checkWater(); // Check immediately
 
     return () => clearInterval(interval);
@@ -916,6 +927,10 @@ export function useFasting() {
     setWaterPresets: (presets: number[]) => updateState({ waterPresets: presets }),
     setAccentColor: (color: string) => updateState({ accentColor: color }),
     setNotificationsEnabled: (enabled: boolean) => updateState({ notificationsEnabled: enabled }),
+    setWaterReminderEnabled: (enabled: boolean) => updateState({ waterReminderEnabled: enabled }),
+    setWaterReminderInterval: (interval: number) => updateState({ waterReminderInterval: interval }),
+    setWaterReminderStartHour: (hour: number) => updateState({ waterReminderStartHour: hour }),
+    setWaterReminderEndHour: (hour: number) => updateState({ waterReminderEndHour: hour }),
     refreshWeather,
     testNotification,
     dailySummaries,

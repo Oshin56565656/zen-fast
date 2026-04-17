@@ -23,6 +23,14 @@ interface SettingsProps {
   onAccentColorChange: (color: string) => void;
   notificationsEnabled?: boolean;
   onNotificationsEnabledChange: (enabled: boolean) => void;
+  waterReminderEnabled?: boolean;
+  onWaterReminderEnabledChange?: (enabled: boolean) => void;
+  waterReminderInterval?: number;
+  onWaterReminderIntervalChange?: (interval: number) => void;
+  waterReminderStartHour?: number;
+  onWaterReminderStartHourChange?: (hour: number) => void;
+  waterReminderEndHour?: number;
+  onWaterReminderEndHourChange?: (hour: number) => void;
   weatherData?: {
     temp: number;
     condition: string;
@@ -124,6 +132,14 @@ export const Settings: FC<SettingsProps> = ({
   onAccentColorChange,
   notificationsEnabled = true,
   onNotificationsEnabledChange,
+  waterReminderEnabled = true,
+  onWaterReminderEnabledChange,
+  waterReminderInterval = 1,
+  onWaterReminderIntervalChange,
+  waterReminderStartHour = 8,
+  onWaterReminderStartHourChange,
+  waterReminderEndHour = 22,
+  onWaterReminderEndHourChange,
   weatherData,
   suggestedWaterGoal,
   waterPresets = [100, 150, 250, 300],
@@ -808,6 +824,85 @@ export const Settings: FC<SettingsProps> = ({
               </div>
             </div>
           )}
+
+          {/* Water Reminders Sub-section */}
+          <div className="pt-4 border-t border-white/5 space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="font-bold text-sm">Water Reminders</p>
+                <p className="text-[10px] text-white/40">Notify if you forget to log water</p>
+              </div>
+              <button
+                onClick={() => onWaterReminderEnabledChange?.(!waterReminderEnabled)}
+                className={cn(
+                  "w-12 h-6 rounded-full transition-all relative",
+                  waterReminderEnabled ? "bg-primary" : "bg-white/10"
+                )}
+              >
+                <motion.div 
+                  animate={{ x: waterReminderEnabled ? 24 : 4 }}
+                  className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                />
+              </button>
+            </div>
+
+            {waterReminderEnabled && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="space-y-6 pt-2"
+              >
+                {/* Frequency */}
+                <div className="space-y-3">
+                  <div className="flex justify-between items-end">
+                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Remind every</label>
+                    <span className="text-sm font-bold text-primary">{waterReminderInterval} hour{waterReminderInterval !== 1 ? 's' : ''}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="6"
+                    step="1"
+                    value={waterReminderInterval}
+                    onChange={(e) => onWaterReminderIntervalChange?.(parseInt(e.target.value))}
+                    className="w-full h-1.5 bg-white/5 rounded-lg appearance-none cursor-pointer accent-primary"
+                  />
+                </div>
+
+                {/* Hours grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest text-center block">Start Hour</label>
+                    <select
+                      value={waterReminderStartHour}
+                      onChange={(e) => onWaterReminderStartHourChange?.(parseInt(e.target.value))}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary appearance-none text-center"
+                    >
+                      {Array.from({ length: 24 }).map((_, i) => (
+                        <option key={i} value={i} className="bg-background">
+                          {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i-12} PM`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest text-center block">End Hour</label>
+                    <select
+                      value={waterReminderEndHour}
+                      onChange={(e) => onWaterReminderEndHourChange?.(parseInt(e.target.value))}
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary appearance-none text-center"
+                    >
+                      {Array.from({ length: 24 }).map((_, i) => (
+                        <option key={i} value={i} className="bg-background">
+                          {i === 0 ? '12 AM' : i < 12 ? `${i} AM` : i === 12 ? '12 PM' : `${i-12} PM`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </div>
 
           <button
             onClick={handleTestNotification}

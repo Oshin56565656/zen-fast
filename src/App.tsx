@@ -53,6 +53,10 @@ export default function App() {
     setWaterPresets,
     setAccentColor,
     setNotificationsEnabled,
+    setWaterReminderEnabled,
+    setWaterReminderInterval,
+    setWaterReminderStartHour,
+    setWaterReminderEndHour,
     refreshWeather,
     testNotification,
     dailySummaries,
@@ -177,6 +181,14 @@ export default function App() {
               onAccentColorChange={setAccentColor}
               notificationsEnabled={state.notificationsEnabled}
               onNotificationsEnabledChange={setNotificationsEnabled}
+              waterReminderEnabled={state.waterReminderEnabled}
+              onWaterReminderEnabledChange={setWaterReminderEnabled}
+              waterReminderInterval={state.waterReminderInterval}
+              onWaterReminderIntervalChange={setWaterReminderInterval}
+              waterReminderStartHour={state.waterReminderStartHour}
+              onWaterReminderStartHourChange={setWaterReminderStartHour}
+              waterReminderEndHour={state.waterReminderEndHour}
+              onWaterReminderEndHourChange={setWaterReminderEndHour}
               weatherData={state.weatherData}
               suggestedWaterGoal={state.suggestedWaterGoal}
               onRefreshWeather={refreshWeather}
