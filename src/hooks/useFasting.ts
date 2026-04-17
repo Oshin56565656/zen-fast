@@ -617,17 +617,17 @@ export function useFasting() {
       const timeSinceLastLog = Date.now() - lastLog;
       const timeSinceLastReminder = Date.now() - lastWaterReminder;
 
-      // Remind if no log for 3 hours AND no reminder for 3 hours
-      if (timeSinceLastLog > 3 * 3600 * 1000 && timeSinceLastReminder > 3 * 3600 * 1000) {
+      // Remind if no log for 1 hour AND no reminder for 1 hour
+      if (timeSinceLastLog > 1 * 3600 * 1000 && timeSinceLastReminder > 1 * 3600 * 1000) {
         sendNotification("Time to Hydrate!", {
-          body: `You've drank ${todayTotal}ml today. Aim for ${goal}ml!`,
+          body: `You haven't logged water lately. You've drank ${todayTotal}ml today. Aim for ${goal}ml!`,
           icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png"
         });
         setLastWaterReminder(Date.now());
       }
     };
 
-    const interval = setInterval(checkWater, 3600000); // Check every hour
+    const interval = setInterval(checkWater, 900000); // Check every 15 minutes for better accuracy
     checkWater(); // Check immediately
 
     return () => clearInterval(interval);
