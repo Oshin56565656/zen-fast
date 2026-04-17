@@ -1,5 +1,5 @@
 {
   "name": "AllRound",
   "description": "An all-in-one health and wellness tracker with fasting, hydration, nutrition, and AI coaching.",
-  "requestFramePermissions": ["camera", "microphone"]
+  "requestFramePermissions": ["camera", "microphone", "notifications"]
 }

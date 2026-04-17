@@ -91,27 +91,43 @@ export function useFasting() {
 
   const sendNotification = async (title: string, options?: NotificationOptions) => {
     try {
-      if (!("Notification" in window)) return;
-      if (state.notificationsEnabled === false) return;
+      if (!("Notification" in window)) {
+        console.warn("Notifications not supported in this browser");
+        return;
+      }
+      if (state.notificationsEnabled === false) {
+        console.log("Notifications are disabled in app settings");
+        return;
+      }
       
-      if (Notification.permission === "granted") {
-        // Try Service Worker first (required for Android Chrome)
-        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-          const registration = await Promise.race([
-            navigator.serviceWorker.ready,
-            new Promise((_, reject) => setTimeout(() => reject(new Error('SW timeout')), 2000))
-          ]) as ServiceWorkerRegistration;
-          
-          if (registration) {
-            registration.showNotification(title, options);
-            return;
+      const permission = Notification.permission;
+      if (permission === "granted") {
+        // Try Service Worker registration first (required for Android Chrome)
+        if ('serviceWorker' in navigator) {
+          try {
+            const registration = await navigator.serviceWorker.getRegistration();
+            if (registration) {
+              await registration.showNotification(title, {
+                ...options,
+                badge: 'https://cdn-icons-png.flaticon.com/192/3242/3242257.png',
+                icon: options?.icon || 'https://cdn-icons-png.flaticon.com/512/3242/3242257.png',
+              });
+              console.log("Notification sent via Service Worker");
+              return;
+            }
+          } catch (swErr) {
+            console.warn("SW notification failed, falling back to window.Notification:", swErr);
           }
         }
+        
         // Fallback to standard Notification
         new Notification(title, options);
+        console.log("Notification sent via window.Notification");
+      } else {
+        console.warn(`Notification skipped: permission is ${permission}`);
       }
     } catch (e) {
-      console.warn("Notification failed:", e);
+      console.error("Notification failed:", e);
     }
   };
 
@@ -616,13 +632,6 @@ export function useFasting() {
     const checkWater = () => {
       if (!state.notificationsEnabled || !state.waterReminderEnabled) return;
       
-      // Proactively check permission if enabled but default
-      if ("Notification" in window && Notification.permission === "default") {
-        console.log("Water reminders enabled but permission not yet granted. Requesting...");
-        requestPermission();
-        return;
-      }
-
       const now = new Date();
       const hour = now.getHours();
       
@@ -1039,7 +1048,10 @@ export function useFasting() {
       updateState({ notificationsEnabled: enabled });
     },
     setWaterReminderEnabled: (enabled: boolean) => {
-      if (enabled) requestPermission();
+      if (enabled) {
+        requestPermission();
+        setLastWaterReminder(0); // Reset last reminder time to enable immediate notifications if needed
+      }
       updateState({ waterReminderEnabled: enabled });
     },
     setWaterReminderInterval: (interval: number) => updateState({ waterReminderInterval: interval }),
