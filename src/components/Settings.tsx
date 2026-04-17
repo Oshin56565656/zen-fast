@@ -1077,11 +1077,11 @@ export const Settings: FC<SettingsProps> = ({
       >
         <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-4">
           <p className="text-sm text-white/60 leading-relaxed">
-            Intermittent fasting is an eating pattern where you cycle between periods of eating and fasting. 
-            Simply set your target hours and start your fast.
+            Your ultimate wellness companion for fasting, hydration, and activity. 
+            Now featuring an AI Coach, water reminders, and detailed consistency tracking to help you reach your goals.
           </p>
           <div className="pt-4 border-t border-white/5">
-            <p className="text-xs text-white/20">Version 1.1.0</p>
+            <p className="text-xs text-white/20">Version 1.2.4</p>
           </div>
         </div>
       </CollapsibleSection>

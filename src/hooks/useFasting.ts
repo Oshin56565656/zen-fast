@@ -64,7 +64,17 @@ export function useFasting() {
   const [weights, setWeights] = useState<WeightRecord[]>([]);
   const [dailySummaries, setDailySummaries] = useState<DailySummary[]>([]);
   const [hasNotifiedTarget, setHasNotifiedTarget] = useState(false);
-  const [lastWaterReminder, setLastWaterReminder] = useState<number>(Date.now());
+  const [lastWaterReminder, setLastWaterReminder] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('fasttrack_last_water_reminder');
+      return saved ? parseInt(saved) : 0;
+    }
+    return 0;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('fasttrack_last_water_reminder', lastWaterReminder.toString());
+  }, [lastWaterReminder]);
   const [isWaterLoaded, setIsWaterLoaded] = useState(false);
   const [firestoreError, setFirestoreError] = useState<string | null>(null);
   const isEndingRef = useRef(false);
@@ -86,8 +96,12 @@ export function useFasting() {
       
       if (Notification.permission === "granted") {
         // Try Service Worker first (required for Android Chrome)
-        if ('serviceWorker' in navigator) {
-          const registration = await navigator.serviceWorker.ready;
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+          const registration = await Promise.race([
+            navigator.serviceWorker.ready,
+            new Promise((_, reject) => setTimeout(() => reject(new Error('SW timeout')), 2000))
+          ]) as ServiceWorkerRegistration;
+          
           if (registration) {
             registration.showNotification(title, options);
             return;
@@ -642,7 +656,18 @@ export function useFasting() {
     checkWater(); // Check immediately
 
     return () => clearInterval(interval);
-  }, [water, state.waterGoal, lastWaterReminder, isAuthReady, isWaterLoaded]);
+  }, [
+    water, 
+    state.waterGoal, 
+    state.notificationsEnabled, 
+    state.waterReminderEnabled, 
+    state.waterReminderInterval, 
+    state.waterReminderStartHour, 
+    state.waterReminderEndHour, 
+    lastWaterReminder, 
+    isAuthReady, 
+    isWaterLoaded
+  ]);
 
   const logMeal = async (time: number, scale: 'light' | 'normal' | 'large', description?: string, barcode?: string) => {
     if (!user) return;
@@ -926,8 +951,14 @@ export function useFasting() {
     setWaterGoal: (goal: number) => updateState({ waterGoal: goal }),
     setWaterPresets: (presets: number[]) => updateState({ waterPresets: presets }),
     setAccentColor: (color: string) => updateState({ accentColor: color }),
-    setNotificationsEnabled: (enabled: boolean) => updateState({ notificationsEnabled: enabled }),
-    setWaterReminderEnabled: (enabled: boolean) => updateState({ waterReminderEnabled: enabled }),
+    setNotificationsEnabled: (enabled: boolean) => {
+      if (enabled) requestPermission();
+      updateState({ notificationsEnabled: enabled });
+    },
+    setWaterReminderEnabled: (enabled: boolean) => {
+      if (enabled) requestPermission();
+      updateState({ waterReminderEnabled: enabled });
+    },
     setWaterReminderInterval: (interval: number) => updateState({ waterReminderInterval: interval }),
     setWaterReminderStartHour: (hour: number) => updateState({ waterReminderStartHour: hour }),
     setWaterReminderEndHour: (hour: number) => updateState({ waterReminderEndHour: hour }),
