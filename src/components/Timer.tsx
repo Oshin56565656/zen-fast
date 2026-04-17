@@ -172,7 +172,7 @@ export const Timer: FC<TimerProps> = ({ state, meals, onStart, onPause, onResume
           <p className="font-bold text-lg">
             {state.targetEndTime 
               ? new Date(state.targetEndTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
-              : `${state.targetHours}h`}
+              : formatDurationShort(state.targetHours * 3600)}
           </p>
         </div>
         <div className="bg-card p-4 rounded-2xl border border-white/5 text-center">
