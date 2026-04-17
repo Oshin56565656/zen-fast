@@ -49,8 +49,8 @@ export function useFasting() {
       notificationsEnabled: true,
       waterReminderEnabled: true,
       waterReminderInterval: 1,
-      waterReminderStartHour: 8,
-      waterReminderEndHour: 22,
+      waterReminderStartHour: 0,
+      waterReminderEndHour: 23,
       weatherData: undefined,
       suggestedWaterGoal: 2000
     };
@@ -616,14 +616,24 @@ export function useFasting() {
     const checkWater = () => {
       if (!state.notificationsEnabled || !state.waterReminderEnabled) return;
       
+      // Proactively check permission if enabled but default
+      if ("Notification" in window && Notification.permission === "default") {
+        console.log("Water reminders enabled but permission not yet granted. Requesting...");
+        requestPermission();
+        return;
+      }
+
       const now = new Date();
       const hour = now.getHours();
       
       const startHour = state.waterReminderStartHour ?? 8;
       const endHour = state.waterReminderEndHour ?? 22;
 
-      // Only remind between start and end hours
-      if (hour < startHour || hour > endHour) return;
+      // Only remind between start and end hours (inclusive)
+      if (hour < startHour || hour > endHour) {
+        console.log(`Reminder skipped: Hour ${hour} outside window ${startHour}-${endHour}`);
+        return;
+      }
 
       // Calculate today's total water
       const today = new Date();
@@ -640,10 +650,11 @@ export function useFasting() {
       const timeSinceLastLog = Date.now() - lastLog;
       const timeSinceLastReminder = Date.now() - lastWaterReminder;
 
-      const intervalMs = (state.waterReminderInterval ?? 1) * 3600 * 1000;
+      const intervalMs = Math.max(60000, (state.waterReminderInterval ?? 1) * 3600 * 1000); 
 
       // Remind if no log for interval AND no reminder for interval
-      if (timeSinceLastLog >= intervalMs && timeSinceLastReminder >= intervalMs) {
+      // Use a small buffer (5s) for the comparison to avoid missing by a millisecond
+      if (timeSinceLastLog >= intervalMs - 5000 && timeSinceLastReminder >= intervalMs - 5000) {
         sendNotification("Stay Hydrated! 💧", {
           body: `It's been over ${state.waterReminderInterval} hour${state.waterReminderInterval !== 1 ? 's' : ''} since your last drink. You've had ${todayTotal}ml today!`,
           icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png",
