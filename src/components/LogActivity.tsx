@@ -194,10 +194,45 @@ const LogActivity: React.FC<LogActivityProps> = ({
         }
         
         const toast = document.createElement('div');
-        toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 bg-primary text-white px-6 py-3 rounded-full font-bold text-sm shadow-2xl z-[200]';
-        toast.innerText = autoLogWorkout ? 'Workout logged automatically!' : 'Workout data imported successfully!';
+        toast.className = 'fixed top-24 left-1/2 -translate-x-1/2 bg-gray-900/95 backdrop-blur-xl border border-white/10 text-white px-8 py-4 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[200] flex flex-col items-center space-y-1 min-w-[280px] text-center transform transition-all duration-500 ease-out opacity-0 translate-y-4';
+        
+        const mainText = document.createElement('p');
+        mainText.className = 'text-xs font-bold text-white/40 uppercase tracking-[0.2em]';
+        mainText.innerText = autoLogWorkout ? 'Workout Logged Automatically' : 'Workout Data Imported';
+        
+        const calorieDisplay = document.createElement('div');
+        calorieDisplay.className = 'flex items-center space-x-2';
+        
+        if (result.calorieBurn) {
+          calorieDisplay.innerHTML = `
+            <span class="text-2xl font-black text-primary">${result.calorieBurn}</span>
+            <span class="text-sm font-bold text-white/60 lowercase">kcal burned</span>
+          `;
+        } else {
+          calorieDisplay.innerHTML = `<span class="text-lg font-bold text-white">Analysis Complete</span>`;
+        }
+        
+        toast.appendChild(mainText);
+        toast.appendChild(calorieDisplay);
+        
+        if (result.duration) {
+          const durationText = document.createElement('p');
+          durationText.className = 'text-[10px] font-medium text-white/30 italic';
+          durationText.innerText = `${result.duration} minute session detected`;
+          toast.appendChild(durationText);
+        }
+
         document.body.appendChild(toast);
-        setTimeout(() => toast.remove(), 3000);
+        
+        // Trigger entrance animation
+        requestAnimationFrame(() => {
+          toast.classList.remove('opacity-0', 'translate-y-4');
+        });
+
+        setTimeout(() => {
+          toast.classList.add('opacity-0', '-translate-y-4');
+          setTimeout(() => toast.remove(), 500);
+        }, 4000);
       }
     } catch (error: any) {
       console.error('AI Import Error:', error);
