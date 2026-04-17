@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { GoogleGenAI, Type } from "@google/genai";
 import { formatDurationShort } from '../lib/utils';
 import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, DailySummary } from '../types';
 import { 
@@ -711,7 +712,9 @@ export function useFasting() {
     endTime: number, 
     intensity: WorkoutIntensity, 
     type: WorkoutType,
-    description?: string
+    description?: string,
+    calorieBurn?: number,
+    parsedExercises?: string[]
   ) => {
     if (!user) return;
     const duration = Math.floor((endTime - startTime) / (1000 * 60));
@@ -723,10 +726,60 @@ export function useFasting() {
         intensity,
         type,
         description: description || '',
+        calorieBurn: calorieBurn || 0,
+        parsedExercises: parsedExercises || [],
         createdAt: Timestamp.now()
       });
     } catch (error) {
       handleFirestoreError(error, 'write', `users/${user.uid}/workouts`);
+    }
+  };
+
+  const parseWorkoutText = async (text: string) => {
+    try {
+      const apiKey = process.env.GEMINI_API_KEY || localStorage.getItem('FT_GEMINI_API_KEY');
+      if (!apiKey) throw new Error('Gemini API key is required for parsing');
+
+      const ai = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: `Parse the following workout text and extract structured information. 
+        Identify the exercise names, the total duration in minutes (look for patterns like "30m" at the end), 
+        and estimate the total calories burned based on the volume (sets, reps, weights) and duration.
+        
+        Workout Text:
+        ${text}
+        
+        Response Format:
+        JSON object with fields:
+        "duration": number (minutes),
+        "intensity": "low" | "moderate" | "high",
+        "type": "strength" | "cardio" | "hiit" | ... (select best fit),
+        "calorieBurn": number,
+        "exercises": string[] (just the names),
+        "startTime": string (ISO format if found, otherwise null)
+        `,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              duration: { type: Type.NUMBER },
+              intensity: { type: Type.STRING, enum: ["low", "moderate", "high"] },
+              type: { type: Type.STRING },
+              calorieBurn: { type: Type.NUMBER },
+              exercises: { type: Type.ARRAY, items: { type: Type.STRING } },
+              startTime: { type: Type.STRING, nullable: true }
+            },
+            required: ["duration", "intensity", "type", "calorieBurn", "exercises"]
+          }
+        }
+      });
+
+      return JSON.parse(response.text);
+    } catch (error) {
+      console.error('Failed to parse workout text:', error);
+      throw error;
     }
   };
 
@@ -1036,6 +1089,7 @@ export function useFasting() {
     updateSleep,
     updateWater,
     updateWeight,
+    parseWorkoutText,
     setHeight: (height: number) => updateState({ height }),
     setWeight: (weight: number) => updateState({ weight }),
     setAge: (age: number) => updateState({ age }),

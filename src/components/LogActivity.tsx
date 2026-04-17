@@ -1,12 +1,14 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets, LineChart, Mic, MicOff, Sparkles, MapPin, Play, X } from 'lucide-react';
+import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets, LineChart, Mic, MicOff, Sparkles, MapPin, Play, X, RefreshCw } from 'lucide-react';
 import { MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity } from '../types';
 import { cn } from '../lib/utils';
 import { formatTime, formatDate, formatDurationShort } from '../lib/utils';
-import { format, subHours } from 'date-fns';
+import { format, subHours, addMinutes } from 'date-fns';
 import { AnimatePresence } from 'motion/react';
 import BarcodeScanner from './BarcodeScanner';
+import { parseWorkoutText } from '../services/aiService';
+import { GoogleGenAI } from "@google/genai";
 
 interface LogActivityProps {
   meals: MealRecord[];
@@ -17,7 +19,7 @@ interface LogActivityProps {
   waterGoal: number;
   waterPresets?: number[];
   onLogMeal: (time: number, scale: 'light' | 'normal' | 'large', description?: string, barcode?: string) => void;
-  onLogWorkout: (startTime: number, endTime: number, intensity: WorkoutIntensity, type: WorkoutType, description?: string) => void;
+  onLogWorkout: (startTime: number, endTime: number, intensity: WorkoutIntensity, type: WorkoutType, description?: string, calorieBurn?: number, parsedExercises?: string[]) => void;
   onLogSleep: (bedtime: number, wakeUpTime: number, quality: 'poor' | 'fair' | 'good' | 'excellent') => void;
   onLogWater: (time: number, amount: number) => void;
   onLogWeight: (time: number, weight: number, note?: string) => void;
@@ -101,6 +103,113 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const [workoutEndTime, setWorkoutEndTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   const [isWorkoutEndTimeDirty, setIsWorkoutEndTimeDirty] = useState(false);
   const [workoutDescription, setWorkoutDescription] = useState('');
+  const [workoutCalorieBurn, setWorkoutCalorieBurn] = useState<number | undefined>(undefined);
+  const [workoutParsedExercises, setWorkoutParsedExercises] = useState<string[]>([]);
+  const [showWorkoutAI, setShowWorkoutAI] = useState(false);
+  const [workoutAIInput, setWorkoutAIInput] = useState('');
+  const [autoLogWorkout, setAutoLogWorkout] = useState(true);
+  const [isParsingWorkout, setIsParsingWorkout] = useState(false);
+  const [hasAIKey, setHasAIKey] = useState<boolean>(true);
+
+  React.useEffect(() => {
+    const checkKey = async () => {
+      // @ts-ignore
+      if (typeof window !== 'undefined' && window.aistudio) {
+        // @ts-ignore
+        const selected = await window.aistudio.hasSelectedApiKey();
+        setHasAIKey(selected || !!process.env.GEMINI_API_KEY || !!process.env.API_KEY);
+      }
+    };
+    checkKey();
+  }, []);
+
+  const handleAIImport = async () => {
+    if (!workoutAIInput.trim() || isParsingWorkout) return;
+    setIsParsingWorkout(true);
+    try {
+      const result = await parseWorkoutText(workoutAIInput);
+      if (result) {
+        if (result.startTime) {
+          const parsedDate = new Date(result.startTime);
+          if (!isNaN(parsedDate.getTime())) {
+            setWorkoutStartTime(format(parsedDate, "yyyy-MM-dd'T'HH:mm"));
+            setIsWorkoutStartTimeDirty(true);
+            
+            if (result.duration) {
+              const endTime = addMinutes(parsedDate, result.duration);
+              setWorkoutEndTime(format(endTime, "yyyy-MM-dd'T'HH:mm"));
+              setIsWorkoutEndTimeDirty(true);
+            }
+          }
+        }
+        
+        const normalizedType = result.type ? result.type.toLowerCase() as WorkoutType : workoutType;
+        const validTypes: WorkoutType[] = ['cardio', 'strength', 'hiit', 'running', 'walking', 'swimming', 'cycling', 'sports', 'home', 'custom'];
+        const finalType = validTypes.includes(normalizedType) ? normalizedType : 'custom';
+        
+        const normalizedIntensity = result.intensity ? result.intensity.toLowerCase() as WorkoutIntensity : workoutIntensity;
+        const validIntensities: WorkoutIntensity[] = ['low', 'moderate', 'high'];
+        const finalIntensity = validIntensities.includes(normalizedIntensity) ? normalizedIntensity : 'moderate';
+
+        if (result.type) setWorkoutType(finalType);
+        if (result.intensity) setWorkoutIntensity(finalIntensity);
+        if (result.calorieBurn) setWorkoutCalorieBurn(result.calorieBurn);
+        if (result.exercises) setWorkoutParsedExercises(result.exercises);
+        
+        let finalStartTime = new Date(workoutStartTime).getTime();
+        let finalEndTime = new Date(workoutEndTime).getTime();
+        
+        if (result.startTime) {
+          const parsedDate = new Date(result.startTime);
+          if (!isNaN(parsedDate.getTime())) {
+            finalStartTime = parsedDate.getTime();
+            if (result.duration) {
+              finalEndTime = addMinutes(parsedDate, result.duration).getTime();
+            }
+          }
+        }
+
+        // Combine summary with link if present in input
+        let finalDesc = workoutAIInput;
+        setWorkoutDescription(finalDesc);
+        
+        if (autoLogWorkout) {
+          onLogWorkout(
+            finalStartTime,
+            finalEndTime,
+            finalIntensity,
+            finalType,
+            finalDesc,
+            result.calorieBurn,
+            result.exercises
+          );
+          
+          setShowWorkoutAI(false);
+          setWorkoutAIInput('');
+          setWorkoutCalorieBurn(undefined);
+          setWorkoutParsedExercises([]);
+        } else {
+          setShowWorkoutAI(false);
+          setWorkoutAIInput('');
+        }
+        
+        const toast = document.createElement('div');
+        toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 bg-primary text-white px-6 py-3 rounded-full font-bold text-sm shadow-2xl z-[200]';
+        toast.innerText = autoLogWorkout ? 'Workout logged automatically!' : 'Workout data imported successfully!';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+      }
+    } catch (error: any) {
+      console.error('AI Import Error:', error);
+      const toast = document.createElement('div');
+      toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-full font-bold text-sm shadow-2xl z-[200]';
+      toast.innerText = error.message?.includes('entity was not found') ? 'Please select an AI key first.' : 'Failed to parse workout. Please check your text.';
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    } finally {
+      setIsParsingWorkout(false);
+    }
+  };
 
   // Sleep Form State
   const [sleepQuality, setSleepQuality] = useState<'poor' | 'fair' | 'good' | 'excellent'>('good');
@@ -268,8 +377,18 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
   const handleLogWorkout = (e: React.FormEvent) => {
     e.preventDefault();
-    onLogWorkout(new Date(workoutStartTime).getTime(), new Date(workoutEndTime).getTime(), workoutIntensity, workoutType, workoutDescription);
+    onLogWorkout(
+      new Date(workoutStartTime).getTime(), 
+      new Date(workoutEndTime).getTime(), 
+      workoutIntensity, 
+      workoutType, 
+      workoutDescription,
+      workoutCalorieBurn,
+      workoutParsedExercises
+    );
     setWorkoutDescription('');
+    setWorkoutCalorieBurn(undefined);
+    setWorkoutParsedExercises([]);
     setIsWorkoutStartTimeDirty(false);
     setIsWorkoutEndTimeDirty(false);
   };
@@ -732,12 +851,110 @@ const LogActivity: React.FC<LogActivityProps> = ({
           </button>
         </motion.form>
       ) : activeType === 'workout' ? (
-        <motion.form
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          onSubmit={handleLogWorkout}
-          className="bg-card p-6 rounded-3xl border border-white/5 space-y-6"
-        >
+        <div className="space-y-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex items-center justify-between px-2"
+          >
+            <div className="flex items-center space-x-2">
+              <Sparkles className="text-primary" size={16} />
+              <span className="text-xs font-bold text-white/60 uppercase tracking-widest">Smart Import</span>
+            </div>
+            <button
+              onClick={() => setShowWorkoutAI(!showWorkoutAI)}
+              className={cn(
+                "text-[10px] font-black uppercase px-3 py-1.5 rounded-xl transition-all border shrink-0",
+                showWorkoutAI 
+                  ? "bg-primary text-white border-primary" 
+                  : "bg-white/5 text-primary border-primary/20 hover:bg-primary/10"
+              )}
+            >
+              {showWorkoutAI ? 'Cancel Import' : 'Paste from Strong/Other'}
+            </button>
+          </motion.div>
+
+          <AnimatePresence>
+            {showWorkoutAI && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="bg-primary/5 p-4 rounded-3xl border border-primary/20 space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-primary uppercase tracking-widest block text-center">Paste Workout Text Below</label>
+                    <textarea
+                      value={workoutAIInput}
+                      onChange={(e) => setWorkoutAIInput(e.target.value)}
+                      placeholder='Example: "CHEST Friday, April 17... 30m..."'
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors min-h-[120px] text-xs resize-none"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between px-2">
+                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Auto-log after parsing</span>
+                    <button
+                      type="button"
+                      onClick={() => setAutoLogWorkout(!autoLogWorkout)}
+                      className={cn(
+                        "w-10 h-5 rounded-full transition-all relative",
+                        autoLogWorkout ? "bg-primary" : "bg-white/10"
+                      )}
+                    >
+                      <motion.div
+                        animate={{ x: autoLogWorkout ? 22 : 2 }}
+                        className="absolute top-1 left-0 w-3 h-3 bg-white rounded-full shadow-lg"
+                      />
+                    </button>
+                  </div>
+                  
+                  {!hasAIKey ? (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        // @ts-ignore
+                        if (window.aistudio) {
+                          // @ts-ignore
+                          await window.aistudio.openSelectKey();
+                          setHasAIKey(true);
+                        }
+                      }}
+                      className="w-full bg-white/5 text-primary py-3 rounded-2xl font-bold text-xs flex items-center justify-center space-x-2 hover:bg-primary/10 transition-all border border-primary/20"
+                    >
+                      <Sparkles size={14} />
+                      <span>Select AI Key First</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleAIImport}
+                      disabled={!workoutAIInput.trim() || isParsingWorkout}
+                      className="w-full bg-primary text-white py-3 rounded-2xl font-bold text-xs flex items-center justify-center space-x-2 hover:bg-primary/90 transition-all disabled:opacity-50 active:scale-95"
+                    >
+                      {isParsingWorkout ? (
+                        <RefreshCw size={14} className="animate-spin" />
+                      ) : (
+                        <Sparkles size={14} />
+                      )}
+                      <span>{isParsingWorkout ? 'AI is Parsing...' : 'Process with AI'}</span>
+                    </button>
+                  )}
+                  <p className="text-[9px] text-white/30 text-center italic">
+                    AI will automatically extract time, duration, and intensity from your text.
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <motion.form
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            onSubmit={handleLogWorkout}
+            className="bg-card p-6 rounded-3xl border border-white/5 space-y-6"
+          >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -843,6 +1060,31 @@ const LogActivity: React.FC<LogActivityProps> = ({
               </div>
             </div>
 
+            {workoutCalorieBurn && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-primary/10 border border-primary/20 p-4 rounded-2xl flex items-center justify-between"
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
+                    <Sparkles size={20} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">AI Estimated Burn</p>
+                    <p className="text-lg font-black text-primary">{workoutCalorieBurn} kcal</p>
+                  </div>
+                </div>
+                <button 
+                  type="button"
+                  onClick={() => setWorkoutCalorieBurn(undefined)}
+                  className="text-white/20 hover:text-white/40"
+                >
+                  <X size={16} />
+                </button>
+              </motion.div>
+            )}
+
             <button
               type="submit"
               className="w-full bg-primary text-white py-4 rounded-2xl font-bold flex items-center justify-center space-x-2 hover:bg-primary/90 transition-all active:scale-95"
@@ -851,6 +1093,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
               <span>Log Workout</span>
             </button>
           </motion.form>
+        </div>
       ) : activeType === 'weight' ? (
         <motion.form
           initial={{ opacity: 0, y: 10 }}

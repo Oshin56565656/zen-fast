@@ -59,6 +59,8 @@ export interface WorkoutRecord {
   intensity: WorkoutIntensity;
   type: WorkoutType;
   description?: string;
+  calorieBurn?: number;
+  parsedExercises?: string[];
   createdAt?: any;
 }
 

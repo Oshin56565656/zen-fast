@@ -109,6 +109,8 @@ export async function getFastingInsights(
       intensity: w.intensity,
       type: w.type || 'custom',
       description: w.description || '',
+      calorieBurn: w.calorieBurn || 0,
+      exercises: w.parsedExercises || [],
       relativeTime: `${Math.round((now.getTime() - w.startTime) / 60000)} minutes ago`
     }));
 
@@ -152,7 +154,7 @@ export async function getFastingInsights(
     4. How their meal choices (descriptions) affect their metabolic health and potentially their sleep.
     5. Hydration: Analyze their water intake patterns and suggest an optimal daily water goal (in ml) based on their physical profile, activity level, and current hydration habits.
     6. Calorie & Macro Estimation: Based on the descriptions and scales of the meals logged TODAY (using userLocalTime as reference), provide a rough estimate of their total calorie intake and macro breakdown (Protein, Carbs, Fats in grams) for the current day. If no meals are logged today, provide a general estimate based on their typical patterns or skip if no data.
-    7. Calories Burned: Based on the workouts logged TODAY (duration, intensity, and type) and their physical profile (BMR estimate), provide a rough estimate of their total calories burned for the current day.
+    7. Calories Burned: Based on the workouts logged TODAY (duration, intensity, type, and any specific 'calorieBurn' or 'exercises' fields provided), provide a rough estimate of their total calories burned for the current day. Favor provided 'calorieBurn' values in calculations.
     
     CRITICAL: 
     1. Use "User's Current Local Time" as the primary reference for "morning", "night", etc.
@@ -351,6 +353,58 @@ export async function getPeriodicReview(
     return response.text || "I couldn't generate a review at this time. Keep up the great work!";
   } catch (error) {
     console.error("Periodic Review Error:", error);
+    throw error;
+  }
+}
+
+export async function parseWorkoutText(text: string) {
+  const ai = getAIInstance();
+  const now = new Date();
+  
+  const prompt = `
+    Analyze the following workout log text and extract structured information.
+    Text: """
+    ${text}
+    """
+    
+    Current Date/Time reference: ${now.toLocaleString()}
+    
+    Rules:
+    - title: Short descriptive title.
+    - startTime: If date/time is mentioned (like "Friday, April 17, 2026, 6:14 PM"), parse it to ISO format. If only time is mentioned, use today's date.
+    - duration: Total duration in minutes (look for "30m", "1h", etc.).
+    - intensity: "low", "moderate", or "high" based on the volume and type of exercises.
+    - type: Choose the best fit from: cardio, strength, hiit, running, walking, swimming, cycling, sports, home, custom.
+    - summary: A very brief summary of the exercises performed.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: prompt,
+      config: {
+        systemInstruction: "You are a fitness data parser. Extract structured data from workout logs. Be precise with durations and times.",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            startTime: { type: Type.STRING, description: "ISO 8601 string" },
+            duration: { type: Type.NUMBER, description: "Minutes" },
+            intensity: { type: Type.STRING, enum: ["low", "moderate", "high"] },
+            type: { type: Type.STRING, enum: ["cardio", "strength", "hiit", "running", "walking", "swimming", "cycling", "sports", "home", "custom"] },
+            calorieBurn: { type: Type.NUMBER, description: "Estimated calories burned (BMR + activity volume)" },
+            exercises: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of exercise names" },
+            summary: { type: Type.STRING }
+          },
+          required: ["title", "startTime", "duration", "intensity", "type", "summary", "calorieBurn", "exercises"]
+        }
+      }
+    });
+
+    return JSON.parse(response.text || "{}");
+  } catch (error) {
+    console.error("Parse Workout Error:", error);
     throw error;
   }
 }

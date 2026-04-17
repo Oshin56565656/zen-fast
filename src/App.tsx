@@ -59,6 +59,7 @@ export default function App() {
     setWaterReminderEndHour,
     refreshWeather,
     testNotification,
+    parseWorkoutText,
     dailySummaries,
     saveDailySummary,
     firestoreError,
@@ -151,7 +152,7 @@ export default function App() {
             waterGoal={state.waterGoal}
             waterPresets={state.waterPresets}
             onLogMeal={logMeal} 
-            onLogWorkout={(startTime, endTime, intensity, type, description) => logWorkout(startTime, endTime, intensity, type, description)} 
+            onLogWorkout={logWorkout} 
             onLogSleep={logSleep}
             onLogWater={logWater}
             onLogWeight={logWeight}
