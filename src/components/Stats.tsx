@@ -1,8 +1,8 @@
 import React, { FC, ReactNode } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
 import { FastRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutRecord, DailySummary } from '../types';
-import { format, subDays, isSameDay, startOfDay, eachDayOfInterval } from 'date-fns';
-import { Trophy, Clock, Flame, Target, Moon, Zap, Star, Droplets, Scale, TrendingDown, TrendingUp, Minus, Calendar, Award, CheckCircle2, XCircle } from 'lucide-react';
+import { format, subDays, isSameDay, startOfDay, eachDayOfInterval, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, addMonths, isPast } from 'date-fns';
+import { Trophy, Clock, Flame, Target, Moon, Zap, Star, Droplets, Scale, TrendingDown, TrendingUp, Minus, Calendar, Award, CheckCircle2, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { Milestones } from './Milestones';
 import { Review } from './Review';
@@ -20,6 +20,7 @@ interface StatsProps {
 export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts, waterGoal = 2000, dailySummaries = [] }) => {
   const [activeTab, setActiveTab] = React.useState<'fasting' | 'sleep' | 'water' | 'weight' | 'milestones' | 'review' | 'consistency'>('fasting');
   const [searchDate, setSearchDate] = React.useState<string>('');
+  const [currentMonth, setCurrentMonth] = React.useState(new Date());
   
   const totalFasts = history.length;
 
@@ -432,80 +433,117 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
           </div>
 
           <div className="bg-card p-6 rounded-3xl border border-white/5 space-y-6">
-            <div className="flex flex-col space-y-4">
-              <h3 className="text-lg font-bold">Daily Goals Consistency</h3>
-              
-              <div className="relative">
-                <input
-                  type="date"
-                  value={searchDate}
-                  onChange={(e) => setSearchDate(e.target.value)}
-                  max={format(subDays(new Date(), 1), 'yyyy-MM-dd')}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-primary transition-colors appearance-none"
-                />
-                {searchDate && (
+            <div className="flex flex-col space-y-6">
+              <div className="flex flex-col items-center space-y-4">
+                <h3 className="text-lg font-bold">Goal Consistency</h3>
+                <div className="flex items-center space-x-3 bg-white/5 p-1 rounded-2xl border border-white/10 w-full max-w-[240px] justify-between shadow-inner">
                   <button 
-                    onClick={() => setSearchDate('')}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] text-primary font-bold uppercase"
+                    onClick={() => setCurrentMonth(addMonths(currentMonth, -1))}
+                    className="p-2 hover:bg-white/5 rounded-xl text-white/40 hover:text-primary transition-all active:scale-90"
                   >
-                    Clear
+                    <ChevronLeft size={18} />
                   </button>
-                )}
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/80">
+                    {format(currentMonth, 'MMMM yyyy')}
+                  </span>
+                  <button 
+                    onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
+                    className="p-2 hover:bg-white/5 rounded-xl text-white/40 hover:text-primary transition-all active:scale-90"
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Calendar Grid */}
+              <div className="space-y-4">
+                <div className="grid grid-cols-7 gap-1">
+                  {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+                    <div key={i} className="text-center text-[8px] font-bold text-white/20 uppercase tracking-widest pb-2">
+                      {day}
+                    </div>
+                  ))}
+                  {(() => {
+                    const monthStart = startOfMonth(currentMonth);
+                    const monthEnd = endOfMonth(monthStart);
+                    const startDate = startOfWeek(monthStart);
+                    const endDate = endOfWeek(monthEnd);
+                    
+                    const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
+                    
+                    return calendarDays.map((date, i) => {
+                      const dateStr = format(date, 'yyyy-MM-dd');
+                      const isCurrentMonth = isSameMonth(date, monthStart);
+                      const isToday = isSameDay(date, new Date());
+                      const isSelected = searchDate === dateStr;
+                      
+                      const summary = dailySummaries.find(s => s.date === dateStr);
+                      const dayWaterAmount = water
+                        .filter(w => isSameDay(new Date(w.time), date))
+                        .reduce((sum, curr) => sum + curr.amount, 0);
+                      
+                      const relevantWaterGoal = summary ? summary.waterGoal : waterGoal;
+                      const waterMet = summary ? summary.isWaterGoalMet : dayWaterAmount >= relevantWaterGoal;
+                      const deficitMet = summary ? summary.isDeficit : null;
+
+                      // A day is considered "past" if it's before today
+                      const dayIsPast = isPast(date) && !isToday;
+
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => setSearchDate(isSelected ? '' : dateStr)}
+                          className={cn(
+                            "aspect-square rounded-xl p-1 flex flex-col items-center justify-between transition-all relative border border-transparent",
+                            !isCurrentMonth ? "opacity-10 cursor-default pointer-events-none" : "hover:bg-white/5",
+                            isToday && "bg-primary/10 border-primary/20",
+                            isSelected && "bg-primary text-white scale-105 z-10 shadow-lg shadow-primary/20"
+                          )}
+                        >
+                          <span className={cn(
+                            "text-[10px] font-bold",
+                            isSelected ? "text-white" : isToday ? "text-primary" : "text-white/60"
+                          )}>
+                            {format(date, 'd')}
+                          </span>
+                          
+                          {isCurrentMonth && (
+                            <div className="flex space-x-0.5 mb-0.5">
+                              {/* Water Dot */}
+                              {waterMet ? (
+                                <div className={cn("w-1 h-1 rounded-full", isSelected ? "bg-white" : "bg-blue-400")} />
+                              ) : dayIsPast ? (
+                                <div className={cn("w-1 h-1 rounded-full", isSelected ? "bg-white/20" : "bg-white/5")} />
+                              ) : null}
+                              
+                              {/* Deficit Dot */}
+                              {deficitMet === true ? (
+                                <div className={cn("w-1 h-1 rounded-full", isSelected ? "bg-white" : "bg-orange-500")} />
+                              ) : dayIsPast && deficitMet === false ? (
+                                <div className={cn("w-1 h-1 rounded-full", isSelected ? "bg-white/20" : "bg-white/5")} />
+                              ) : null}
+                            </div>
+                          )}
+                        </button>
+                      );
+                    });
+                  })()}
+                </div>
+                
+                {/* Legend */}
+                <div className="flex items-center justify-center space-x-4 pt-2 border-t border-white/5">
+                  <div className="flex items-center space-x-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                    <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Water Met</span>
+                  </div>
+                  <div className="flex items-center space-x-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                    <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Deficit Met</span>
+                  </div>
+                </div>
               </div>
             </div>
-
-            <div className="space-y-6">
-              {(searchDate ? [new Date(searchDate)] : Array.from({ length: 6 }).map((_, i) => subDays(new Date(), i + 1))).map((date) => {
-                const dateStr = format(date, 'yyyy-MM-dd');
-                
-                // Fetch historical data from summary if available
-                const summary = dailySummaries.find(s => s.date === dateStr);
-                
-                // Water check
-                const dayWaterAmount = water
-                  .filter(w => isSameDay(new Date(w.time), date))
-                  .reduce((acc, curr) => acc + curr.amount, 0);
-                
-                // Use historical goal from summary if available, otherwise current goal
-                const relevantWaterGoal = summary ? summary.waterGoal : waterGoal;
-                const waterMet = summary ? summary.isWaterGoalMet : dayWaterAmount >= relevantWaterGoal;
-
-                // Calorie check (from dailySummaries)
-                const deficitMet = summary ? summary.isDeficit : null;
-
-                return (
-                  <div key={dateStr} className="flex items-center justify-between p-4 bg-white/5 rounded-2xl border border-white/5">
-                    <div className="flex flex-col">
-                      <span className="text-sm font-bold">{format(date, 'EEEE')}</span>
-                      <span className="text-[10px] text-white/40 uppercase tracking-widest">{format(date, 'MMM d, yyyy')}</span>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="flex flex-col items-center space-y-1">
-                        <Droplets size={16} className={waterMet ? "text-blue-400" : "text-white/10"} />
-                        <span className={`text-[8px] font-bold uppercase ${waterMet ? "text-blue-400" : "text-white/20"}`}>Water</span>
-                        {waterMet ? (
-                          <CheckCircle2 size={12} className="text-green-500" />
-                        ) : (
-                          <XCircle size={12} className="text-red-500/50" />
-                        )}
-                      </div>
-                      <div className="flex flex-col items-center space-y-1">
-                        <Flame size={16} className={deficitMet === true ? "text-orange-500" : "text-white/10"} />
-                        <span className={`text-[8px] font-bold uppercase ${deficitMet === true ? "text-orange-500" : "text-white/20"}`}>Deficit</span>
-                        {deficitMet === true ? (
-                          <CheckCircle2 size={12} className="text-green-500" />
-                        ) : deficitMet === false ? (
-                          <XCircle size={12} className="text-red-500/50" />
-                        ) : (
-                          <div className="w-3 h-3 rounded-full border border-white/10" />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <p className="mt-6 text-[10px] text-white/20 text-center italic">
+            <p className="mt-2 text-[10px] text-white/20 text-center italic">
               * Calorie deficit data is tracked when you refresh AI Coach insights for that day.
             </p>
           </div>
