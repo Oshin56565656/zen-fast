@@ -1,10 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets, LineChart, Mic, MicOff, Sparkles, MapPin, Play } from 'lucide-react';
+import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets, LineChart, Mic, MicOff, Sparkles, MapPin, Play, X } from 'lucide-react';
 import { MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity } from '../types';
 import { cn } from '../lib/utils';
-import { formatTime, formatDate } from '../lib/utils';
+import { formatTime, formatDate, formatDurationShort } from '../lib/utils';
 import { format, subHours } from 'date-fns';
+import { AnimatePresence } from 'motion/react';
 import BarcodeScanner from './BarcodeScanner';
 
 interface LogActivityProps {
@@ -25,6 +26,11 @@ interface LogActivityProps {
   onDeleteSleep: (id: string) => void;
   onDeleteWater: (id: string) => void;
   onDeleteWeight: (id: string) => void;
+  onUpdateMeal: (id: string, updates: Partial<MealRecord>) => void;
+  onUpdateWorkout: (id: string, updates: Partial<WorkoutRecord>) => void;
+  onUpdateSleep: (id: string, updates: Partial<SleepRecord>) => void;
+  onUpdateWater: (id: string, updates: Partial<WaterRecord>) => void;
+  onUpdateWeight: (id: string, updates: Partial<WeightRecord>) => void;
 }
 
 const LogActivity: React.FC<LogActivityProps> = ({
@@ -44,10 +50,18 @@ const LogActivity: React.FC<LogActivityProps> = ({
   onDeleteWorkout,
   onDeleteSleep,
   onDeleteWater,
-  onDeleteWeight
+  onDeleteWeight,
+  onUpdateMeal,
+  onUpdateWorkout,
+  onUpdateSleep,
+  onUpdateWater,
+  onUpdateWeight
 }) => {
   const [activeType, setActiveType] = useState<'water' | 'meal' | 'workout' | 'sleep' | 'weight'>('water');
   const [searchDate, setSearchDate] = useState<string>('');
+  const [selectedLog, setSelectedLog] = useState<{ type: string; data: any } | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingData, setEditingData] = useState<any>(null);
 
   // Water Form State
   const [waterAmount, setWaterAmount] = useState(250);
@@ -303,6 +317,18 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const filteredSleep = ([...filterByDate(sleep)] as SleepRecord[]).sort((a, b) => b.wakeUpTime - a.wakeUpTime);
   const filteredWater = ([...filterByDate(water)] as WaterRecord[]).sort((a, b) => b.time - a.time);
   const filteredWeights = ([...filterByDate(weights)] as WeightRecord[]).sort((a, b) => b.time - a.time);
+
+  const handleUpdate = () => {
+    if (!selectedLog || !editingData) return;
+    const { id } = selectedLog.data;
+    if (selectedLog.type === 'meal') onUpdateMeal(id, editingData);
+    if (selectedLog.type === 'workout') onUpdateWorkout(id, editingData);
+    if (selectedLog.type === 'sleep') onUpdateSleep(id, editingData);
+    if (selectedLog.type === 'water') onUpdateWater(id, editingData);
+    if (selectedLog.type === 'weight') onUpdateWeight(id, editingData);
+    setSelectedLog(null);
+    setIsEditing(false);
+  };
 
   return (
     <div className="space-y-8 p-6 pb-24">
@@ -915,7 +941,11 @@ const LogActivity: React.FC<LogActivityProps> = ({
           {activeType === 'meal' ? (
             filteredMeals.length > 0 ? (
               filteredMeals.map((meal) => (
-                <div key={meal.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
+                <div 
+                  key={meal.id} 
+                  onClick={() => setSelectedLog({ type: 'meal', data: meal })}
+                  className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between cursor-pointer hover:bg-white/10 transition-colors"
+                >
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center text-orange-500 shrink-0">
                       <Utensils size={20} />
@@ -930,7 +960,10 @@ const LogActivity: React.FC<LogActivityProps> = ({
                   </div>
                   <div className="flex items-center space-x-2">
                     <button
-                      onClick={() => onDeleteMeal(meal.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteMeal(meal.id);
+                      }}
                       className="p-2 text-white/20 hover:text-red-500 transition-colors"
                     >
                       <Trash2 size={18} />
@@ -944,7 +977,11 @@ const LogActivity: React.FC<LogActivityProps> = ({
           ) : activeType === 'workout' ? (
             filteredWorkouts.length > 0 ? (
               filteredWorkouts.map((workout) => (
-                <div key={workout.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
+                <div 
+                  key={workout.id} 
+                  onClick={() => setSelectedLog({ type: 'workout', data: workout })}
+                  className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between cursor-pointer hover:bg-white/10 transition-colors"
+                >
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center text-blue-500">
                       <Dumbbell size={20} />
@@ -959,7 +996,10 @@ const LogActivity: React.FC<LogActivityProps> = ({
                     </div>
                   </div>
                   <button
-                    onClick={() => onDeleteWorkout(workout.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteWorkout(workout.id);
+                    }}
                     className="p-2 text-white/20 hover:text-red-500 transition-colors"
                   >
                     <Trash2 size={18} />
@@ -972,7 +1012,11 @@ const LogActivity: React.FC<LogActivityProps> = ({
           ) : activeType === 'sleep' ? (
             filteredSleep.length > 0 ? (
               filteredSleep.map((s) => (
-                <div key={s.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
+                <div 
+                  key={s.id} 
+                  onClick={() => setSelectedLog({ type: 'sleep', data: s })}
+                  className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between cursor-pointer hover:bg-white/10 transition-colors"
+                >
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-500">
                       <Moon size={20} />
@@ -985,7 +1029,10 @@ const LogActivity: React.FC<LogActivityProps> = ({
                     </div>
                   </div>
                   <button
-                    onClick={() => onDeleteSleep(s.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteSleep(s.id);
+                    }}
                     className="p-2 text-white/20 hover:text-red-500 transition-colors"
                   >
                     <Trash2 size={18} />
@@ -998,7 +1045,11 @@ const LogActivity: React.FC<LogActivityProps> = ({
           ) : activeType === 'water' ? (
             filteredWater.length > 0 ? (
               filteredWater.map((w) => (
-                <div key={w.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
+                <div 
+                  key={w.id} 
+                  onClick={() => setSelectedLog({ type: 'water', data: w })}
+                  className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between cursor-pointer hover:bg-white/10 transition-colors"
+                >
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-blue-400/20 rounded-xl flex items-center justify-center text-blue-400">
                       <Droplets size={20} />
@@ -1009,7 +1060,10 @@ const LogActivity: React.FC<LogActivityProps> = ({
                     </div>
                   </div>
                   <button
-                    onClick={() => onDeleteWater(w.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteWater(w.id);
+                    }}
                     className="p-2 text-white/20 hover:text-red-500 transition-colors"
                   >
                     <Trash2 size={18} />
@@ -1022,7 +1076,11 @@ const LogActivity: React.FC<LogActivityProps> = ({
           ) : activeType === 'weight' ? (
             filteredWeights.length > 0 ? (
               filteredWeights.map((w) => (
-                <div key={w.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
+                <div 
+                  key={w.id} 
+                  onClick={() => setSelectedLog({ type: 'weight', data: w })}
+                  className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between cursor-pointer hover:bg-white/10 transition-colors"
+                >
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-500">
                       <Scale size={20} />
@@ -1036,7 +1094,10 @@ const LogActivity: React.FC<LogActivityProps> = ({
                     </div>
                   </div>
                   <button
-                    onClick={() => onDeleteWeight(w.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteWeight(w.id);
+                    }}
                     className="p-2 text-white/20 hover:text-red-500 transition-colors"
                   >
                     <Trash2 size={18} />
@@ -1049,6 +1110,324 @@ const LogActivity: React.FC<LogActivityProps> = ({
           ) : null}
         </div>
       </div>
+
+      <AnimatePresence>
+        {selectedLog && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.1 }}
+            onClick={() => {
+              setSelectedLog(null);
+              setIsEditing(false);
+            }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[150] flex items-center justify-center p-6"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 400 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-card w-full max-w-lg rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl"
+            >
+              <div className="relative p-8 max-h-[90vh] overflow-y-auto no-scrollbar">
+                <div className="flex items-center justify-between mb-8">
+                  <button 
+                    onClick={() => {
+                      setSelectedLog(null);
+                      setIsEditing(false);
+                    }}
+                    className="w-10 h-10 bg-white/5 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-colors"
+                  >
+                    <X size={20} />
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      if (isEditing) {
+                        handleUpdate();
+                      } else {
+                        setIsEditing(true);
+                        setEditingData({ ...selectedLog.data });
+                      }
+                    }}
+                    className={cn(
+                      "px-6 py-2 rounded-full font-bold text-sm transition-all",
+                      isEditing ? "bg-primary text-white" : "bg-white/10 text-white hover:bg-white/20"
+                    )}
+                  >
+                    {isEditing ? 'Save Changes' : 'Edit Log'}
+                  </button>
+                </div>
+
+                <div className="space-y-8">
+                  <div className="flex items-center space-x-4">
+                    <div className={cn(
+                      "w-16 h-16 rounded-2xl flex items-center justify-center",
+                      selectedLog.type === 'meal' && "bg-orange-500/20 text-orange-500",
+                      selectedLog.type === 'workout' && "bg-blue-500/20 text-blue-500",
+                      selectedLog.type === 'sleep' && "bg-indigo-500/20 text-indigo-500",
+                      selectedLog.type === 'water' && "bg-blue-400/20 text-blue-400",
+                      selectedLog.type === 'weight' && "bg-emerald-500/20 text-emerald-500",
+                    )}>
+                      {selectedLog.type === 'meal' && <Utensils size={32} />}
+                      {selectedLog.type === 'workout' && <Dumbbell size={32} />}
+                      {selectedLog.type === 'sleep' && <Moon size={32} />}
+                      {selectedLog.type === 'water' && <Droplets size={32} />}
+                      {selectedLog.type === 'weight' && <Scale size={32} />}
+                    </div>
+                    <div>
+                      <h4 className="text-2xl font-black text-white capitalize">
+                        {isEditing ? `Editing ${selectedLog.type}` : (
+                          <>
+                            {selectedLog.type === 'meal' && `${selectedLog.data.scale} Meal`}
+                            {selectedLog.type === 'workout' && selectedLog.data.type.replace('-', ' ')}
+                            {selectedLog.type === 'sleep' && `${selectedLog.data.quality} Sleep`}
+                            {selectedLog.type === 'water' && 'Hydration'}
+                            {selectedLog.type === 'weight' && 'Weight Check'}
+                          </>
+                        )}
+                      </h4>
+                      <p className="text-white/40 font-medium">
+                        {formatDate(selectedLog.data.time || selectedLog.data.startTime || selectedLog.data.bedtime)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {isEditing ? (
+                    <div className="space-y-4">
+                      {/* Shared Time Field */}
+                      {(selectedLog.data.time || selectedLog.data.startTime || selectedLog.data.bedtime) && (
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">
+                            {selectedLog.type === 'workout' || selectedLog.type === 'sleep' ? 'Start Time' : 'Time'}
+                          </label>
+                          <input
+                            type="datetime-local"
+                            value={format(new Date(editingData.time || editingData.startTime || editingData.bedtime), "yyyy-MM-dd'T'HH:mm")}
+                            onChange={(e) => {
+                              const ts = new Date(e.target.value).getTime();
+                              if (editingData.time) setEditingData({ ...editingData, time: ts });
+                              if (editingData.startTime) setEditingData({ ...editingData, startTime: ts });
+                              if (editingData.bedtime) setEditingData({ ...editingData, bedtime: ts });
+                            }}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary"
+                          />
+                        </div>
+                      )}
+
+                      {/* End Time for Workout/Sleep */}
+                      {(selectedLog.data.endTime || selectedLog.data.wakeUpTime) && (
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">
+                            {selectedLog.type === 'workout' ? 'End Time' : 'Wake Up Time'}
+                          </label>
+                          <input
+                            type="datetime-local"
+                            value={format(new Date(editingData.endTime || editingData.wakeUpTime), "yyyy-MM-dd'T'HH:mm")}
+                            onChange={(e) => {
+                              const ts = new Date(e.target.value).getTime();
+                              if (editingData.endTime) setEditingData({ ...editingData, endTime: ts });
+                              if (editingData.wakeUpTime) setEditingData({ ...editingData, wakeUpTime: ts });
+                            }}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary"
+                          />
+                        </div>
+                      )}
+
+                      {/* Amount/Weight Fields */}
+                      {(editingData.amount !== undefined || editingData.weight !== undefined) && (
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">
+                            {editingData.amount !== undefined ? 'Amount (ml)' : 'Weight (kg)'}
+                          </label>
+                          <input
+                            type="number"
+                            value={editingData.amount ?? editingData.weight ?? ''}
+                            onChange={(e) => {
+                              const val = Number(e.target.value);
+                              if (editingData.amount !== undefined) setEditingData({ ...editingData, amount: val });
+                              if (editingData.weight !== undefined) setEditingData({ ...editingData, weight: val });
+                            }}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary"
+                          />
+                        </div>
+                      )}
+
+                      {/* Scale / Quality / Intensity / Type Selectors */}
+                      {selectedLog.type === 'meal' && (
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Scale</label>
+                          <div className="grid grid-cols-3 gap-2">
+                            {(['light', 'normal', 'large'] as const).map(s => (
+                              <button
+                                key={s}
+                                onClick={() => setEditingData({ ...editingData, scale: s })}
+                                className={cn(
+                                  "py-2 rounded-xl border text-xs font-bold transition-all",
+                                  editingData.scale === s ? "bg-primary border-primary text-white" : "bg-white/5 border-white/10 text-white/40"
+                                )}
+                              >
+                                {s}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedLog.type === 'sleep' && (
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Quality</label>
+                          <select
+                            value={editingData.quality}
+                            onChange={(e) => setEditingData({ ...editingData, quality: e.target.value })}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none"
+                          >
+                            <option value="poor">Poor</option>
+                            <option value="fair">Fair</option>
+                            <option value="good">Good</option>
+                            <option value="excellent">Excellent</option>
+                          </select>
+                        </div>
+                      )}
+
+                      {selectedLog.type === 'workout' && (
+                        <>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Type</label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {(['cardio', 'strength', 'hiit', 'running', 'walking', 'swimming', 'cycling', 'sports', 'home', 'custom'] as const).map(t => (
+                                <button
+                                  key={t}
+                                  onClick={() => setEditingData({ ...editingData, type: t })}
+                                  className={cn(
+                                    "py-2 rounded-xl border text-[10px] font-bold transition-all truncate",
+                                    editingData.type === t ? "bg-primary border-primary text-white" : "bg-white/5 border-white/10 text-white/40"
+                                  )}
+                                >
+                                  {t}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Intensity</label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {(['low', 'moderate', 'high'] as const).map(i => (
+                                <button
+                                  key={i}
+                                  onClick={() => setEditingData({ ...editingData, intensity: i })}
+                                  className={cn(
+                                    "py-2 rounded-xl border text-xs font-bold transition-all",
+                                    editingData.intensity === i ? "bg-primary border-primary text-white" : "bg-white/5 border-white/10 text-white/40"
+                                  )}
+                                >
+                                  {i}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      )}
+
+                      {/* Description / Note */}
+                      {(editingData.description !== undefined || editingData.note !== undefined) && (
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Details</label>
+                          <textarea
+                            value={editingData.description ?? editingData.note ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (editingData.description !== undefined) setEditingData({ ...editingData, description: val });
+                              if (editingData.note !== undefined) setEditingData({ ...editingData, note: val });
+                            }}
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none min-h-[100px] resize-none"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                          <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-1">Time</p>
+                          <p className="text-lg font-bold text-white">
+                            {formatTime(selectedLog.data.time || selectedLog.data.startTime || selectedLog.data.bedtime)}
+                            {(selectedLog.data.endTime || selectedLog.data.wakeUpTime) && (
+                              <span className="text-white/40 font-normal ml-1 pr-1">
+                                - {formatTime(selectedLog.data.endTime || selectedLog.data.wakeUpTime)}
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                        {(selectedLog.data.duration !== undefined || selectedLog.data.amount !== undefined || selectedLog.data.weight !== undefined) && (
+                          <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                            <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-1">
+                              {selectedLog.data.amount ? 'Amount' : selectedLog.data.weight ? 'Weight' : 'Duration'}
+                            </p>
+                            <p className="text-lg font-bold text-white">
+                              {selectedLog.data.amount && `${selectedLog.data.amount}ml`}
+                              {selectedLog.data.weight && `${selectedLog.data.weight}kg`}
+                              {selectedLog.data.duration !== undefined && (
+                                selectedLog.type === 'sleep' 
+                                  ? `${selectedLog.data.duration.toFixed(1)}h`
+                                  : `${selectedLog.data.duration}m`
+                              )}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {selectedLog.type === 'workout' && (
+                        <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                          <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-1">Intensity</p>
+                          <p className="text-lg font-bold text-white capitalize">{selectedLog.data.intensity}</p>
+                        </div>
+                      )}
+
+                      {(selectedLog.data.description || selectedLog.data.note) && (
+                        <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                          <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-2">Description</p>
+                          <p className="text-white/70 leading-relaxed italic">
+                            "{selectedLog.data.description || selectedLog.data.note}"
+                          </p>
+                        </div>
+                      )}
+
+                      {selectedLog.data.barcode && (
+                        <div className="bg-white/5 p-6 rounded-3xl border border-white/5 flex items-center justify-between">
+                          <div>
+                            <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-1">Barcode</p>
+                            <p className="text-lg font-mono font-bold text-white">{selectedLog.data.barcode}</p>
+                          </div>
+                          <Scan className="text-primary opacity-50" size={32} />
+                        </div>
+                      )}
+
+                      <button
+                        onClick={() => {
+                          if (selectedLog.type === 'meal') onDeleteMeal(selectedLog.data.id);
+                          if (selectedLog.type === 'workout') onDeleteWorkout(selectedLog.data.id);
+                          if (selectedLog.type === 'sleep') onDeleteSleep(selectedLog.data.id);
+                          if (selectedLog.type === 'water') onDeleteWater(selectedLog.data.id);
+                          if (selectedLog.type === 'weight') onDeleteWeight(selectedLog.data.id);
+                          setSelectedLog(null);
+                        }}
+                        className="w-full bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white py-4 rounded-2xl font-bold transition-all flex items-center justify-center space-x-2 border border-red-500/20"
+                      >
+                        <Trash2 size={18} />
+                        <span>Delete Record</span>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {showScanner && (
         <BarcodeScanner 

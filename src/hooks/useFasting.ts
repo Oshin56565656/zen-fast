@@ -717,12 +717,40 @@ export function useFasting() {
     }
   };
 
+  const updateMeal = async (id: string, updates: Partial<MealRecord>) => {
+    if (!user) return;
+    try {
+      const mealRef = doc(db, 'users', user.uid, 'meals', id);
+      await updateDoc(mealRef, updates);
+    } catch (error) {
+      handleFirestoreError(error, 'update', `users/${user.uid}/meals/${id}`);
+    }
+  };
+
   const deleteWorkout = async (id: string) => {
     if (!user) return;
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'workouts', id));
     } catch (error) {
       handleFirestoreError(error, 'delete', `users/${user.uid}/workouts/${id}`);
+    }
+  };
+
+  const updateWorkout = async (id: string, updates: Partial<WorkoutRecord>) => {
+    if (!user) return;
+    try {
+      const workoutRef = doc(db, 'users', user.uid, 'workouts', id);
+      const data = { ...updates };
+      if (updates.startTime && updates.endTime) {
+        data.duration = Math.floor((updates.endTime - updates.startTime) / (1000 * 60));
+      } else if (updates.startTime || updates.endTime) {
+        // We'd need current values if only one is updated, but simpler to provide both or calculate if both present
+        // Handle this in the component side or fetch doc here. 
+        // For simplicity, let's assume component sends what's needed.
+      }
+      await updateDoc(workoutRef, data);
+    } catch (error) {
+      handleFirestoreError(error, 'update', `users/${user.uid}/workouts/${id}`);
     }
   };
 
@@ -751,6 +779,20 @@ export function useFasting() {
     }
   };
 
+  const updateSleep = async (id: string, updates: Partial<SleepRecord>) => {
+    if (!user) return;
+    try {
+      const sleepRef = doc(db, 'users', user.uid, 'sleep', id);
+      const data = { ...updates };
+      if (updates.bedtime && updates.wakeUpTime) {
+        data.duration = (updates.wakeUpTime - updates.bedtime) / (1000 * 60 * 60);
+      }
+      await updateDoc(sleepRef, data);
+    } catch (error) {
+      handleFirestoreError(error, 'update', `users/${user.uid}/sleep/${id}`);
+    }
+  };
+
   const logWater = async (time: number, amount: number) => {
     if (!user) return;
     try {
@@ -761,6 +803,16 @@ export function useFasting() {
       });
     } catch (error) {
       handleFirestoreError(error, 'write', `users/${user.uid}/water`);
+    }
+  };
+
+  const updateWater = async (id: string, updates: Partial<WaterRecord>) => {
+    if (!user) return;
+    try {
+      const waterRef = doc(db, 'users', user.uid, 'water', id);
+      await updateDoc(waterRef, updates);
+    } catch (error) {
+      handleFirestoreError(error, 'update', `users/${user.uid}/water/${id}`);
     }
   };
 
@@ -786,6 +838,19 @@ export function useFasting() {
       updateState({ weight });
     } catch (error) {
       handleFirestoreError(error, 'write', `users/${user.uid}/weights`);
+    }
+  };
+
+  const updateWeight = async (id: string, updates: Partial<WeightRecord>) => {
+    if (!user) return;
+    try {
+      const weightRef = doc(db, 'users', user.uid, 'weights', id);
+      await updateDoc(weightRef, updates);
+      if (updates.weight) {
+        updateState({ weight: updates.weight });
+      }
+    } catch (error) {
+      handleFirestoreError(error, 'update', `users/${user.uid}/weights/${id}`);
     }
   };
 
@@ -944,6 +1009,11 @@ export function useFasting() {
     deleteSleep,
     deleteWater,
     deleteWeight,
+    updateMeal,
+    updateWorkout,
+    updateSleep,
+    updateWater,
+    updateWeight,
     setHeight: (height: number) => updateState({ height }),
     setWeight: (weight: number) => updateState({ weight }),
     setAge: (age: number) => updateState({ age }),

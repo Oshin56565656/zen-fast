@@ -61,7 +61,12 @@ export default function App() {
     testNotification,
     dailySummaries,
     saveDailySummary,
-    firestoreError
+    firestoreError,
+    updateMeal,
+    updateWorkout,
+    updateSleep,
+    updateWater,
+    updateWeight
   } = useFasting();
 
   useEffect(() => {
@@ -155,6 +160,11 @@ export default function App() {
             onDeleteSleep={deleteSleep}
             onDeleteWater={deleteWater}
             onDeleteWeight={deleteWeight}
+            onUpdateMeal={updateMeal}
+            onUpdateWorkout={updateWorkout}
+            onUpdateSleep={updateSleep}
+            onUpdateWater={updateWater}
+            onUpdateWeight={updateWeight}
           />
         );
       case 'settings':
