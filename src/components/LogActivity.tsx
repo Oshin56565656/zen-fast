@@ -509,11 +509,17 @@ const LogActivity: React.FC<LogActivityProps> = ({
   };
 
   const filterByDate = <T extends { time?: number; startTime?: number; bedtime?: number; wakeUpTime?: number }>(logs: T[]) => {
-    if (!searchDate) return logs.slice(0, 6);
+    // Determine the sorting field for the logs
+    const getSortTime = (log: T) => log.time || log.startTime || log.wakeUpTime || log.bedtime || 0;
+    
+    // Sort all logs by time Descending first so we get the most recent ones
+    const sortedLogs = [...logs].sort((a, b) => getSortTime(b) - getSortTime(a));
+    
+    if (!searchDate) return sortedLogs.slice(0, 10);
     
     const targetDate = new Date(searchDate);
-    return logs.filter(log => {
-      const logDate = new Date(log.time || log.startTime || log.bedtime || log.wakeUpTime || 0);
+    return sortedLogs.filter(log => {
+      const logDate = new Date(getSortTime(log));
       return (
         logDate.getFullYear() === targetDate.getFullYear() &&
         logDate.getMonth() === targetDate.getMonth() &&
@@ -740,8 +746,8 @@ const LogActivity: React.FC<LogActivityProps> = ({
             </div>
           </div>
 
-          <div className="space-y-6">
-            <div className="grid grid-cols-4 gap-3">
+          <div className="flex flex-col items-center space-y-6">
+            <div className="grid grid-cols-4 gap-3 w-full">
               {waterPresets.map((amt) => (
                 <button
                   key={amt}
@@ -758,22 +764,22 @@ const LogActivity: React.FC<LogActivityProps> = ({
               ))}
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-3 w-full max-w-[280px]">
               <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest block text-center">Custom Amount</label>
-              <div className="flex space-x-2">
+              <div className="flex flex-col items-center space-y-3">
                 <input
                   type="number"
                   value={customWater}
                   onChange={(e) => setCustomWater(e.target.value)}
                   placeholder="e.g. 330"
-                  className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors text-center font-bold"
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors text-center font-bold text-xl"
                 />
                 <button
                   onClick={handleLogWater}
                   disabled={!customWater}
-                  className="bg-primary text-white px-6 rounded-2xl font-bold disabled:opacity-50 transition-all active:scale-95"
+                  className="w-full bg-primary text-white py-4 rounded-2xl font-black uppercase tracking-widest text-xs disabled:opacity-50 transition-all active:scale-95 shadow-lg shadow-primary/20"
                 >
-                  Log
+                  Log Intake
                 </button>
               </div>
             </div>

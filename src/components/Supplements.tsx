@@ -238,8 +238,8 @@ export function Supplements({
                       >
                         <option value="any">Anytime</option>
                         <option value="morning">Morning</option>
-                        <option value="evening">Evening</option>
                         <option value="with-meal">With Meal</option>
+                        <option value="evening">Evening</option>
                         <option value="before-bed">Before Bed</option>
                       </select>
                     </div>
