@@ -1050,11 +1050,13 @@ const LogActivity: React.FC<LogActivityProps> = ({
                       key={t}
                       type="button"
                       onClick={() => setWorkoutType(t)}
-                      className={`py-2 px-3 rounded-xl border transition-all capitalize text-[10px] font-bold tracking-wider ${
+                      className={cn(
+                        "py-2 px-3 rounded-xl border transition-all capitalize text-[10px] font-bold tracking-wider",
                         workoutType === t 
                           ? 'bg-primary/20 border-primary text-primary' 
-                          : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
-                      }`}
+                          : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10',
+                        t === 'custom' && "col-span-2 sm:col-span-3"
+                      )}
                     >
                       {t === 'custom' ? 'Custom Input' : t.replace('-', ' ')}
                     </button>
@@ -1093,32 +1095,28 @@ const LogActivity: React.FC<LogActivityProps> = ({
                   ))}
                 </div>
               </div>
-            </div>
 
-            {workoutCalorieBurn && (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-primary/10 border border-primary/20 p-4 rounded-2xl flex items-center justify-between"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
-                    <Sparkles size={20} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">AI Estimated Burn</p>
-                    <p className="text-lg font-black text-primary">{workoutCalorieBurn} kcal</p>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Calories Burned (optional)</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={workoutCalorieBurn || ''}
+                    onChange={(e) => setWorkoutCalorieBurn(e.target.value ? Number(e.target.value) : undefined)}
+                    placeholder="e.g. 350"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors text-center font-bold"
+                  />
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-white/20 uppercase">
+                    kcal
                   </div>
                 </div>
-                <button 
-                  type="button"
-                  onClick={() => setWorkoutCalorieBurn(undefined)}
-                  className="text-white/20 hover:text-white/40"
-                >
-                  <X size={16} />
-                </button>
-              </motion.div>
-            )}
+                {workoutCalorieBurn && !isWorkoutStartTimeDirty && (
+                  <p className="text-[10px] text-primary/60 text-center font-bold animate-pulse">
+                    AI Estimated value. You can adjust it.
+                  </p>
+                )}
+              </div>
+            </div>
 
             <button
               type="submit"
@@ -1271,6 +1269,12 @@ const LogActivity: React.FC<LogActivityProps> = ({
                       <p className="text-xs text-white/40">
                         {formatDate(workout.startTime)}, {workout.duration} mins • {formatTime(workout.startTime)} - {formatTime(workout.endTime)}
                       </p>
+                      {workout.calorieBurn && (
+                        <div className="flex items-center space-x-1 mt-1">
+                          <Sparkles size={10} className="text-primary" />
+                          <span className="text-[10px] font-black text-primary uppercase tracking-wider">{workout.calorieBurn} kcal burned</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <button
@@ -1607,6 +1611,17 @@ const LogActivity: React.FC<LogActivityProps> = ({
                               ))}
                             </div>
                           </div>
+                          
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Calories Burned (kcal)</label>
+                            <input
+                              type="number"
+                              value={editingData.calorieBurn ?? ''}
+                              onChange={(e) => setEditingData({ ...editingData, calorieBurn: e.target.value ? Number(e.target.value) : undefined })}
+                              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary font-bold text-center"
+                              placeholder="e.g. 350"
+                            />
+                          </div>
                         </>
                       )}
 
@@ -1659,9 +1674,17 @@ const LogActivity: React.FC<LogActivityProps> = ({
                       </div>
 
                       {selectedLog.type === 'workout' && (
-                        <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
-                          <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-1">Intensity</p>
-                          <p className="text-lg font-bold text-white capitalize">{selectedLog.data.intensity}</p>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                            <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-1">Intensity</p>
+                            <p className="text-lg font-bold text-white capitalize">{selectedLog.data.intensity}</p>
+                          </div>
+                          {selectedLog.data.calorieBurn && (
+                            <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                              <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-1">Calories Burned</p>
+                              <p className="text-lg font-black text-primary">{selectedLog.data.calorieBurn} kcal</p>
+                            </div>
+                          )}
                         </div>
                       )}
 
