@@ -58,6 +58,7 @@ export default function App() {
     setWaterReminderStartHour,
     setWaterReminderEndHour,
     refreshWeather,
+    lastWaterReminder,
     testNotification,
     parseWorkoutText,
     dailySummaries,
@@ -200,6 +201,7 @@ export default function App() {
               onWaterReminderStartHourChange={setWaterReminderStartHour}
               waterReminderEndHour={state.waterReminderEndHour}
               onWaterReminderEndHourChange={setWaterReminderEndHour}
+              lastWaterReminder={lastWaterReminder}
               weatherData={state.weatherData}
               suggestedWaterGoal={state.suggestedWaterGoal}
               onRefreshWeather={refreshWeather}

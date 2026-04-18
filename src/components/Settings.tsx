@@ -1,7 +1,7 @@
 import React, { FC, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { cn, formatDurationShort } from '../lib/utils';
-import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info, Download, Zap, ChevronDown, User, Target, Cloud, Settings as SettingsIcon, Database, Brain, Plus } from 'lucide-react';
+import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info, Download, Zap, ChevronDown, User, Target, Cloud, Settings as SettingsIcon, Database, Brain, Plus, Clock, RefreshCw } from 'lucide-react';
 import { FastRecord, MealRecord, WorkoutRecord, SleepRecord } from '../types';
 
 interface SettingsProps {
@@ -13,24 +13,25 @@ interface SettingsProps {
   weight?: number;
   age?: number;
   sex?: 'male' | 'female' | 'other';
-  onHeightChange: (height: number) => void;
-  onWeightChange: (weight: number) => void;
-  onAgeChange: (age: number) => void;
-  onSexChange: (sex: 'male' | 'female' | 'other') => void;
+  onHeightChange: (height: number) => Promise<void>;
+  onWeightChange: (weight: number) => Promise<void>;
+  onAgeChange: (age: number) => Promise<void>;
+  onSexChange: (sex: 'male' | 'female' | 'other') => Promise<void>;
   waterGoal?: number;
-  onWaterGoalChange: (goal: number) => void;
+  onWaterGoalChange: (goal: number) => Promise<void>;
   accentColor?: string;
-  onAccentColorChange: (color: string) => void;
+  onAccentColorChange: (color: string) => Promise<void>;
   notificationsEnabled?: boolean;
-  onNotificationsEnabledChange: (enabled: boolean) => void;
+  onNotificationsEnabledChange: (enabled: boolean) => Promise<void>;
   waterReminderEnabled?: boolean;
-  onWaterReminderEnabledChange?: (enabled: boolean) => void;
+  onWaterReminderEnabledChange?: (enabled: boolean) => Promise<void>;
   waterReminderInterval?: number;
-  onWaterReminderIntervalChange?: (interval: number) => void;
+  onWaterReminderIntervalChange?: (interval: number) => Promise<void>;
   waterReminderStartHour?: number;
-  onWaterReminderStartHourChange?: (hour: number) => void;
+  onWaterReminderStartHourChange?: (hour: number) => Promise<void>;
   waterReminderEndHour?: number;
-  onWaterReminderEndHourChange?: (hour: number) => void;
+  onWaterReminderEndHourChange?: (hour: number) => Promise<void>;
+  lastWaterReminder?: number | null;
   weatherData?: {
     temp: number;
     condition: string;
@@ -138,8 +139,9 @@ export const Settings: FC<SettingsProps> = ({
   onWaterReminderIntervalChange,
   waterReminderStartHour = 8,
   onWaterReminderStartHourChange,
-  waterReminderEndHour = 22,
+  waterReminderEndHour = 23,
   onWaterReminderEndHourChange,
+  lastWaterReminder,
   weatherData,
   suggestedWaterGoal,
   waterPresets = [100, 150, 250, 300],
@@ -926,6 +928,32 @@ export const Settings: FC<SettingsProps> = ({
                     <div className="p-2 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-center space-x-2">
                       <AlertCircle className="text-yellow-500 shrink-0" size={12} />
                       <p className="text-[9px] text-yellow-500/80">Reminders will only fire during the day.</p>
+                    </div>
+                  )}
+
+                  {lastWaterReminder !== undefined && lastWaterReminder !== 0 && (
+                    <div className="p-2 bg-blue-500/10 border border-blue-500/20 rounded-lg flex items-center space-x-2">
+                      <Clock size={12} className="text-blue-500 shrink-0" />
+                      <p className="text-[9px] text-blue-500/80">
+                        Last reminder sent at {new Date(lastWaterReminder!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="pt-2">
+                    <button
+                      onClick={() => onWaterReminderEnabledChange?.(false).then(() => onWaterReminderEnabledChange?.(true))}
+                      className="text-[10px] text-primary/60 hover:text-primary font-bold uppercase tracking-widest flex items-center space-x-1"
+                    >
+                      <RefreshCw size={10} />
+                      <span>Reset Reminder Timer</span>
+                    </button>
+                  </div>
+                  
+                  {lastWaterReminder === 0 && waterReminderEnabled && (
+                    <div className="p-2 bg-primary/10 border border-primary/20 rounded-lg flex items-center space-x-2">
+                      <Sparkles size={12} className="text-primary shrink-0" />
+                      <p className="text-[9px] text-primary/80">Reminder system is active and ready.</p>
                     </div>
                   )}
                 </div>

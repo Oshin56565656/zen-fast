@@ -73,6 +73,9 @@ export function useFasting() {
     return 0;
   });
 
+  // Track if we've already reminded for the current interval to prevent double-firing
+  const isRemindingRef = useRef(false);
+
   useEffect(() => {
     localStorage.setItem('fasttrack_last_water_reminder', lastWaterReminder.toString());
   }, [lastWaterReminder]);
@@ -630,48 +633,63 @@ export function useFasting() {
   useEffect(() => {
     if (!isAuthReady || !isWaterLoaded) return;
 
-    const checkWater = () => {
-      if (!state.notificationsEnabled || !state.waterReminderEnabled) return;
+    const checkWater = async () => {
+      if (!state.notificationsEnabled || !state.waterReminderEnabled || isRemindingRef.current) return;
       
       const now = new Date();
+      const currentTimestamp = now.getTime();
       const hour = now.getHours();
       
-      const startHour = state.waterReminderStartHour ?? 8;
-      const endHour = state.waterReminderEndHour ?? 22;
+      const startHour = state.waterReminderStartHour !== undefined ? state.waterReminderStartHour : 8;
+      const endHour = state.waterReminderEndHour !== undefined ? state.waterReminderEndHour : 23;
 
       // Only remind between start and end hours (inclusive)
       if (hour < startHour || hour > endHour) {
-        console.log(`Reminder skipped: Hour ${hour} outside window ${startHour}-${endHour}`);
         return;
       }
 
       // Calculate today's total water
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      const todayTimestamp = startOfToday.getTime();
+      
       const todayTotal = water
-        .filter(w => w.time >= today.getTime())
+        .filter(w => w.time >= todayTimestamp)
         .reduce((acc, curr) => acc + curr.amount, 0);
 
       const goal = state.waterGoal || 2000;
       if (todayTotal >= goal) return;
 
-      // Check last log time
+      // Check last log time (ever)
       const lastLog = water.length > 0 ? Math.max(...water.map(w => w.time)) : 0;
-      const timeSinceLastLog = Date.now() - lastLog;
-      const timeSinceLastReminder = Date.now() - lastWaterReminder;
+      
+      // Calculate interval in ms
+      const intervalMs = Math.max(60000, (state.waterReminderInterval || 1) * 3600 * 1000); 
 
-      const intervalMs = Math.max(60000, (state.waterReminderInterval ?? 1) * 3600 * 1000); 
+      const timeSinceLastReminder = currentTimestamp - lastWaterReminder;
 
-      // Remind if no log for interval AND no reminder for interval
-      // Use a small buffer (5s) for the comparison to avoid missing by a millisecond
-      if (timeSinceLastLog >= intervalMs - 5000 && timeSinceLastReminder >= intervalMs - 5000) {
-        sendNotification("Stay Hydrated! 💧", {
-          body: `It's been over ${state.waterReminderInterval} hour${state.waterReminderInterval !== 1 ? 's' : ''} since your last drink. You've had ${todayTotal}ml today!`,
-          icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png",
-          silent: false,
-          tag: 'hydration-reminder'
-        });
-        setLastWaterReminder(Date.now());
+      // We should remind if:
+      // 1. It's been long enough since the last water log AND
+      // 2. It's been long enough since the last reminder
+      // AND we handle the "never logged" case by referencing today's start
+      const effectiveLastActivity = lastLog < todayTimestamp ? todayTimestamp : lastLog;
+      const activityGap = currentTimestamp - effectiveLastActivity;
+
+      if (activityGap >= intervalMs && timeSinceLastReminder >= intervalMs) {
+        isRemindingRef.current = true;
+        try {
+          await sendNotification("Stay Hydrated! 💧", {
+            body: `It's been over ${state.waterReminderInterval || 1} hour${state.waterReminderInterval !== 1 ? 's' : ''} since your last drink. You've had ${todayTotal}ml today!`,
+            icon: "https://cdn-icons-png.flaticon.com/512/3242/3242257.png",
+            silent: false,
+            tag: 'hydration-reminder'
+          } as any);
+          setLastWaterReminder(Date.now());
+        } catch (e) {
+          console.error("Hydration reminder primary path failed:", e);
+        } finally {
+          setTimeout(() => { isRemindingRef.current = false; }, 5000); // Small cooldown
+        }
       }
     };
 
@@ -1099,19 +1117,21 @@ export function useFasting() {
     setAccentColor: (color: string) => updateState({ accentColor: color }),
     setNotificationsEnabled: (enabled: boolean) => {
       if (enabled) requestPermission();
-      updateState({ notificationsEnabled: enabled });
+      return updateState({ notificationsEnabled: enabled });
     },
     setWaterReminderEnabled: (enabled: boolean) => {
       if (enabled) {
         requestPermission();
         setLastWaterReminder(0); // Reset last reminder time to enable immediate notifications if needed
       }
-      updateState({ waterReminderEnabled: enabled });
+      return updateState({ waterReminderEnabled: enabled });
     },
     setWaterReminderInterval: (interval: number) => updateState({ waterReminderInterval: interval }),
     setWaterReminderStartHour: (hour: number) => updateState({ waterReminderStartHour: hour }),
     setWaterReminderEndHour: (hour: number) => updateState({ waterReminderEndHour: hour }),
     refreshWeather,
+    lastWaterReminder,
+    setLastWaterReminder,
     testNotification,
     dailySummaries,
     saveDailySummary,
