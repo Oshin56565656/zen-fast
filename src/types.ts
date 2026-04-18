@@ -81,6 +81,25 @@ export interface WeightRecord {
   createdAt?: any;
 }
 
+export interface Supplement {
+  id: string;
+  name: string;
+  dosage: string;
+  frequency: 'daily' | 'weekly' | 'custom';
+  preferredTime: 'any' | 'morning' | 'evening' | 'with-meal' | 'before-bed';
+  reminderEnabled: boolean;
+  reminderTime?: string; // HH:mm
+  createdAt?: any;
+}
+
+export interface SupplementLog {
+  id: string;
+  supplementId: string;
+  time: number;
+  taken: boolean;
+  createdAt?: any;
+}
+
 export interface DailySummary {
   id?: string;
   date: string; // YYYY-MM-DD

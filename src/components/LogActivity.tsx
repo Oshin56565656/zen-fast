@@ -1,21 +1,25 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets, LineChart, Mic, MicOff, Sparkles, MapPin, Play, X, RefreshCw } from 'lucide-react';
-import { MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity } from '../types';
+import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets, LineChart, Mic, MicOff, Sparkles, MapPin, Play, X, RefreshCw, Pill } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { formatTime, formatDate, formatDurationShort } from '../lib/utils';
-import { format, subHours, addMinutes } from 'date-fns';
+import { format, subHours, addMinutes, isSameDay } from 'date-fns';
 import { AnimatePresence } from 'motion/react';
 import BarcodeScanner from './BarcodeScanner';
+import { Supplements } from './Supplements';
 import { parseWorkoutText } from '../services/aiService';
 import { GoogleGenAI } from "@google/genai";
+import { Supplement, SupplementLog, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, FastRecord } from '../types';
 
 interface LogActivityProps {
+  history: FastRecord[];
   meals: MealRecord[];
   workouts: WorkoutRecord[];
   sleep: SleepRecord[];
   water: WaterRecord[];
   weights: WeightRecord[];
+  supplements: Supplement[];
+  supplementLogs: SupplementLog[];
   waterGoal: number;
   waterPresets?: number[];
   onLogMeal: (time: number, scale: 'light' | 'normal' | 'large', description?: string, barcode?: string) => void;
@@ -23,6 +27,11 @@ interface LogActivityProps {
   onLogSleep: (bedtime: number, wakeUpTime: number, quality: 'poor' | 'fair' | 'good' | 'excellent') => void;
   onLogWater: (time: number, amount: number) => void;
   onLogWeight: (time: number, weight: number, note?: string) => void;
+  onAddSupplement: (s: Omit<Supplement, 'id' | 'createdAt'>) => void;
+  onUpdateSupplement: (id: string, s: Partial<Supplement>) => void;
+  onDeleteSupplement: (id: string) => void;
+  onLogSupplement: (supplementId: string, time: number, taken: boolean) => void;
+  onDeleteSupplementLog: (id: string) => void;
   onDeleteMeal: (id: string) => void;
   onDeleteWorkout: (id: string) => void;
   onDeleteSleep: (id: string) => void;
@@ -33,14 +42,18 @@ interface LogActivityProps {
   onUpdateSleep: (id: string, updates: Partial<SleepRecord>) => void;
   onUpdateWater: (id: string, updates: Partial<WaterRecord>) => void;
   onUpdateWeight: (id: string, updates: Partial<WeightRecord>) => void;
+  onUpdateSupplementLog: (id: string, updates: Partial<SupplementLog>) => void;
 }
 
 const LogActivity: React.FC<LogActivityProps> = ({
+  history,
   meals,
   workouts,
   sleep,
   water,
   weights,
+  supplements,
+  supplementLogs,
   waterGoal,
   waterPresets = [100, 150, 250, 300],
   onLogMeal,
@@ -48,6 +61,11 @@ const LogActivity: React.FC<LogActivityProps> = ({
   onLogSleep,
   onLogWater,
   onLogWeight,
+  onAddSupplement,
+  onUpdateSupplement,
+  onDeleteSupplement,
+  onLogSupplement,
+  onDeleteSupplementLog,
   onDeleteMeal,
   onDeleteWorkout,
   onDeleteSleep,
@@ -57,9 +75,10 @@ const LogActivity: React.FC<LogActivityProps> = ({
   onUpdateWorkout,
   onUpdateSleep,
   onUpdateWater,
-  onUpdateWeight
+  onUpdateWeight,
+  onUpdateSupplementLog
 }) => {
-  const [activeType, setActiveType] = useState<'water' | 'meal' | 'workout' | 'sleep' | 'weight'>('water');
+  const [activeType, setActiveType] = useState<'water' | 'meal' | 'workout' | 'sleep' | 'weight' | 'supplements'>('water');
   const [searchDate, setSearchDate] = useState<string>('');
   const [selectedLog, setSelectedLog] = useState<{ type: string; data: any } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -379,7 +398,44 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
   const handleLogMeal = (e: React.FormEvent) => {
     e.preventDefault();
-    onLogMeal(new Date(mealTime).getTime(), mealScale, mealDescription, mealBarcode);
+    const mealTimestamp = new Date(mealTime).getTime();
+    onLogMeal(mealTimestamp, mealScale, mealDescription, mealBarcode);
+
+    // Check for "with meal" supplements
+    const hasWithMealSupps = supplements.some(s => s.preferredTime === 'with-meal');
+    if (hasWithMealSupps) {
+      // Find last fast end time
+      const lastFastEnd = history.length > 0 ? history[0].endTime : 0;
+      // Are there any meals between lastFastEnd and now (excluding the one we just logged)?
+      const mealsSinceFast = meals.filter(m => m.time > lastFastEnd);
+      
+      if (mealsSinceFast.length === 0) {
+        // This is the first meal since the latest fast ended!
+        const toast = document.createElement('div');
+        toast.className = 'fixed top-24 left-1/2 -translate-x-1/2 bg-primary text-white px-8 py-4 rounded-[2rem] shadow-2xl z-[200] flex flex-col items-center space-y-2 text-center transform transition-all duration-500 ease-out';
+        toast.innerHTML = `
+          <div class="flex items-center space-x-2">
+            <div class="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+              <span class="text-lg">💊</span>
+            </div>
+            <p class="text-sm font-bold uppercase tracking-widest">Don't Forget!</p>
+          </div>
+          <p class="text-xs opacity-90">Remember to take your vitamins with this meal.</p>
+        `;
+        document.body.appendChild(toast);
+        
+        // Use requestAnimationFrame for entry animation
+        requestAnimationFrame(() => {
+          toast.classList.add('animate-in', 'fade-in', 'slide-in-from-top-4');
+        });
+
+        setTimeout(() => {
+          toast.classList.add('opacity-0', '-translate-y-4');
+          setTimeout(() => toast.remove(), 500);
+        }, 5000);
+      }
+    }
+
     setMealDescription('');
     setMealBarcode('');
     setIsMealTimeDirty(false);
@@ -471,6 +527,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const filteredSleep = ([...filterByDate(sleep)] as SleepRecord[]).sort((a, b) => b.wakeUpTime - a.wakeUpTime);
   const filteredWater = ([...filterByDate(water)] as WaterRecord[]).sort((a, b) => b.time - a.time);
   const filteredWeights = ([...filterByDate(weights)] as WeightRecord[]).sort((a, b) => b.time - a.time);
+  const filteredSupplements = ([...filterByDate(supplementLogs)] as SupplementLog[]).sort((a, b) => b.time - a.time);
 
   const handleUpdate = () => {
     if (!selectedLog || !editingData) return;
@@ -480,6 +537,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
     if (selectedLog.type === 'sleep') onUpdateSleep(id, editingData);
     if (selectedLog.type === 'water') onUpdateWater(id, editingData);
     if (selectedLog.type === 'weight') onUpdateWeight(id, editingData);
+    if (selectedLog.type === 'supplement') onUpdateSupplementLog(id, editingData);
     setSelectedLog(null);
     setIsEditing(false);
   };
@@ -515,6 +573,15 @@ const LogActivity: React.FC<LogActivityProps> = ({
           <span className="font-bold">Workout</span>
         </button>
         <button
+          onClick={() => setActiveType('supplements')}
+          className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
+            activeType === 'supplements' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
+          }`}
+        >
+          <Pill size={18} />
+          <span className="font-bold">Supplements</span>
+        </button>
+        <button
           onClick={() => setActiveType('sleep')}
           className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
             activeType === 'sleep' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
@@ -534,7 +601,26 @@ const LogActivity: React.FC<LogActivityProps> = ({
         </button>
       </div>
 
-      {activeType === 'water' ? (
+      <AnimatePresence mode="wait">
+        {activeType === 'supplements' ? (
+          <motion.div
+            key="supplements-tab"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="bg-card p-6 rounded-3xl border border-white/5"
+          >
+            <Supplements 
+              supplements={supplements}
+              logs={supplementLogs}
+              onAdd={onAddSupplement}
+              onUpdate={onUpdateSupplement}
+              onDelete={onDeleteSupplement}
+              onLog={onLogSupplement}
+              onDeleteLog={onDeleteSupplementLog}
+            />
+          </motion.div>
+        ) : activeType === 'water' ? (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -1191,6 +1277,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
           </button>
         </motion.form>
       ) : null}
+      </AnimatePresence>
 
       <div className="space-y-4">
         <div className="flex items-center justify-between px-2">
@@ -1389,6 +1476,40 @@ const LogActivity: React.FC<LogActivityProps> = ({
             ) : (
               <p className="text-center text-white/20 py-8 italic">No weight logs found</p>
             )
+          ) : activeType === 'supplements' ? (
+            filteredSupplements.length > 0 ? (
+              filteredSupplements.map((log) => {
+                const supp = supplements.find(s => s.id === log.supplementId);
+                return (
+                  <div 
+                    key={log.id} 
+                    onClick={() => setSelectedLog({ type: 'supplement', data: log })}
+                    className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between cursor-pointer hover:bg-white/10 transition-colors"
+                  >
+                    <div className="flex items-center space-x-4">
+                      <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
+                        <Pill size={20} />
+                      </div>
+                      <div>
+                        <p className="font-bold text-white capitalize">{supp?.name || 'Unknown Supplement'}</p>
+                        <p className="text-xs text-white/40">{formatDate(log.time)}, {formatTime(log.time)}</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteSupplementLog(log.id);
+                      }}
+                      className="p-2 text-white/20 hover:text-red-500 transition-colors"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-center text-white/20 py-8 italic">No supplement history found</p>
+            )
           ) : null}
         </div>
       </div>
@@ -1453,12 +1574,14 @@ const LogActivity: React.FC<LogActivityProps> = ({
                       selectedLog.type === 'sleep' && "bg-indigo-500/20 text-indigo-500",
                       selectedLog.type === 'water' && "bg-blue-400/20 text-blue-400",
                       selectedLog.type === 'weight' && "bg-emerald-500/20 text-emerald-500",
+                      selectedLog.type === 'supplement' && "bg-primary/20 text-primary",
                     )}>
                       {selectedLog.type === 'meal' && <Utensils size={32} />}
                       {selectedLog.type === 'workout' && <Dumbbell size={32} />}
                       {selectedLog.type === 'sleep' && <Moon size={32} />}
                       {selectedLog.type === 'water' && <Droplets size={32} />}
                       {selectedLog.type === 'weight' && <Scale size={32} />}
+                      {selectedLog.type === 'supplement' && <Pill size={32} />}
                     </div>
                     <div>
                       <h4 className="text-2xl font-black text-white capitalize">
@@ -1469,6 +1592,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                             {selectedLog.type === 'sleep' && `${selectedLog.data.quality} Sleep`}
                             {selectedLog.type === 'water' && 'Hydration'}
                             {selectedLog.type === 'weight' && 'Weight Check'}
+                            {selectedLog.type === 'supplement' && (supplements.find(s => s.id === selectedLog.data.supplementId)?.name || 'Supplement')}
                           </>
                         )}
                       </h4>
@@ -1714,6 +1838,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                           if (selectedLog.type === 'sleep') onDeleteSleep(selectedLog.data.id);
                           if (selectedLog.type === 'water') onDeleteWater(selectedLog.data.id);
                           if (selectedLog.type === 'weight') onDeleteWeight(selectedLog.data.id);
+                          if (selectedLog.type === 'supplement') onDeleteSupplementLog(selectedLog.data.id);
                           setSelectedLog(null);
                         }}
                         className="w-full bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white py-4 rounded-2xl font-bold transition-all flex items-center justify-center space-x-2 border border-red-500/20"

@@ -69,7 +69,15 @@ export default function App() {
     updateWorkout,
     updateSleep,
     updateWater,
-    updateWeight
+    updateWeight,
+    supplements,
+    supplementLogs,
+    addSupplement,
+    updateSupplement,
+    deleteSupplement,
+    logSupplementIntake,
+    deleteSupplementLog,
+    updateSupplementLog,
   } = useFasting();
 
   useEffect(() => {
@@ -143,16 +151,21 @@ export default function App() {
             saveDailySummary={saveDailySummary}
             aiInsights={aiInsights}
             saveAIInsights={saveAIInsights}
+            supplements={supplements}
+            supplementLogs={supplementLogs}
           />
         );
       case 'log':
         return (
           <LogActivity 
+            history={history}
             meals={meals} 
             workouts={workouts} 
             sleep={sleep}
             water={water}
             weights={weights}
+            supplements={supplements}
+            supplementLogs={supplementLogs}
             waterGoal={state.waterGoal}
             waterPresets={state.waterPresets}
             onLogMeal={logMeal} 
@@ -160,6 +173,11 @@ export default function App() {
             onLogSleep={logSleep}
             onLogWater={logWater}
             onLogWeight={logWeight}
+            onAddSupplement={addSupplement}
+            onUpdateSupplement={updateSupplement}
+            onDeleteSupplement={deleteSupplement}
+            onLogSupplement={logSupplementIntake}
+            onDeleteSupplementLog={deleteSupplementLog}
             onDeleteMeal={deleteMeal}
             onDeleteWorkout={deleteWorkout}
             onDeleteSleep={deleteSleep}
@@ -170,6 +188,7 @@ export default function App() {
             onUpdateSleep={updateSleep}
             onUpdateWater={updateWater}
             onUpdateWeight={updateWeight}
+            onUpdateSupplementLog={updateSupplementLog}
           />
         );
       case 'settings':

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { formatDurationShort } from '../lib/utils';
-import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, DailySummary, AIInsightsSync } from '../types';
+import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, DailySummary, AIInsightsSync, Supplement, SupplementLog } from '../types';
 import { 
   auth, 
   db, 
@@ -62,6 +62,8 @@ export function useFasting() {
   const [water, setWater] = useState<WaterRecord[]>([]);
   const [weights, setWeights] = useState<WeightRecord[]>([]);
   const [dailySummaries, setDailySummaries] = useState<DailySummary[]>([]);
+  const [supplements, setSupplements] = useState<Supplement[]>([]);
+  const [supplementLogs, setSupplementLogs] = useState<SupplementLog[]>([]);
   const [aiInsights, setAiInsights] = useState<AIInsightsSync | null>(null);
   const [hasNotifiedTarget, setHasNotifiedTarget] = useState(false);
   const [lastWaterReminder, setLastWaterReminder] = useState<number>(() => {
@@ -348,6 +350,42 @@ export function useFasting() {
     return () => unsubscribe();
   }, [user]);
 
+  // Sync supplements with Firestore
+  useEffect(() => {
+    if (!user) return;
+    const supplementsRef = collection(db, 'users', user.uid, 'supplements');
+    const q = query(supplementsRef);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const records: Supplement[] = [];
+      snapshot.forEach((doc) => {
+        records.push({ id: doc.id, ...doc.data() } as Supplement);
+      });
+      setSupplements(records.sort((a, b) => a.name.localeCompare(b.name)));
+    }, (error) => {
+      handleFirestoreError(error, 'list', `users/${user.uid}/supplements`);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  // Sync supplement logs with Firestore
+  useEffect(() => {
+    if (!user) return;
+    const logsRef = collection(db, 'users', user.uid, 'supplementLogs');
+    // Limit to recent logs to keep performance good (e.g. last 30 days)
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    const q = query(logsRef, where('time', '>=', thirtyDaysAgo));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const records: SupplementLog[] = [];
+      snapshot.forEach((doc) => {
+        records.push({ id: doc.id, ...doc.data() } as SupplementLog);
+      });
+      setSupplementLogs(records.sort((a, b) => b.time - a.time));
+    }, (error) => {
+      handleFirestoreError(error, 'list', `users/${user.uid}/supplementLogs`);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
   // Sync AI Insights with Firestore
   useEffect(() => {
     if (!user) {
@@ -425,6 +463,12 @@ export function useFasting() {
     // but we log it clearly for the agent to see.
   };
 
+  const cleanObj = (obj: any) => {
+    return Object.fromEntries(
+      Object.entries(obj).filter(([_, v]) => v !== undefined)
+    );
+  };
+
   const updateState = useCallback(async (updates: Partial<CurrentFastState>) => {
     if (!user) return;
     const stateDocRef = doc(db, 'users', user.uid, 'settings', 'currentFast');
@@ -433,10 +477,7 @@ export function useFasting() {
       setState(newState);
       localStorage.setItem(STORAGE_KEY_STATE, JSON.stringify(newState));
       
-      // Filter out undefined values for Firestore
-      const cleanUpdates = Object.fromEntries(
-        Object.entries(updates).filter(([_, v]) => v !== undefined)
-      );
+      const cleanUpdates = cleanObj(updates);
       
       if (Object.keys(cleanUpdates).length > 0) {
         await updateDoc(stateDocRef, cleanUpdates);
@@ -987,6 +1028,68 @@ export function useFasting() {
     }
   };
 
+  const addSupplement = async (supplement: Omit<Supplement, 'id' | 'createdAt'>) => {
+    if (!user) return;
+    try {
+      await addDoc(collection(db, 'users', user.uid, 'supplements'), {
+        ...cleanObj(supplement),
+        createdAt: Timestamp.now()
+      });
+    } catch (error) {
+      handleFirestoreError(error, 'write', `users/${user.uid}/supplements`);
+    }
+  };
+
+  const updateSupplement = async (id: string, updates: Partial<Supplement>) => {
+    if (!user) return;
+    try {
+      await updateDoc(doc(db, 'users', user.uid, 'supplements', id), cleanObj(updates));
+    } catch (error) {
+      handleFirestoreError(error, 'update', `users/${user.uid}/supplements/${id}`);
+    }
+  };
+
+  const deleteSupplement = async (id: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'supplements', id));
+    } catch (error) {
+      handleFirestoreError(error, 'delete', `users/${user.uid}/supplements/${id}`);
+    }
+  };
+
+  const logSupplementIntake = async (supplementId: string, time: number, taken: boolean) => {
+    if (!user) return;
+    try {
+      await addDoc(collection(db, 'users', user.uid, 'supplementLogs'), {
+        supplementId,
+        time,
+        taken,
+        createdAt: Timestamp.now()
+      });
+    } catch (error) {
+      handleFirestoreError(error, 'write', `users/${user.uid}/supplementLogs`);
+    }
+  };
+
+  const deleteSupplementLog = async (id: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'supplementLogs', id));
+    } catch (error) {
+      handleFirestoreError(error, 'delete', `users/${user.uid}/supplementLogs/${id}`);
+    }
+  };
+
+  const updateSupplementLog = async (id: string, updates: Partial<SupplementLog>) => {
+    if (!user) return;
+    try {
+      await updateDoc(doc(db, 'users', user.uid, 'supplementLogs', id), cleanObj(updates));
+    } catch (error) {
+      handleFirestoreError(error, 'update', `users/${user.uid}/supplementLogs/${id}`);
+    }
+  };
+
   const testNotification = async () => {
     await requestPermission();
     await sendNotification("Test Notification!", {
@@ -1064,6 +1167,14 @@ export function useFasting() {
     saveAIInsights,
     dailySummaries,
     saveDailySummary,
+    supplements,
+    supplementLogs,
+    addSupplement,
+    updateSupplement,
+    deleteSupplement,
+    logSupplementIntake,
+    deleteSupplementLog,
+    updateSupplementLog,
     firestoreError
   };
 }

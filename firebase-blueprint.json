@@ -101,6 +101,33 @@
       },
       "required": ["time", "weight", "createdAt"]
     },
+    "Supplement": {
+      "title": "Supplement",
+      "description": "A supplement or medication configuration.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Name of the supplement." },
+        "dosage": { "type": "string", "description": "Dosage description." },
+        "frequency": { "type": "string", "enum": ["daily", "weekly", "custom"], "description": "Frequency of intake." },
+        "preferredTime": { "type": "string", "enum": ["any", "morning", "evening", "with-first-meal", "before-bed"], "description": "Ideal time to take." },
+        "reminderEnabled": { "type": "boolean", "description": "Whether reminders are active." },
+        "reminderTime": { "type": "string", "description": "Specific time HH:mm for reminder." },
+        "createdAt": { "type": "object", "description": "Firestore server timestamp." }
+      },
+      "required": ["name", "frequency", "preferredTime", "reminderEnabled", "createdAt"]
+    },
+    "SupplementLog": {
+      "title": "Supplement Log",
+      "description": "A record of taking a supplement.",
+      "type": "object",
+      "properties": {
+        "supplementId": { "type": "string", "description": "Reference to the Supplement ID." },
+        "time": { "type": "number", "description": "Timestamp of ingestion." },
+        "taken": { "type": "boolean", "description": "Whether it was marked as taken." },
+        "createdAt": { "type": "object", "description": "Firestore server timestamp." }
+      },
+      "required": ["supplementId", "time", "taken", "createdAt"]
+    },
     "AIInsights": {
       "title": "AI Insights",
       "description": "Cached AI coach insights for cross-device synchronization.",
@@ -147,6 +174,14 @@
     "/users/{userId}/weights/{weightId}": {
       "schema": "WeightRecord",
       "description": "Stores the user's weight logs."
+    },
+    "/users/{userId}/supplements/{supplementId}": {
+      "schema": "Supplement",
+      "description": "Stores the user's supplement configurations."
+    },
+    "/users/{userId}/supplementLogs/{logId}": {
+      "schema": "SupplementLog",
+      "description": "Stores the user's daily supplement intake logs."
     }
   }
 }

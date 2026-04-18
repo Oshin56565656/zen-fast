@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
-import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord } from "../types";
+import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, Supplement, SupplementLog } from "../types";
 
 const getAIInstance = () => {
   let apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
@@ -56,9 +56,11 @@ export async function getFastingInsights(
   height?: number,
   weight?: number,
   sex?: string,
-  age?: number
+  age?: number,
+  supplements: Supplement[] = [],
+  supplementLogs: SupplementLog[] = []
 ): Promise<InsightResponse | []> {
-  if (history.length === 0 && meals.length === 0 && workouts.length === 0 && sleep.length === 0 && water.length === 0) {
+  if (history.length === 0 && meals.length === 0 && workouts.length === 0 && sleep.length === 0 && water.length === 0 && supplements.length === 0) {
     return [];
   }
 
@@ -136,6 +138,15 @@ export async function getFastingInsights(
       relativeTime: `${Math.round((now.getTime() - w.time) / 60000)} minutes ago`
     }));
 
+  const supplementData = supplements.map(s => ({
+    name: s.name,
+    dosage: s.dosage,
+    preferredTime: s.preferredTime,
+    lastTaken: supplementLogs
+      .filter(l => l.supplementId === s.id)
+      .sort((a, b) => b.time - a.time)[0]?.time ? formatLocalTime(supplementLogs.filter(l => l.supplementId === s.id).sort((a, b) => b.time - a.time)[0].time) : 'Never'
+  }));
+
   const prompt = `
     User's Current Local Time: ${userLocalTime}
     Current UTC Time: ${now.toISOString()}
@@ -149,26 +160,21 @@ export async function getFastingInsights(
     Analyze this user's health data and provide 3-4 concise, personalized insights.
     Focus on:
     1. The relationship between fasting windows, sleep quality, and energy levels.
-    2. Specific recommendations for the BEST TIME and INTENSITY for their next workout based on their most recent meal(s), current fasting state, and sleep quality. Consider the impact of different workout types (cardio vs strength vs hiit, etc.) on their metabolic state.
-    3. How their sleep patterns (bedtime, wake-up time, duration, and quality) are affecting their fasting performance and metabolic health.
-    4. How their meal choices (descriptions) affect their metabolic health and potentially their sleep.
-    5. Hydration: Analyze their water intake patterns and suggest an optimal daily water goal (in ml) based on their physical profile, activity level, and current hydration habits.
-    6. Calorie & Macro Estimation: Based on the descriptions and scales of the meals logged TODAY (using userLocalTime as reference), provide a rough estimate of their total calorie intake and macro breakdown (Protein, Carbs, Fats in grams) for the current day. If no meals are logged today, provide a general estimate based on their typical patterns or skip if no data.
-    7. Calories Burned: Based on the workouts logged TODAY (duration, intensity, type, and any specific 'calorieBurn' or 'exercises' fields provided), provide a rough estimate of their total calories burned for the current day. Favor provided 'calorieBurn' values in calculations.
+    2. Specific recommendations for the BEST TIME and INTENSITY for their next workout based on their most recent meal(s), current fasting state, and sleep quality.
+    3. Supplement Timing: Based on their current supplement list and history, provide advice on the OPTIMAL TIMING for each supplement relative to their meals, workouts, and fasting schedule. (e.g., "Take Creatine post-workout for better absorption" or "Move Magnesium to before-bed for sleep support").
+    4. How their sleep patterns are affecting their fasting performance.
+    5. Calorie & Macro Estimation.
     
     CRITICAL: 
-    1. Use "User's Current Local Time" as the primary reference for "morning", "night", etc.
-    2. Use "localTime" fields for each record to understand exactly when they happened in the user's day.
-    3. For Sleep: The user logs their "bedtime" and "wakeUpTime". Use these to understand their sleep schedule and consistency.
-    4. Use "relativeTime" fields to understand how long ago events happened relative to "now".
-    5. Only use the data provided in the lists below. Do NOT infer or assume meal times.
-    6. ALWAYS use 12-hour format (e.g., "10:00 am") when mentioning specific times in your response.
+    1. Use "User's Current Local Time" as primary reference.
+    2. Suggest specific timing for their existing supplements to maximize efficacy.
     
     Fasting History: ${JSON.stringify(historyData)}
     Recent Meals: ${JSON.stringify(mealData)}
     Recent Workouts: ${JSON.stringify(workoutData)}
     Recent Sleep: ${JSON.stringify(sleepData)}
     Recent Water Intake: ${JSON.stringify(waterData)}
+    Supplements & Regimen: ${JSON.stringify(supplementData)}
     
     Structure the response as a JSON object with the following structure:
     {

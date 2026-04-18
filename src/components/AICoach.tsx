@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, TrendingUp, Target, RefreshCw, Utensils, Dumbbell, Send, MessageCircle, Clock } from 'lucide-react';
 import { getFastingInsights, chatWithCoach } from '../services/aiService';
-import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, DailySummary, AIInsight, CalorieGuess, CaloriesBurned, AIInsightsSync } from '../types';
+import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, DailySummary, AIInsight, CalorieGuess, CaloriesBurned, AIInsightsSync, Supplement, SupplementLog } from '../types';
 import { cn } from '../lib/utils';
 import { formatTime, formatDate } from '../lib/utils';
 
@@ -20,6 +20,8 @@ interface AICoachProps {
   saveDailySummary: (summary: Omit<DailySummary, 'id' | 'createdAt'>) => Promise<void>;
   aiInsights: AIInsightsSync | null;
   saveAIInsights: (insightsData: AIInsightsSync) => Promise<void>;
+  supplements: Supplement[];
+  supplementLogs: SupplementLog[];
 }
 
 interface AICoachInsight extends AIInsight {}
@@ -103,7 +105,7 @@ const ChatBox: React.FC<{
   );
 };
 
-const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, water, height, weight, sex, age, waterGoal, saveDailySummary, aiInsights, saveAIInsights }) => {
+const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, water, height, weight, sex, age, waterGoal, saveDailySummary, aiInsights, saveAIInsights, supplements, supplementLogs }) => {
     const [insights, setInsights] = useState<AIInsight[]>([]);
     const [calorieGuess, setCalorieGuess] = useState<CalorieGuess | null>(null);
     const [caloriesBurned, setCaloriesBurned] = useState<CaloriesBurned | null>(null);
@@ -193,7 +195,7 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
       setLoading(true);
       try {
         const userLocalTime = new Date().toLocaleString();
-        const result = await getFastingInsights(history, meals, workouts, sleep, water, userLocalTime, height, weight, sex, age);
+        const result = await getFastingInsights(history, meals, workouts, sleep, water, userLocalTime, height, weight, sex, age, supplements, supplementLogs);
         
         if (Array.isArray(result)) {
           setInsights(result);
