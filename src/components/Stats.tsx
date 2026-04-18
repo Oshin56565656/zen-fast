@@ -32,7 +32,7 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
       .filter(w => format(new Date(w.time), 'yyyy-MM-dd') === dateStr)
       .reduce((sum, curr) => sum + curr.amount, 0);
     const goal = summary ? summary.waterGoal : waterGoal;
-    const met = summary ? summary.isWaterGoalMet : dayAmount >= goal;
+    const met = dayAmount >= goal;
     
     return {
       met: acc.met + (met ? 1 : 0),
@@ -483,7 +483,7 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
                         .reduce((sum, curr) => sum + curr.amount, 0);
                       
                       const relevantWaterGoal = summary ? summary.waterGoal : waterGoal;
-                      const waterMet = summary ? summary.isWaterGoalMet : dayWaterAmount >= relevantWaterGoal;
+                      const waterMet = dayWaterAmount >= relevantWaterGoal;
                       const deficitMet = summary ? summary.isDeficit : null;
 
                       // A day is considered "past" if it's before today
