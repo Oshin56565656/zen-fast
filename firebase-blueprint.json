@@ -59,6 +59,8 @@
         "intensity": { "type": "string", "enum": ["low", "moderate", "high"], "description": "Intensity level." },
         "type": { "type": "string", "enum": ["cardio", "strength", "hiit", "running", "walking", "swimming", "cycling", "sports", "home", "custom"], "description": "Type of workout." },
         "description": { "type": "string", "description": "Description of the workout (especially for custom workouts)." },
+        "calorieBurn": { "type": "number", "description": "Total calories burned (often AI estimated)." },
+        "parsedExercises": { "type": "array", "items": { "type": "string" }, "description": "List of recognized exercise names." },
         "createdAt": { "type": "object", "description": "Firestore server timestamp." }
       },
       "required": ["startTime", "endTime", "duration", "intensity", "createdAt"]

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, TrendingUp, Target, RefreshCw, Utensils, Dumbbell, Send, MessageCircle } from 'lucide-react';
+import { Sparkles, TrendingUp, Target, RefreshCw, Utensils, Dumbbell, Send, MessageCircle, Clock } from 'lucide-react';
 import { getFastingInsights, chatWithCoach } from '../services/aiService';
 import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, DailySummary } from '../types';
 import { cn } from '../lib/utils';
+import { formatTime, formatDate } from '../lib/utils';
 
 interface AICoachProps {
   history: FastRecord[];
@@ -152,6 +153,16 @@ const ChatBox: React.FC<{
       }
       return null;
     });
+    const [lastRefreshed, setLastRefreshed] = useState<number | null>(() => {
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('fasttrack_insights');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          return Array.isArray(parsed) ? null : (parsed.lastRefreshed || null);
+        }
+      }
+      return null;
+    });
     const [loading, setLoading] = useState<boolean>(false);
     const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
     const [error, setError] = useState<string | null>(null);
@@ -180,8 +191,8 @@ const ChatBox: React.FC<{
     }, [loading]);
   
     useEffect(() => {
-      localStorage.setItem('fasttrack_insights', JSON.stringify({ insights, calorieGuess, caloriesBurned }));
-    }, [insights, calorieGuess, caloriesBurned]);
+      localStorage.setItem('fasttrack_insights', JSON.stringify({ insights, calorieGuess, caloriesBurned, lastRefreshed }));
+    }, [insights, calorieGuess, caloriesBurned, lastRefreshed]);
   
     useEffect(() => {
       const checkKey = async () => {
@@ -215,10 +226,12 @@ const ChatBox: React.FC<{
           setInsights(result);
           setCalorieGuess(null);
           setCaloriesBurned(null);
+          setLastRefreshed(Date.now());
         } else {
           setInsights(result.insights || []);
           setCalorieGuess(result.calorieGuess || null);
           setCaloriesBurned(result.caloriesBurned || null);
+          setLastRefreshed(Date.now());
 
           // Save Daily Summary
           if (result.calorieGuess && result.caloriesBurned) {
@@ -266,9 +279,17 @@ const ChatBox: React.FC<{
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-2">
-          <Sparkles className="text-primary" size={24} />
-          <h2 className="text-2xl font-bold text-white">AI Coach Insights</h2>
+        <div className="space-y-1">
+          <div className="flex items-center space-x-2">
+            <Sparkles className="text-primary" size={24} />
+            <h2 className="text-2xl font-bold text-white">AI Coach Insights</h2>
+          </div>
+          {lastRefreshed && (
+            <div className="flex items-center space-x-1.5 text-[10px] font-bold text-white/30 uppercase tracking-widest pl-8">
+              <Clock size={10} className="text-primary/40" />
+              <span>Last Refreshed: {formatDate(lastRefreshed)} at {formatTime(lastRefreshed)}</span>
+            </div>
+          )}
         </div>
         <button 
           onClick={fetchInsights}
