@@ -163,7 +163,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
         }
         
         const normalizedType = result.type ? result.type.toLowerCase() as WorkoutType : workoutType;
-        const validTypes: WorkoutType[] = ['cardio', 'strength', 'hiit', 'running', 'walking', 'swimming', 'cycling', 'sports', 'home', 'custom'];
+        const validTypes: WorkoutType[] = ['cardio', 'strength', 'running', 'walking', 'swimming', 'cycling', 'sports', 'home', 'custom'];
         const finalType = validTypes.includes(normalizedType) ? normalizedType : 'custom';
         
         const normalizedIntensity = result.intensity ? result.intensity.toLowerCase() as WorkoutIntensity : workoutIntensity;
@@ -1137,7 +1137,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
               <div className="space-y-2">
                 <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Workout Type</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {(['cardio', 'strength', 'hiit', 'running', 'walking', 'swimming', 'cycling', 'sports', 'home', 'custom'] as WorkoutType[]).map((t) => (
+                  {(['cardio', 'strength', 'running', 'walking', 'swimming', 'cycling', 'sports', 'home', 'custom'] as WorkoutType[]).map((t) => (
                     <button
                       key={t}
                       type="button"
