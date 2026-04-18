@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, TrendingUp, Target, RefreshCw, Utensils, Dumbbell, Send, MessageCircle, Clock } from 'lucide-react';
 import { getFastingInsights, chatWithCoach } from '../services/aiService';
-import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, DailySummary } from '../types';
+import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, DailySummary, AIInsight, CalorieGuess, CaloriesBurned, AIInsightsSync } from '../types';
 import { cn } from '../lib/utils';
 import { formatTime, formatDate } from '../lib/utils';
 
@@ -18,33 +18,14 @@ interface AICoachProps {
   age?: number;
   waterGoal?: number;
   saveDailySummary: (summary: Omit<DailySummary, 'id' | 'createdAt'>) => Promise<void>;
+  aiInsights: AIInsightsSync | null;
+  saveAIInsights: (insightsData: AIInsightsSync) => Promise<void>;
 }
 
-interface Insight {
-  category: string;
-  title: string;
-  content: string;
-  impact: 'positive' | 'neutral' | 'improvement';
-  messages?: { role: 'user' | 'model'; text: string }[];
-}
-
-interface CalorieGuess {
-  amount: number;
-  reasoning: string;
-  macros?: {
-    protein: number;
-    carbs: number;
-    fats: number;
-  };
-}
-
-interface CaloriesBurned {
-  amount: number;
-  reasoning: string;
-}
+interface AICoachInsight extends AIInsight {}
 
 const ChatBox: React.FC<{ 
-  insight: Insight; 
+  insight: AIInsight; 
   onUpdateMessages: (messages: { role: 'user' | 'model'; text: string }[]) => void;
   height?: number;
   weight?: number;
@@ -122,47 +103,39 @@ const ChatBox: React.FC<{
   );
 };
 
-  const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, water, height, weight, sex, age, waterGoal, saveDailySummary }) => {
-    const [insights, setInsights] = useState<Insight[]>(() => {
-      if (typeof window !== 'undefined') {
+const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, water, height, weight, sex, age, waterGoal, saveDailySummary, aiInsights, saveAIInsights }) => {
+    const [insights, setInsights] = useState<AIInsight[]>([]);
+    const [calorieGuess, setCalorieGuess] = useState<CalorieGuess | null>(null);
+    const [caloriesBurned, setCaloriesBurned] = useState<CaloriesBurned | null>(null);
+    const [lastRefreshed, setLastRefreshed] = useState<number | null>(null);
+
+    // Sync local state with firestore insights when they load
+    useEffect(() => {
+      if (aiInsights) {
+        setInsights(aiInsights.insights || []);
+        setCalorieGuess(aiInsights.calorieGuess || null);
+        setCaloriesBurned(aiInsights.caloriesBurned || null);
+        setLastRefreshed(aiInsights.lastRefreshed || null);
+      } else {
+        // Fallback to local storage if no cloud data yet
         const saved = localStorage.getItem('fasttrack_insights');
         if (saved) {
-          const parsed = JSON.parse(saved);
-          return Array.isArray(parsed) ? parsed : (parsed.insights || []);
+          try {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed)) {
+              setInsights(parsed);
+            } else {
+              setInsights(parsed.insights || []);
+              setCalorieGuess(parsed.calorieGuess || null);
+              setCaloriesBurned(parsed.caloriesBurned || null);
+              setLastRefreshed(parsed.lastRefreshed || null);
+            }
+          } catch (e) {
+            console.error("Failed to parse local insights", e);
+          }
         }
       }
-      return [];
-    });
-    const [calorieGuess, setCalorieGuess] = useState<CalorieGuess | null>(() => {
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('fasttrack_insights');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          return Array.isArray(parsed) ? null : (parsed.calorieGuess || null);
-        }
-      }
-      return null;
-    });
-    const [caloriesBurned, setCaloriesBurned] = useState<CaloriesBurned | null>(() => {
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('fasttrack_insights');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          return Array.isArray(parsed) ? null : (parsed.caloriesBurned || null);
-        }
-      }
-      return null;
-    });
-    const [lastRefreshed, setLastRefreshed] = useState<number | null>(() => {
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('fasttrack_insights');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          return Array.isArray(parsed) ? null : (parsed.lastRefreshed || null);
-        }
-      }
-      return null;
-    });
+    }, [aiInsights]);
     const [loading, setLoading] = useState<boolean>(false);
     const [loadingMessageIndex, setLoadingMessageIndex] = useState(0);
     const [error, setError] = useState<string | null>(null);
@@ -226,12 +199,28 @@ const ChatBox: React.FC<{
           setInsights(result);
           setCalorieGuess(null);
           setCaloriesBurned(null);
-          setLastRefreshed(Date.now());
+          const timestamp = Date.now();
+          setLastRefreshed(timestamp);
+          
+          saveAIInsights({
+            insights: result,
+            calorieGuess: null,
+            caloriesBurned: null,
+            lastRefreshed: timestamp
+          });
         } else {
           setInsights(result.insights || []);
           setCalorieGuess(result.calorieGuess || null);
           setCaloriesBurned(result.caloriesBurned || null);
-          setLastRefreshed(Date.now());
+          const timestamp = Date.now();
+          setLastRefreshed(timestamp);
+
+          saveAIInsights({
+            insights: result.insights || [],
+            calorieGuess: result.calorieGuess || null,
+            caloriesBurned: result.caloriesBurned || null,
+            lastRefreshed: timestamp
+          });
 
           // Save Daily Summary
           if (result.calorieGuess && result.caloriesBurned) {
@@ -531,6 +520,12 @@ const ChatBox: React.FC<{
                         const newInsights = [...insights];
                         newInsights[index] = { ...insight, messages: msgs };
                         setInsights(newInsights);
+                        saveAIInsights({
+                          insights: newInsights,
+                          calorieGuess,
+                          caloriesBurned,
+                          lastRefreshed
+                        });
                       }}
                     />
 

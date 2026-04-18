@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { formatDurationShort } from '../lib/utils';
-import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, DailySummary } from '../types';
+import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, DailySummary, AIInsightsSync } from '../types';
 import { 
   auth, 
   db, 
@@ -52,8 +52,6 @@ export function useFasting() {
       waterReminderInterval: 1,
       waterReminderStartHour: 0,
       waterReminderEndHour: 23,
-      weatherData: undefined,
-      suggestedWaterGoal: 2000
     };
   });
 
@@ -64,6 +62,7 @@ export function useFasting() {
   const [water, setWater] = useState<WaterRecord[]>([]);
   const [weights, setWeights] = useState<WeightRecord[]>([]);
   const [dailySummaries, setDailySummaries] = useState<DailySummary[]>([]);
+  const [aiInsights, setAiInsights] = useState<AIInsightsSync | null>(null);
   const [hasNotifiedTarget, setHasNotifiedTarget] = useState(false);
   const [lastWaterReminder, setLastWaterReminder] = useState<number>(() => {
     if (typeof window !== 'undefined') {
@@ -349,13 +348,33 @@ export function useFasting() {
     return () => unsubscribe();
   }, [user]);
 
+  // Sync AI Insights with Firestore
+  useEffect(() => {
+    if (!user) {
+      setAiInsights(null);
+      return;
+    }
+    const aiInsightsRef = doc(db, 'users', user.uid, 'settings', 'aiInsights');
+    const unsubscribe = onSnapshot(aiInsightsRef, (doc) => {
+      if (doc.exists()) {
+        const data = doc.data();
+        setAiInsights({
+          insights: data.insights || [],
+          calorieGuess: data.calorieGuess || null,
+          caloriesBurned: data.caloriesBurned || null,
+          lastRefreshed: data.lastRefreshed || null
+        });
+      }
+    }, (error) => {
+      handleFirestoreError(error, 'get', `users/${user.uid}/settings/aiInsights`);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
   const saveDailySummary = async (summary: Omit<DailySummary, 'id' | 'createdAt'>) => {
     if (!user) return;
     try {
       const summariesRef = collection(db, 'users', user.uid, 'dailySummaries');
-      const q = query(summariesRef, where('date', '==', summary.date));
-      const snapshot = await getDoc(doc(summariesRef, summary.date)).catch(() => null);
-      
       // Use date as ID for easy lookup/update
       await setDoc(doc(db, 'users', user.uid, 'dailySummaries', summary.date), {
         ...summary,
@@ -363,6 +382,18 @@ export function useFasting() {
       }, { merge: true });
     } catch (error) {
       handleFirestoreError(error, 'write', `users/${user.uid}/dailySummaries/${summary.date}`);
+    }
+  };
+
+  const saveAIInsights = async (insightsData: AIInsightsSync) => {
+    if (!user) return;
+    try {
+      await setDoc(doc(db, 'users', user.uid, 'settings', 'aiInsights'), {
+        ...insightsData,
+        createdAt: Timestamp.now()
+      });
+    } catch (error) {
+      handleFirestoreError(error, 'write', `users/${user.uid}/settings/aiInsights`);
     }
   };
   const handleFirestoreError = (error: any, operationType: string, path: string) => {
@@ -966,110 +997,7 @@ export function useFasting() {
     alert("Test notification triggered! If you don't see it, please check your Android notification settings for Chrome.");
   };
 
-  // Weather and Hydration Logic
-  const refreshWeather = useCallback(async () => {
-    if (!navigator.geolocation) return;
-
-    navigator.geolocation.getCurrentPosition(async (position) => {
-      const { latitude, longitude } = position.coords;
-      try {
-        // Fetch Weather
-        const weatherRes = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`
-        );
-        const weatherData = await weatherRes.json();
-        
-        // Fetch City Name (Reverse Geocoding)
-        let city = null;
-        try {
-          // Try Nominatim first
-          const geoRes = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`,
-            { headers: { 'Accept-Language': 'en' } }
-          );
-          if (geoRes.ok) {
-            const geoData = await geoRes.json();
-            city = geoData.address.city || geoData.address.town || geoData.address.village || geoData.address.suburb || geoData.address.county;
-          }
-          
-          // Fallback to BigDataCloud if Nominatim fails
-          if (!city) {
-            const bdcRes = await fetch(
-              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-            );
-            if (bdcRes.ok) {
-              const bdcData = await bdcRes.json();
-              city = bdcData.city || bdcData.locality || bdcData.principalSubdivision;
-            }
-          }
-        } catch (e) {
-          console.warn('Reverse geocoding failed:', e);
-        }
-
-        if (weatherData.current_weather) {
-          const temp = weatherData.current_weather.temperature;
-          const code = weatherData.current_weather.weathercode;
-          
-          const conditionMap: Record<number, string> = {
-            0: 'Clear',
-            1: 'Mainly Clear', 2: 'Partly Cloudy', 3: 'Overcast',
-            45: 'Fog', 48: 'Depositing Rime Fog',
-            51: 'Light Drizzle', 53: 'Moderate Drizzle', 55: 'Dense Drizzle',
-            61: 'Slight Rain', 63: 'Moderate Rain', 65: 'Heavy Rain',
-            71: 'Slight Snow', 73: 'Moderate Snow', 75: 'Heavy Snow',
-            80: 'Slight Rain Showers', 81: 'Moderate Rain Showers', 82: 'Violent Rain Showers',
-            95: 'Thunderstorm',
-          };
-          
-          const condition = conditionMap[code] || 'Unknown';
-          
-          // Calculate suggested water goal with more factors
-          // Base: 2000ml for women/other, 2500ml for men
-          let suggested = state.sex === 'male' ? 2500 : 2000;
-          
-          // Age adjustment (slight increase for younger, decrease for elderly)
-          if (state.age) {
-            if (state.age < 30) suggested += 200;
-            if (state.age > 60) suggested -= 200;
-          }
-
-          // Weather adjustment: +250ml for every 5 degrees above 25°C
-          if (temp > 25) {
-            suggested += Math.floor((temp - 25) / 5) * 250;
-          } else if (temp < 10) {
-            suggested -= 250;
-          }
-
-          // Workout adjustment: +500ml for high, +250ml for moderate today
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const todayWorkouts = workouts.filter(w => w.startTime >= today.getTime());
-          todayWorkouts.forEach(w => {
-            if (w.intensity === 'high') suggested += 500;
-            else if (w.intensity === 'moderate') suggested += 250;
-          });
-
-          // Ensure minimum 1500ml
-          suggested = Math.max(1500, suggested);
-
-          updateState({
-            weatherData: {
-              ...state.weatherData,
-              temp,
-              condition,
-              city: city || state.weatherData?.city || undefined,
-              lastUpdated: Date.now()
-            },
-            suggestedWaterGoal: suggested
-          });
-        }
-      } catch (error) {
-        console.error('Failed to fetch weather:', error);
-      }
-    }, (error) => {
-      console.warn('Geolocation failed:', error);
-    }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 3600000 });
-  }, [updateState, state.sex, state.age, state.weatherData, workouts]);
+  // Weather and Hydration Logic removed
 
   // Weather is only refreshed manually via refreshWeather button as requested
 
@@ -1129,10 +1057,11 @@ export function useFasting() {
     setWaterReminderInterval: (interval: number) => updateState({ waterReminderInterval: interval }),
     setWaterReminderStartHour: (hour: number) => updateState({ waterReminderStartHour: hour }),
     setWaterReminderEndHour: (hour: number) => updateState({ waterReminderEndHour: hour }),
-    refreshWeather,
     lastWaterReminder,
     setLastWaterReminder,
     testNotification,
+    aiInsights,
+    saveAIInsights,
     dailySummaries,
     saveDailySummary,
     firestoreError

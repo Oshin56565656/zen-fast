@@ -57,9 +57,10 @@ export default function App() {
     setWaterReminderInterval,
     setWaterReminderStartHour,
     setWaterReminderEndHour,
-    refreshWeather,
     lastWaterReminder,
     testNotification,
+    aiInsights,
+    saveAIInsights,
     parseWorkoutText,
     dailySummaries,
     saveDailySummary,
@@ -140,6 +141,8 @@ export default function App() {
             sex={state.sex}
             waterGoal={state.waterGoal}
             saveDailySummary={saveDailySummary}
+            aiInsights={aiInsights}
+            saveAIInsights={saveAIInsights}
           />
         );
       case 'log':
@@ -202,9 +205,6 @@ export default function App() {
               waterReminderEndHour={state.waterReminderEndHour}
               onWaterReminderEndHourChange={setWaterReminderEndHour}
               lastWaterReminder={lastWaterReminder}
-              weatherData={state.weatherData}
-              suggestedWaterGoal={state.suggestedWaterGoal}
-              onRefreshWeather={refreshWeather}
               onTestNotification={testNotification}
               history={history}
               meals={meals}

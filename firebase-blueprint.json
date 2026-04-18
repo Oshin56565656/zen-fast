@@ -100,12 +100,29 @@
         "createdAt": { "type": "object", "description": "Firestore server timestamp." }
       },
       "required": ["time", "weight", "createdAt"]
+    },
+    "AIInsights": {
+      "title": "AI Insights",
+      "description": "Cached AI coach insights for cross-device synchronization.",
+      "type": "object",
+      "properties": {
+        "insights": { "type": "array", "description": "Array of coaching insights." },
+        "calorieGuess": { "type": "object", "description": "AI estimated calorie intake." },
+        "caloriesBurned": { "type": "object", "description": "AI estimated calories burned." },
+        "lastRefreshed": { "type": "number", "description": "Timestamp of last refresh." },
+        "createdAt": { "type": "object", "description": "Firestore server timestamp." }
+      },
+      "required": ["insights", "createdAt"]
     }
   },
   "firestore": {
     "/users/{userId}/settings/currentFast": {
       "schema": "UserFastState",
       "description": "Stores the user's current fasting state."
+    },
+    "/users/{userId}/settings/aiInsights": {
+      "schema": "AIInsights",
+      "description": "Stores cached AI coaching insights for sync."
     },
     "/users/{userId}/history/{recordId}": {
       "schema": "FastRecord",

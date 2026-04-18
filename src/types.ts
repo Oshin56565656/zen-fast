@@ -30,13 +30,6 @@ export interface CurrentFastState {
   waterReminderStartHour?: number; // 0-23
   waterReminderEndHour?: number; // 0-23
   waterPresets?: number[];
-  weatherData?: {
-    temp: number;
-    condition: string;
-    city?: string;
-    lastUpdated: number;
-  };
-  suggestedWaterGoal?: number;
 }
 
 export interface MealRecord {
@@ -109,4 +102,34 @@ export interface Milestone {
   icon: string;
   achieved: boolean;
   progress: number;
+}
+
+export interface AIInsight {
+  category: string;
+  title: string;
+  content: string;
+  impact: 'positive' | 'neutral' | 'improvement';
+  messages?: { role: 'user' | 'model'; text: string }[];
+}
+
+export interface CalorieGuess {
+  amount: number;
+  reasoning: string;
+  macros?: {
+    protein: number;
+    carbs: number;
+    fats: number;
+  };
+}
+
+export interface CaloriesBurned {
+  amount: number;
+  reasoning: string;
+}
+
+export interface AIInsightsSync {
+  insights: AIInsight[];
+  calorieGuess: CalorieGuess | null;
+  caloriesBurned: CaloriesBurned | null;
+  lastRefreshed: number | null;
 }

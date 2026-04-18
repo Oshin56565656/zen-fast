@@ -1,7 +1,7 @@
 import React, { FC, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { cn, formatDurationShort } from '../lib/utils';
-import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info, Download, Zap, ChevronDown, User, Target, Cloud, Settings as SettingsIcon, Database, Brain, Plus, Clock, RefreshCw } from 'lucide-react';
+import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info, Download, ChevronDown, User, Target, Settings as SettingsIcon, Database, Brain, Plus, Clock, RefreshCw } from 'lucide-react';
 import { FastRecord, MealRecord, WorkoutRecord, SleepRecord } from '../types';
 
 interface SettingsProps {
@@ -32,16 +32,8 @@ interface SettingsProps {
   waterReminderEndHour?: number;
   onWaterReminderEndHourChange?: (hour: number) => Promise<void>;
   lastWaterReminder?: number | null;
-  weatherData?: {
-    temp: number;
-    condition: string;
-    city?: string;
-    lastUpdated: number;
-  };
-  suggestedWaterGoal?: number;
   waterPresets?: number[];
   onWaterPresetsChange?: (presets: number[]) => void;
-  onRefreshWeather?: () => void;
   onTestNotification?: () => void;
   history: FastRecord[];
   meals: MealRecord[];
@@ -142,11 +134,8 @@ export const Settings: FC<SettingsProps> = ({
   waterReminderEndHour = 23,
   onWaterReminderEndHourChange,
   lastWaterReminder,
-  weatherData,
-  suggestedWaterGoal,
   waterPresets = [100, 150, 250, 300],
   onWaterPresetsChange,
-  onRefreshWeather,
   onTestNotification,
   history,
   meals,
@@ -163,7 +152,7 @@ export const Settings: FC<SettingsProps> = ({
     profile: false,
     goals: false,
     appearance: false,
-    weather: false,
+    hydration: false,
     notifications: false,
     data: false,
     ai: false,
@@ -281,12 +270,6 @@ export const Settings: FC<SettingsProps> = ({
       if ("Notification" in window) {
         setNotificationStatus(Notification.permission);
       }
-    }
-  };
-
-  const handleApplySuggestedGoal = () => {
-    if (suggestedWaterGoal) {
-      onWaterGoalChange(suggestedWaterGoal);
     }
   };
 
@@ -649,63 +632,14 @@ export const Settings: FC<SettingsProps> = ({
       </CollapsibleSection>
 
       <CollapsibleSection 
-        id="weather" 
-        title="Weather & Hydration" 
-        icon={Cloud}
-        isExpanded={expandedSections.weather}
-        onToggle={() => toggleSection('weather')}
+        id="hydration" 
+        title="Hydration Presets" 
+        icon={Target}
+        isExpanded={expandedSections.hydration}
+        onToggle={() => toggleSection('hydration')}
       >
         <div className="bg-card p-6 rounded-2xl border border-white/5 space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                <Sparkles size={20} />
-              </div>
-              <div>
-                <p className="font-bold text-sm">{weatherData?.city || "Local Weather"}</p>
-                <p className="text-xs text-white/40">
-                  {weatherData ? `${weatherData.temp}°C • ${weatherData.condition}` : "Tap to fetch suggestion"}
-                </p>
-              </div>
-            </div>
-            <button 
-              onClick={onRefreshWeather}
-              className="p-2 hover:bg-white/5 rounded-lg transition-colors text-white/40 hover:text-white"
-            >
-              <Zap size={16} className={cn(!weatherData && "animate-pulse")} />
-            </button>
-          </div>
-
-          {weatherData && suggestedWaterGoal && (
-            <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl space-y-3">
-              <div className="flex items-start space-x-3">
-                <Info className="text-primary shrink-0 mt-0.5" size={14} />
-                <div className="space-y-1">
-                  <p className="text-[10px] text-primary font-bold uppercase tracking-wider">AI Suggestion</p>
-                  <p className="text-xs text-white/80 leading-relaxed">
-                    Based on your <strong>{sex || 'profile'}</strong>, <strong>{age ? `${age}y age` : 'age'}</strong>, <strong>{weatherData.temp}°C</strong> weather, and <strong>today's activity</strong>, we suggest <strong>{suggestedWaterGoal}ml</strong>.
-                  </p>
-                </div>
-              </div>
-              
-              {waterGoal !== suggestedWaterGoal && (
-                <button
-                  onClick={handleApplySuggestedGoal}
-                  className="w-full py-2 bg-primary text-white text-[10px] font-bold uppercase tracking-widest rounded-lg hover:bg-primary/90 transition-all active:scale-95"
-                >
-                  Apply Suggested Goal
-                </button>
-              )}
-            </div>
-          )}
-          
-          {!weatherData && (
-            <p className="text-[10px] text-white/20 italic text-center">
-              Enable location access to get personalized hydration goals based on your local weather.
-            </p>
-          )}
-
-          <div className="pt-6 border-t border-white/5 space-y-4">
+          <div className="space-y-4">
             <div className="flex items-center justify-between">
               <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
                 Quick Log Presets (ml)
