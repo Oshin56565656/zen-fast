@@ -32,7 +32,7 @@ export const History: FC<HistoryProps> = ({ history, onDelete, onManualLog }) =>
 
   const filteredHistory = selectedDate 
     ? history.filter(record => format(new Date(record.startTime), 'yyyy-MM-dd') === selectedDate)
-    : history.slice(0, 10);
+    : history.slice(0, 6);
 
   return (
     <div className="p-6 space-y-4">
@@ -64,9 +64,9 @@ export const History: FC<HistoryProps> = ({ history, onDelete, onManualLog }) =>
         </div>
       </div>
 
-      {!selectedDate && history.length > 10 && (
+      {!selectedDate && history.length > 6 && (
         <p className="text-[10px] text-white/20 uppercase tracking-widest font-bold text-center mb-2">
-          Showing last 10 records • Use filter to see more
+          Showing last 6 records • Use filter to see more
         </p>
       )}
 

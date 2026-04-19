@@ -515,7 +515,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
     // Sort all logs by time Descending first so we get the most recent ones
     const sortedLogs = [...logs].sort((a, b) => getSortTime(b) - getSortTime(a));
     
-    if (!searchDate) return sortedLogs.slice(0, 10);
+    if (!searchDate) return sortedLogs.slice(0, 6);
     
     const targetDate = new Date(searchDate);
     return sortedLogs.filter(log => {
