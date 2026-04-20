@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { formatDurationShort } from '../lib/utils';
+import { format } from 'date-fns';
 import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, DailySummary, AIInsightsSync, Supplement, SupplementLog } from '../types';
 import { 
   auth, 
@@ -409,14 +410,48 @@ export function useFasting() {
     return () => unsubscribe();
   }, [user]);
 
+  // Automatically update daily summary's water stats
+  useEffect(() => {
+    if (!user || state.waterGoal === undefined || isAuthReady === false) return;
+    
+    const updateWaterSummary = async () => {
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      
+      const todayWater = water
+        .filter(w => format(new Date(w.time), 'yyyy-MM-dd') === todayStr)
+        .reduce((sum, curr) => sum + curr.amount, 0);
+      
+      const isMetNow = todayWater >= state.waterGoal!;
+      
+      try {
+        const summaryRef = doc(db, 'users', user.uid, 'dailySummaries', todayStr);
+        await setDoc(summaryRef, {
+          date: todayStr,
+          waterTotal: todayWater,
+          waterGoal: state.waterGoal,
+          isWaterGoalMet: isMetNow,
+          updatedAt: Timestamp.now()
+        }, { merge: true });
+      } catch (error) {
+        // Silently fail for background updates
+        console.error("Background water summary sync failed:", error);
+      }
+    };
+
+    const timeout = setTimeout(updateWaterSummary, 1000); // 1s debounce
+    return () => clearTimeout(timeout);
+  }, [user, water, state.waterGoal, isAuthReady]);
+
   const saveDailySummary = async (summary: Omit<DailySummary, 'id' | 'createdAt'>) => {
     if (!user) return;
     try {
+      const existing = dailySummaries.find(s => s.date === summary.date);
       const summariesRef = collection(db, 'users', user.uid, 'dailySummaries');
       // Use date as ID for easy lookup/update
       await setDoc(doc(db, 'users', user.uid, 'dailySummaries', summary.date), {
         ...summary,
-        createdAt: Timestamp.now()
+        createdAt: existing?.createdAt || Timestamp.now(),
+        updatedAt: Timestamp.now()
       }, { merge: true });
     } catch (error) {
       handleFirestoreError(error, 'write', `users/${user.uid}/dailySummaries/${summary.date}`);

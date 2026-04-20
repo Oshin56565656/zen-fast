@@ -2,8 +2,9 @@ import React, { FC, ReactNode } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
 import { FastRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutRecord, DailySummary } from '../types';
 import { format, subDays, isSameDay, startOfDay, eachDayOfInterval, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, addMonths, isPast } from 'date-fns';
-import { Trophy, Clock, Flame, Target, Moon, Zap, Star, Droplets, Scale, TrendingDown, TrendingUp, Minus, Calendar, Award, CheckCircle2, XCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Trophy, Clock, Flame, Target, Moon, Zap, Star, Droplets, Scale, TrendingDown, TrendingUp, Minus, Calendar, Award, CheckCircle2, XCircle, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { motion, AnimatePresence } from 'motion/react';
 import { Milestones } from './Milestones';
 import { Review } from './Review';
 
@@ -31,8 +32,14 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
     const dayAmount = water
       .filter(w => format(new Date(w.time), 'yyyy-MM-dd') === dateStr)
       .reduce((sum, curr) => sum + curr.amount, 0);
-    const goal = summary ? summary.waterGoal : waterGoal;
-    const met = dayAmount >= goal;
+    
+    // For today, we favor the current waterGoal setting. 
+    // For past days, we favor the goal captured in the summary.
+    const isTodayStr = dateStr === format(new Date(), 'yyyy-MM-dd');
+    const goal = (summary && !isTodayStr) ? summary.waterGoal : waterGoal;
+    
+    // Success is sticky: if the summary says it was met, or logs show it's met now.
+    const met = (summary?.isWaterGoalMet) || dayAmount >= goal;
     
     return {
       met: acc.met + (met ? 1 : 0),
@@ -41,7 +48,7 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
   }, { met: 0, total: 0 });
 
   const calorieStats = dailySummaries.reduce<{ met: number, total: number }>((acc, curr) => {
-    if (curr.isDeficit !== null) {
+    if (typeof curr.isDeficit === 'boolean') {
       return {
         met: acc.met + (curr.isDeficit ? 1 : 0),
         total: acc.total + 1
@@ -478,11 +485,12 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
                       const isSelected = searchDate === dateStr;
                       
                       const summary = dailySummaries.find(s => s.date === dateStr);
+                      const isTodayDate = isSameDay(date, new Date());
                       const dayWaterAmount = water
                         .filter(w => isSameDay(new Date(w.time), date))
                         .reduce((sum, curr) => sum + curr.amount, 0);
                       
-                      const relevantWaterGoal = summary ? summary.waterGoal : waterGoal;
+                      const relevantWaterGoal = isTodayDate ? waterGoal : (summary?.waterGoal || waterGoal);
                       const waterMet = dayWaterAmount >= relevantWaterGoal;
                       const deficitMet = summary ? summary.isDeficit : null;
 
@@ -541,6 +549,128 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
                     <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Deficit Met</span>
                   </div>
                 </div>
+
+                {/* Selected Day Details */}
+                <AnimatePresence>
+                  {searchDate && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="overflow-hidden"
+                    >
+                      <div className="mt-4 p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-xs font-bold text-white/60 uppercase tracking-widest">
+                            {format(new Date(searchDate), 'MMMM d, yyyy')}
+                          </h4>
+                          <button onClick={() => setSearchDate('')} className="text-white/20 hover:text-white/40">
+                            <X size={14} />
+                          </button>
+                        </div>
+                        
+                        {(() => {
+                          const date = new Date(searchDate);
+                          const summary = dailySummaries.find(s => s.date === searchDate);
+                          const isTodayDate = isSameDay(date, new Date());
+                          const dayWater = water
+                            .filter(w => isSameDay(new Date(w.time), date))
+                            .reduce((sum, curr) => sum + curr.amount, 0);
+                          const dayGoal = isTodayDate ? waterGoal : (summary?.waterGoal || waterGoal);
+                          const isMet = dayWater >= dayGoal;
+
+                          return (
+                            <div className="grid grid-cols-2 gap-3">
+                              {/* Water Stats */}
+                              <div className="bg-white/5 p-3 rounded-xl border border-white/5">
+                                <p className="text-[10px] font-bold text-white/20 uppercase tracking-tighter mb-1">Water Intake</p>
+                                <div className="flex items-baseline space-x-1">
+                                  <span className={cn("text-lg font-black", isMet ? "text-blue-400" : "text-white/60")}>
+                                    {dayWater}
+                                  </span>
+                                  <span className="text-[10px] text-white/20">/ {dayGoal}ml</span>
+                                </div>
+                                <div className="mt-2 h-1 bg-white/5 rounded-full overflow-hidden">
+                                  <div 
+                                    className={cn("h-full transition-all duration-500", isMet ? "bg-blue-400" : "bg-white/20")}
+                                    style={{ width: `${Math.min(100, (dayWater / dayGoal) * 100)}%` }}
+                                  />
+                                </div>
+                              </div>
+
+                              {/* Calories Stats */}
+                              <div className="bg-white/5 p-3 rounded-xl border border-white/5">
+                                <p className="text-[10px] font-bold text-white/20 uppercase tracking-tighter mb-1">Calories (Net)</p>
+                                {summary ? (
+                                  <>
+                                    <div className="flex items-baseline space-x-1">
+                                      <span className={cn("text-lg font-black", summary.isDeficit ? "text-orange-500" : "text-red-500")}>
+                                        {summary.intake - summary.burn > 0 ? '+' : ''}{summary.intake - summary.burn}
+                                      </span>
+                                      <span className="text-[10px] text-white/20">kcal</span>
+                                    </div>
+                                    <div className="flex items-center space-x-2 mt-1 text-[9px] text-white/40">
+                                      <span>In: {summary.intake}</span>
+                                      <span>•</span>
+                                      <span>Out: {summary.burn}</span>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="h-full flex items-center">
+                                    <p className="text-[10px] text-white/20 italic">No AI Insight yet</p>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Hydration Status */}
+                              <div className="bg-white/5 p-3 rounded-xl border border-white/5">
+                                <p className="text-[10px] font-bold text-white/20 uppercase tracking-tighter mb-1">Hydration</p>
+                                <div className="flex items-center space-x-2 mt-1">
+                                  {isMet ? (
+                                    <>
+                                      <div className="w-2 h-2 rounded-full bg-blue-400" />
+                                      <span className="text-sm font-bold text-blue-400">PASSED</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div className="w-2 h-2 rounded-full bg-white/10" />
+                                      <span className="text-sm font-bold text-white/40">NOT MET</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Deficit Status */}
+                              <div className="bg-white/5 p-3 rounded-xl border border-white/5">
+                                <p className="text-[10px] font-bold text-white/20 uppercase tracking-tighter mb-1">Deficit</p>
+                                <div className="flex items-center space-x-2 mt-1">
+                                  {summary && typeof summary.isDeficit === 'boolean' ? (
+                                    summary.isDeficit ? (
+                                      <>
+                                        <div className="w-2 h-2 rounded-full bg-orange-500" />
+                                        <span className="text-sm font-bold text-orange-500">PASSED</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <div className="w-2 h-2 rounded-full bg-red-500" />
+                                        <span className="text-sm font-bold text-red-500">FAILED</span>
+                                      </>
+                                    )
+                                  ) : (
+                                    <>
+                                      <div className="w-2 h-2 rounded-full bg-white/10" />
+                                      <span className="text-sm font-bold text-white/40">N/A</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
             <p className="mt-2 text-[10px] text-white/20 text-center italic">
