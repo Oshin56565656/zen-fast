@@ -224,14 +224,14 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
             <AnimatePresence>
               {showLeftArrow && (
                 <motion.button
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -10 }}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
                   onClick={() => scrollTabs('left')}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-gradient-to-r from-[#09090b] via-[#09090b]/90 to-transparent p-2 text-primary transition-all pr-8 h-full flex items-center"
+                  className="absolute left-1 top-1/2 -translate-y-1/2 z-20 bg-white/5 backdrop-blur-md p-1.5 rounded-full text-white/40 hover:text-primary transition-all border border-white/10"
                   aria-label="Scroll Left"
                 >
-                  <ChevronLeft size={20} />
+                  <ChevronLeft size={16} />
                 </motion.button>
               )}
             </AnimatePresence>
@@ -317,14 +317,14 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
             <AnimatePresence>
               {showRightArrow && (
                 <motion.button
-                  initial={{ opacity: 0, x: 10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 10 }}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.8 }}
                   onClick={() => scrollTabs('right')}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-gradient-to-l from-[#09090b] via-[#09090b]/90 to-transparent p-2 text-primary transition-all pl-8 h-full flex items-center"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 z-20 bg-white/5 backdrop-blur-md p-1.5 rounded-full text-white/40 hover:text-primary transition-all border border-white/10"
                   aria-label="Scroll Right"
                 >
-                  <ChevronRight size={20} />
+                  <ChevronRight size={16} />
                 </motion.button>
               )}
             </AnimatePresence>
