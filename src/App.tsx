@@ -122,7 +122,7 @@ export default function App() {
           />
         );
       case 'history':
-        return <History history={history} onDelete={deleteRecord} onManualLog={manualLogFast} />;
+        return <History history={history} meals={meals} onDelete={deleteRecord} onManualLog={manualLogFast} />;
       case 'stats':
         return (
           <Stats 

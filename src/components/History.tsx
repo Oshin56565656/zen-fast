@@ -1,22 +1,43 @@
 import React, { FC, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle2, XCircle, Trash2, Calendar, Plus, X } from 'lucide-react';
-import { FastRecord } from '../types';
+import { CheckCircle2, XCircle, Trash2, Calendar, Plus, X, Utensils } from 'lucide-react';
+import { FastRecord, MealRecord } from '../types';
 import { formatDurationShort, formatTime, formatDate } from '../lib/utils';
-import { format, subHours } from 'date-fns';
+import { format, subHours, differenceInHours } from 'date-fns';
 
 interface HistoryProps {
   history: FastRecord[];
+  meals: MealRecord[];
   onDelete: (id: string) => void;
   onManualLog: (startTime: number, endTime: number, targetHours: number) => void;
 }
 
-export const History: FC<HistoryProps> = ({ history, onDelete, onManualLog }) => {
+export const History: FC<HistoryProps> = ({ history, meals, onDelete, onManualLog }) => {
   const [isLogging, setIsLogging] = useState(false);
   const [startTime, setStartTime] = useState(format(subHours(new Date(), 16), "yyyy-MM-dd'T'HH:mm"));
   const [endTime, setEndTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   const [targetHours, setTargetHours] = useState(16);
   const [selectedDate, setSelectedDate] = useState<string>('');
+
+  const sortedMeals = [...meals].sort((a, b) => b.time - a.time);
+  const lastMeal = sortedMeals[0];
+  const secondLastMeal = sortedMeals[1];
+
+  const handleQuickLog = () => {
+    if (!lastMeal || !secondLastMeal) return;
+    
+    // Fast is between the end of second last meal and start of last meal
+    // Assuming start of last meal as the end of fast
+    // and time of second last meal as the start of fast
+    setStartTime(format(new Date(secondLastMeal.time), "yyyy-MM-dd'T'HH:mm"));
+    setEndTime(format(new Date(lastMeal.time), "yyyy-MM-dd'T'HH:mm"));
+    
+    // Optionally adjust target based on the gap
+    const hours = differenceInHours(new Date(lastMeal.time), new Date(secondLastMeal.time));
+    if (hours > 0 && hours <= 48) {
+      setTargetHours(hours);
+    }
+  };
 
   const handleManualLog = (e: React.FormEvent) => {
     e.preventDefault();
@@ -87,9 +108,33 @@ export const History: FC<HistoryProps> = ({ history, onDelete, onManualLog }) =>
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold">Manual Log</h3>
                 <button onClick={() => setIsLogging(false)} className="text-white/40 hover:text-white">
-                  <X size={24} />
+                   <X size={24} />
                 </button>
               </div>
+
+              {secondLastMeal && lastMeal && (
+                <button
+                  type="button"
+                  onClick={handleQuickLog}
+                  className="w-full mb-6 flex items-center justify-between p-4 bg-primary/10 border border-primary/20 rounded-2xl group hover:bg-primary/20 transition-all active:scale-95 text-left"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                      <Utensils size={20} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-primary">Auto-fill from Meals</p>
+                      <p className="text-[10px] text-primary/60 font-medium">Between your last 2 meals</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs font-black text-primary">
+                      {differenceInHours(new Date(lastMeal.time), new Date(secondLastMeal.time))}h
+                    </p>
+                    <p className="text-[8px] text-primary/40 uppercase font-bold tracking-tighter">Fast Gap</p>
+                  </div>
+                </button>
+              )}
 
               <form onSubmit={handleManualLog} className="space-y-4">
                 <div className="space-y-2">
