@@ -23,6 +23,7 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
   const [activeTab, setActiveTab] = React.useState<'fasting' | 'sleep' | 'water' | 'weight' | 'mood' | 'milestones' | 'review' | 'consistency'>('fasting');
   const [searchDate, setSearchDate] = React.useState<string>('');
   const [currentMonth, setCurrentMonth] = React.useState(new Date());
+  const [moodView, setMoodView] = React.useState<'weekly' | 'daily'>('weekly');
 
   const tabContainerRef = React.useRef<HTMLDivElement>(null);
   const [showLeftArrow, setShowLeftArrow] = React.useState(false);
@@ -63,15 +64,24 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
   const avgMood = totalMoodLogs > 0 ? moods.reduce((acc, curr) => acc + curr.mood, 0) / totalMoodLogs : 0;
   const avgEnergy = totalMoodLogs > 0 ? moods.reduce((acc, curr) => acc + curr.energy, 0) / totalMoodLogs : 0;
   
-  const moodTrends = Array.from({ length: 7 }).map((_, i) => {
-    const date = subDays(startOfToday(), 6 - i);
-    const dayMoods = moods.filter(m => isSameDay(new Date(m.time), date));
-    return {
-      name: format(date, 'EEE'),
-      mood: dayMoods.length > 0 ? dayMoods.reduce((acc, curr) => acc + curr.mood, 0) / dayMoods.length : null,
-      energy: dayMoods.length > 0 ? dayMoods.reduce((acc, curr) => acc + curr.energy, 0) / dayMoods.length : null,
-    };
-  });
+  const moodTrends = moodView === 'weekly' 
+    ? Array.from({ length: 7 }).map((_, i) => {
+        const date = subDays(startOfToday(), 6 - i);
+        const dayMoods = moods.filter(m => isSameDay(new Date(m.time), date));
+        return {
+          name: format(date, 'EEE'),
+          mood: dayMoods.length > 0 ? dayMoods.reduce((acc, curr) => acc + curr.mood, 0) / dayMoods.length : null,
+          energy: dayMoods.length > 0 ? dayMoods.reduce((acc, curr) => acc + curr.energy, 0) / dayMoods.length : null,
+        };
+      })
+    : moods
+        .filter(m => m.time > Date.now() - 24 * 60 * 60 * 1000)
+        .sort((a, b) => a.time - b.time)
+        .map(m => ({
+          name: format(new Date(m.time), 'HH:mm'),
+          mood: m.mood,
+          energy: m.energy,
+        }));
 
   // Consistency Stats (Total Met vs Total Logged)
   const waterDaysLogged = new Set(water.map(w => format(new Date(w.time), 'yyyy-MM-dd')));
@@ -522,7 +532,27 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
           </div>
 
           <div className="bg-card p-6 rounded-3xl border border-white/5">
-            <h3 className="text-sm font-medium text-white/40 mb-6">Recent Mood & Energy Trends</h3>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-sm font-medium text-white/40">Mood & Energy {moodView === 'weekly' ? 'Weekly' : 'Daily'} Trends</h3>
+              <div className="flex bg-white/5 p-1 rounded-xl border border-white/10">
+                <button
+                  onClick={() => setMoodView('weekly')}
+                  className={`px-3 py-1 text-xs rounded-lg transition-all ${
+                    moodView === 'weekly' ? 'bg-primary text-white shadow-sm' : 'text-white/40'
+                  }`}
+                >
+                  Weekly
+                </button>
+                <button
+                  onClick={() => setMoodView('daily')}
+                  className={`px-3 py-1 text-xs rounded-lg transition-all ${
+                    moodView === 'daily' ? 'bg-primary text-white shadow-sm' : 'text-white/40'
+                  }`}
+                >
+                  Daily
+                </button>
+              </div>
+            </div>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={moodTrends}>
@@ -531,9 +561,10 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
                     dataKey="name" 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 12 }}
+                    tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 10 }}
+                    minTickGap={20}
                   />
-                  <YAxis hide domain={[0, 5]} />
+                  <YAxis hide domain={[1, 5]} />
                   <Tooltip 
                     contentStyle={{ 
                       backgroundColor: '#18181b', 
