@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets, LineChart, Mic, MicOff, Sparkles, MapPin, Play, X, RefreshCw, Pill, Heart, Zap, Smile, Frown, Meh, Sun, CloudRain } from 'lucide-react';
+import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets, LineChart, Mic, MicOff, Sparkles, MapPin, Play, X, RefreshCw, Pill, Heart, Zap, Smile, Frown, Meh, Sun, CloudRain, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { formatTime, formatDate, formatDurationShort } from '../lib/utils';
 import { format, subHours, addMinutes, isSameDay } from 'date-fns';
@@ -91,6 +91,38 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const [selectedLog, setSelectedLog] = useState<{ type: string; data: any } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editingData, setEditingData] = useState<any>(null);
+
+  const tabContainerRef = useRef<HTMLDivElement>(null);
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(true);
+
+  const handleTabScroll = () => {
+    if (tabContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = tabContainerRef.current;
+      setShowLeftArrow(scrollLeft > 10);
+      setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 10);
+    }
+  };
+
+  const scrollTabs = (direction: 'left' | 'right') => {
+    if (tabContainerRef.current) {
+      const scrollAmount = direction === 'left' ? -200 : 200;
+      tabContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  React.useEffect(() => {
+    handleTabScroll();
+    const container = tabContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleTabScroll);
+      window.addEventListener('resize', handleTabScroll);
+      return () => {
+        container.removeEventListener('scroll', handleTabScroll);
+        window.removeEventListener('resize', handleTabScroll);
+      };
+    }
+  }, []);
 
   // Water Form State
   const [waterAmount, setWaterAmount] = useState(250);
@@ -579,70 +611,105 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
   return (
     <div className="space-y-8 p-6 pb-24">
-      <div className="flex bg-white/5 p-1 rounded-2xl border border-white/10 overflow-x-auto no-scrollbar">
-        <button
-          onClick={() => setActiveType('water')}
-          className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
-            activeType === 'water' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
-          }`}
+      <div className="relative group">
+        <AnimatePresence>
+          {showLeftArrow && (
+            <motion.button
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              onClick={() => scrollTabs('left')}
+              className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-gradient-to-r from-[#09090b] via-[#09090b]/90 to-transparent p-2 text-primary transition-all pr-8 h-full flex items-center"
+              aria-label="Scroll Left"
+            >
+              <ChevronLeft size={20} />
+            </motion.button>
+          )}
+        </AnimatePresence>
+
+        <div 
+          ref={tabContainerRef}
+          className="flex bg-white/5 p-1 rounded-2xl border border-white/10 overflow-x-auto no-scrollbar scroll-smooth relative z-10"
         >
-          <Droplets size={18} />
-          <span className="font-bold">Water</span>
-        </button>
-        <button
-          onClick={() => setActiveType('meal')}
-          className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
-            activeType === 'meal' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
-          }`}
-        >
-          <Utensils size={18} />
-          <span className="font-bold">Meal</span>
-        </button>
-        <button
-          onClick={() => setActiveType('workout')}
-          className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
-            activeType === 'workout' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
-          }`}
-        >
-          <Dumbbell size={18} />
-          <span className="font-bold">Workout</span>
-        </button>
-        <button
-          onClick={() => setActiveType('supplements')}
-          className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
-            activeType === 'supplements' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
-          }`}
-        >
-          <Pill size={18} />
-          <span className="font-bold">Supplements</span>
-        </button>
-        <button
-          onClick={() => setActiveType('sleep')}
-          className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
-            activeType === 'sleep' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
-          }`}
-        >
-          <Moon size={18} />
-          <span className="font-bold">Sleep</span>
-        </button>
-        <button
-          onClick={() => setActiveType('weight')}
-          className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
-            activeType === 'weight' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
-          }`}
-        >
-          <Scale size={18} />
-          <span className="font-bold">Weight</span>
-        </button>
-        <button
-          onClick={() => setActiveType('mood')}
-          className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
-            activeType === 'mood' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
-          }`}
-        >
-          <Heart size={18} />
-          <span className="font-bold">Mood</span>
-        </button>
+          <button
+            onClick={() => setActiveType('water')}
+            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
+              activeType === 'water' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
+            }`}
+          >
+            <Droplets size={18} />
+            <span className="font-bold">Water</span>
+          </button>
+          <button
+            onClick={() => setActiveType('meal')}
+            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
+              activeType === 'meal' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
+            }`}
+          >
+            <Utensils size={18} />
+            <span className="font-bold">Meal</span>
+          </button>
+          <button
+            onClick={() => setActiveType('workout')}
+            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
+              activeType === 'workout' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
+            }`}
+          >
+            <Dumbbell size={18} />
+            <span className="font-bold">Workout</span>
+          </button>
+          <button
+            onClick={() => setActiveType('supplements')}
+            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
+              activeType === 'supplements' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
+            }`}
+          >
+            <Pill size={18} />
+            <span className="font-bold">Supplements</span>
+          </button>
+          <button
+            onClick={() => setActiveType('sleep')}
+            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
+              activeType === 'sleep' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
+            }`}
+          >
+            <Moon size={18} />
+            <span className="font-bold">Sleep</span>
+          </button>
+          <button
+            onClick={() => setActiveType('weight')}
+            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
+              activeType === 'weight' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
+            }`}
+          >
+            <Scale size={18} />
+            <span className="font-bold">Weight</span>
+          </button>
+          <button
+            onClick={() => setActiveType('mood')}
+            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
+              activeType === 'mood' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
+            }`}
+          >
+            <Heart size={18} />
+            <span className="font-bold">Mood</span>
+          </button>
+        </div>
+
+        <AnimatePresence>
+          {showRightArrow && (
+            <motion.button
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 10 }}
+              onClick={() => scrollTabs('right')}
+              className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-gradient-to-l from-[#09090b] via-[#09090b]/90 to-transparent p-2 text-primary transition-all pl-8 h-full flex items-center"
+              aria-label="Scroll Right"
+            >
+              <ChevronRight size={20} />
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
 
       <AnimatePresence mode="wait">

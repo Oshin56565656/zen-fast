@@ -23,6 +23,38 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
   const [activeTab, setActiveTab] = React.useState<'fasting' | 'sleep' | 'water' | 'weight' | 'mood' | 'milestones' | 'review' | 'consistency'>('fasting');
   const [searchDate, setSearchDate] = React.useState<string>('');
   const [currentMonth, setCurrentMonth] = React.useState(new Date());
+
+  const tabContainerRef = React.useRef<HTMLDivElement>(null);
+  const [showLeftArrow, setShowLeftArrow] = React.useState(false);
+  const [showRightArrow, setShowRightArrow] = React.useState(true);
+
+  const handleTabScroll = () => {
+    if (tabContainerRef.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = tabContainerRef.current;
+      setShowLeftArrow(scrollLeft > 10);
+      setShowRightArrow(scrollLeft < scrollWidth - clientWidth - 10);
+    }
+  };
+
+  const scrollTabs = (direction: 'left' | 'right') => {
+    if (tabContainerRef.current) {
+      const scrollAmount = direction === 'left' ? -150 : 150;
+      tabContainerRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
+
+  React.useEffect(() => {
+    handleTabScroll();
+    const container = tabContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleTabScroll);
+      window.addEventListener('resize', handleTabScroll);
+      return () => {
+        container.removeEventListener('scroll', handleTabScroll);
+        window.removeEventListener('resize', handleTabScroll);
+      };
+    }
+  }, []);
   
   const totalFasts = history.length;
 
@@ -188,79 +220,114 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
       <div className="space-y-4">
         <h2 className="text-xl font-bold">Statistics</h2>
         <div className="flex justify-center">
-          <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 overflow-x-auto no-scrollbar max-w-full touch-pan-x w-fit">
-            <button
-              onClick={() => setActiveTab('fasting')}
-              className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
-                activeTab === 'fasting' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
-              }`}
-              title="Fasting"
+          <div className="relative group w-full max-w-md">
+            <AnimatePresence>
+              {showLeftArrow && (
+                <motion.button
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  onClick={() => scrollTabs('left')}
+                  className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-gradient-to-r from-[#09090b] via-[#09090b]/90 to-transparent p-2 text-primary transition-all pr-8 h-full flex items-center"
+                  aria-label="Scroll Left"
+                >
+                  <ChevronLeft size={20} />
+                </motion.button>
+              )}
+            </AnimatePresence>
+
+            <div 
+              ref={tabContainerRef}
+              className="flex bg-white/5 p-1 rounded-xl border border-white/10 overflow-x-auto no-scrollbar max-w-full touch-pan-x w-fit mx-auto scroll-smooth relative z-10"
             >
-              <Flame size={18} />
-            </button>
-            <button
-              onClick={() => setActiveTab('sleep')}
-              className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
-                activeTab === 'sleep' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
-              }`}
-              title="Sleep"
-            >
-              <Moon size={18} />
-            </button>
-            <button
-              onClick={() => setActiveTab('water')}
-              className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
-                activeTab === 'water' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
-              }`}
-              title="Water"
-            >
-              <Droplets size={18} />
-            </button>
-            <button
-              onClick={() => setActiveTab('weight')}
-              className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
-                activeTab === 'weight' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
-              }`}
-              title="Weight"
-            >
-              <Scale size={18} />
-            </button>
-            <button
-              onClick={() => setActiveTab('mood')}
-              className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
-                activeTab === 'mood' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
-              }`}
-              title="Mood"
-            >
-              <Heart size={18} />
-            </button>
-            <button
-              onClick={() => setActiveTab('milestones')}
-              className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
-                activeTab === 'milestones' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
-              }`}
-              title="Awards"
-            >
-              <Award size={18} />
-            </button>
-            <button
-              onClick={() => setActiveTab('review')}
-              className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
-                activeTab === 'review' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
-              }`}
-              title="Review"
-            >
-              <Calendar size={18} />
-            </button>
-            <button
-              onClick={() => setActiveTab('consistency')}
-              className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
-                activeTab === 'consistency' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
-              }`}
-              title="Consistency"
-            >
-              <CheckCircle2 size={18} />
-            </button>
+              <button
+                onClick={() => setActiveTab('fasting')}
+                className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
+                  activeTab === 'fasting' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
+                }`}
+                title="Fasting"
+              >
+                <Flame size={18} />
+              </button>
+              <button
+                onClick={() => setActiveTab('sleep')}
+                className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
+                  activeTab === 'sleep' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
+                }`}
+                title="Sleep"
+              >
+                <Moon size={18} />
+              </button>
+              <button
+                onClick={() => setActiveTab('water')}
+                className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
+                  activeTab === 'water' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
+                }`}
+                title="Water"
+              >
+                <Droplets size={18} />
+              </button>
+              <button
+                onClick={() => setActiveTab('weight')}
+                className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
+                  activeTab === 'weight' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
+                }`}
+                title="Weight"
+              >
+                <Scale size={18} />
+              </button>
+              <button
+                onClick={() => setActiveTab('mood')}
+                className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
+                  activeTab === 'mood' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
+                }`}
+                title="Mood"
+              >
+                <Heart size={18} />
+              </button>
+              <button
+                onClick={() => setActiveTab('milestones')}
+                className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
+                  activeTab === 'milestones' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
+                }`}
+                title="Awards"
+              >
+                <Award size={18} />
+              </button>
+              <button
+                onClick={() => setActiveTab('review')}
+                className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
+                  activeTab === 'review' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
+                }`}
+                title="Review"
+              >
+                <Calendar size={18} />
+              </button>
+              <button
+                onClick={() => setActiveTab('consistency')}
+                className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
+                  activeTab === 'consistency' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
+                }`}
+                title="Consistency"
+              >
+                <CheckCircle2 size={18} />
+              </button>
+            </div>
+
+            <AnimatePresence>
+              {showRightArrow && (
+                <motion.button
+                  initial={{ opacity: 0, x: 10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 10 }}
+                  onClick={() => scrollTabs('right')}
+                  className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-gradient-to-l from-[#09090b] via-[#09090b]/90 to-transparent p-2 text-primary transition-all pl-8 h-full flex items-center"
+                  aria-label="Scroll Right"
+                >
+                  <ChevronRight size={20} />
+                </motion.button>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>
