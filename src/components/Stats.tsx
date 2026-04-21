@@ -228,7 +228,7 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
                   onClick={() => scrollTabs('left')}
-                  className="absolute left-1 top-1/2 -translate-y-1/2 z-20 bg-white/5 backdrop-blur-md p-1.5 rounded-full text-white/40 hover:text-primary transition-all border border-white/10"
+                  className="absolute left-1 top-1/2 -translate-y-1/2 z-20 bg-white/5 backdrop-blur-md p-1.5 rounded-full text-green-500/50 hover:text-green-400 transition-all border border-green-500/20"
                   aria-label="Scroll Left"
                 >
                   <ChevronLeft size={16} />
@@ -321,7 +321,7 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.8 }}
                   onClick={() => scrollTabs('right')}
-                  className="absolute right-1 top-1/2 -translate-y-1/2 z-20 bg-white/5 backdrop-blur-md p-1.5 rounded-full text-white/40 hover:text-primary transition-all border border-white/10"
+                  className="absolute right-1 top-1/2 -translate-y-1/2 z-20 bg-white/5 backdrop-blur-md p-1.5 rounded-full text-green-500/50 hover:text-green-400 transition-all border border-green-500/20"
                   aria-label="Scroll Right"
                 >
                   <ChevronRight size={16} />
