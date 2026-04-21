@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets, LineChart, Mic, MicOff, Sparkles, MapPin, Play, X, RefreshCw, Pill, Heart, Zap, Smile, Frown, Meh, Sun, CloudRain, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets, LineChart, Mic, MicOff, Sparkles, MapPin, Play, X, RefreshCw, Pill, Heart, Zap, Smile, Frown, Meh, Sun, CloudRain, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { formatTime, formatDate, formatDurationShort } from '../lib/utils';
 import { format, subHours, addMinutes, isSameDay } from 'date-fns';
@@ -166,8 +166,8 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const [workoutParsedExercises, setWorkoutParsedExercises] = useState<string[]>([]);
   const [showWorkoutAI, setShowWorkoutAI] = useState(false);
   const [workoutAIInput, setWorkoutAIInput] = useState('');
-  const [autoLogWorkout, setAutoLogWorkout] = useState(true);
   const [isParsingWorkout, setIsParsingWorkout] = useState(false);
+  const [aiParsedResult, setAiParsedResult] = useState<any>(null);
   const [hasAIKey, setHasAIKey] = useState<boolean>(true);
 
   React.useEffect(() => {
@@ -228,81 +228,66 @@ const LogActivity: React.FC<LogActivityProps> = ({
           }
         }
 
-        // Combine summary with link if present in input
-        let finalDesc = workoutAIInput;
-        setWorkoutDescription(finalDesc);
-        
-        if (autoLogWorkout) {
-          onLogWorkout(
-            finalStartTime,
-            finalEndTime,
-            finalIntensity,
-            finalType,
-            finalDesc,
-            result.calorieBurn,
-            result.exercises
-          );
-          
-          setShowWorkoutAI(false);
-          setWorkoutAIInput('');
-          setWorkoutCalorieBurn(undefined);
-          setWorkoutParsedExercises([]);
-        } else {
-          setShowWorkoutAI(false);
-          setWorkoutAIInput('');
-        }
-        
-        const toast = document.createElement('div');
-        toast.className = 'fixed top-24 left-1/2 -translate-x-1/2 bg-gray-900/95 backdrop-blur-xl border border-white/10 text-white px-8 py-4 rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-[200] flex flex-col items-center space-y-1 min-w-[280px] text-center transform transition-all duration-500 ease-out opacity-0 translate-y-4';
-        
-        const mainText = document.createElement('p');
-        mainText.className = 'text-xs font-bold text-white/40 uppercase tracking-[0.2em]';
-        mainText.innerText = autoLogWorkout ? 'Workout Logged Automatically' : 'Workout Data Imported';
-        
-        const calorieDisplay = document.createElement('div');
-        calorieDisplay.className = 'flex items-center space-x-2';
-        
-        if (result.calorieBurn) {
-          calorieDisplay.innerHTML = `
-            <span class="text-2xl font-black text-primary">${result.calorieBurn}</span>
-            <span class="text-sm font-bold text-white/60 lowercase">kcal burned</span>
-          `;
-        } else {
-          calorieDisplay.innerHTML = `<span class="text-lg font-bold text-white">Analysis Complete</span>`;
-        }
-        
-        toast.appendChild(mainText);
-        toast.appendChild(calorieDisplay);
-        
-        if (result.duration) {
-          const durationText = document.createElement('p');
-          durationText.className = 'text-[10px] font-medium text-white/30 italic';
-          durationText.innerText = `${result.duration} minute session detected`;
-          toast.appendChild(durationText);
-        }
+        const parsedData = {
+          startTime: finalStartTime,
+          endTime: finalEndTime,
+          intensity: finalIntensity,
+          type: finalType,
+          description: workoutAIInput,
+          calorieBurn: result.calorieBurn,
+          exercises: result.exercises,
+          title: result.title || 'Workout'
+        };
 
-        document.body.appendChild(toast);
-        
-        // Trigger entrance animation
-        requestAnimationFrame(() => {
-          toast.classList.remove('opacity-0', 'translate-y-4');
-        });
-
-        setTimeout(() => {
-          toast.classList.add('opacity-0', '-translate-y-4');
-          setTimeout(() => toast.remove(), 500);
-        }, 4000);
+        setAiParsedResult(parsedData);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error('AI Import Error:', error);
       const toast = document.createElement('div');
-      toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-full font-bold text-sm shadow-2xl z-[200]';
-      toast.innerText = error.message?.includes('entity was not found') ? 'Please select an AI key first.' : 'Failed to parse workout. Please check your text.';
+      toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-full font-bold text-sm shadow-2xl z-[200] animate-in fade-in slide-in-from-top-4';
+      toast.innerText = 'Failed to parse workout. Please check your text format.';
       document.body.appendChild(toast);
       setTimeout(() => toast.remove(), 4000);
     } finally {
       setIsParsingWorkout(false);
     }
+  };
+
+  const handleConfirmAiLog = () => {
+    if (!aiParsedResult) return;
+    onLogWorkout(
+      aiParsedResult.startTime,
+      aiParsedResult.endTime,
+      workoutIntensity,
+      workoutType,
+      aiParsedResult.description,
+      aiParsedResult.calorieBurn,
+      aiParsedResult.exercises
+    );
+    setShowWorkoutAI(false);
+    setWorkoutAIInput('');
+    setAiParsedResult(null);
+    setWorkoutCalorieBurn(undefined);
+    setWorkoutParsedExercises([]);
+
+    // Show success toast
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-24 left-1/2 -translate-x-1/2 bg-primary text-white px-8 py-4 rounded-[2rem] shadow-2xl z-[200] flex flex-col items-center space-y-1 text-center transform transition-all duration-500 ease-out opacity-0 translate-y-4';
+    toast.innerHTML = `
+      <div class="flex items-center space-x-2">
+        <div class="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
+          <span class="text-sm">💪</span>
+        </div>
+        <p class="text-[10px] font-bold uppercase tracking-[0.2em]">Workout Logged</p>
+      </div>
+      <p class="text-xs font-black tracking-tight">${workoutIntensity} Intensity Logged</p>
+    `;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.remove('opacity-0', 'translate-y-4'));
+    setTimeout(() => {
+      toast.classList.add('opacity-0', '-translate-y-4');
+      setTimeout(() => toast.remove(), 500);
+    }, 3000);
   };
 
   // Sleep Form State
@@ -1226,66 +1211,112 @@ const LogActivity: React.FC<LogActivityProps> = ({
                 className="overflow-hidden"
               >
                 <div className="bg-primary/5 p-4 rounded-3xl border border-primary/20 space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-primary uppercase tracking-widest block text-center">Paste Workout Text Below</label>
-                    <textarea
-                      value={workoutAIInput}
-                      onChange={(e) => setWorkoutAIInput(e.target.value)}
-                      placeholder='Example: "CHEST Friday, April 17... 30m..."'
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors min-h-[120px] text-xs resize-none"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between px-2">
-                    <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Auto-log after parsing</span>
-                    <button
-                      type="button"
-                      onClick={() => setAutoLogWorkout(!autoLogWorkout)}
-                      className={cn(
-                        "w-10 h-5 rounded-full transition-all relative",
-                        autoLogWorkout ? "bg-primary" : "bg-white/10"
-                      )}
-                    >
-                      <motion.div
-                        animate={{ x: autoLogWorkout ? 22 : 2 }}
-                        className="absolute top-1 left-0 w-3 h-3 bg-white rounded-full shadow-lg"
-                      />
-                    </button>
-                  </div>
-                  
-                  {!hasAIKey ? (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        // @ts-ignore
-                        if (window.aistudio) {
-                          // @ts-ignore
-                          await window.aistudio.openSelectKey();
-                          setHasAIKey(true);
-                        }
-                      }}
-                      className="w-full bg-white/5 text-primary py-3 rounded-2xl font-bold text-xs flex items-center justify-center space-x-2 hover:bg-primary/10 transition-all border border-primary/20"
-                    >
-                      <Sparkles size={14} />
-                      <span>Select AI Key First</span>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleAIImport}
-                      disabled={!workoutAIInput.trim() || isParsingWorkout}
-                      className="w-full bg-primary text-white py-3 rounded-2xl font-bold text-xs flex items-center justify-center space-x-2 hover:bg-primary/90 transition-all disabled:opacity-50 active:scale-95"
-                    >
-                      {isParsingWorkout ? (
-                        <RefreshCw size={14} className="animate-spin" />
+                  {!aiParsedResult ? (
+                    <>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-primary uppercase tracking-widest block text-center">Paste Workout Text Below</label>
+                        <textarea
+                          value={workoutAIInput}
+                          onChange={(e) => setWorkoutAIInput(e.target.value)}
+                          placeholder='Example: "CHEST Friday, April 17... 30m..."'
+                          className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors min-h-[120px] text-xs resize-none"
+                        />
+                      </div>
+                      
+                      {!hasAIKey ? (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            // @ts-ignore
+                            if (window.aistudio) {
+                              // @ts-ignore
+                              await window.aistudio.openSelectKey();
+                              setHasAIKey(true);
+                            }
+                          }}
+                          className="w-full bg-white/5 text-primary py-3 rounded-2xl font-bold text-xs flex items-center justify-center space-x-2 hover:bg-primary/10 transition-all border border-primary/20"
+                        >
+                          <Sparkles size={14} />
+                          <span>Select AI Key First</span>
+                        </button>
                       ) : (
-                        <Sparkles size={14} />
+                        <button
+                          type="button"
+                          onClick={handleAIImport}
+                          disabled={!workoutAIInput.trim() || isParsingWorkout}
+                          className="w-full bg-primary text-white py-3 rounded-2xl font-bold text-xs flex items-center justify-center space-x-2 hover:bg-primary/90 transition-all disabled:opacity-50 active:scale-95"
+                        >
+                          {isParsingWorkout ? (
+                            <RefreshCw size={14} className="animate-spin" />
+                          ) : (
+                            <Sparkles size={14} />
+                          )}
+                          <span>{isParsingWorkout ? 'AI is Parsing...' : 'Process with AI'}</span>
+                        </button>
                       )}
-                      <span>{isParsingWorkout ? 'AI is Parsing...' : 'Process with AI'}</span>
-                    </button>
+                    </>
+                  ) : (
+                    <motion.div 
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="space-y-4"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <CheckCircle2 size={16} className="text-primary" />
+                          <span className="text-[10px] font-bold text-primary uppercase tracking-widest">AI Parsed Details</span>
+                        </div>
+                        <button 
+                          onClick={() => setAiParsedResult(null)}
+                          className="text-[10px] font-bold text-white/40 hover:text-white transition-colors"
+                        >
+                          Clear
+                        </button>
+                      </div>
+
+                      <div className="bg-black/20 p-4 rounded-2xl border border-white/5 space-y-2">
+                        <div className="flex justify-between items-start">
+                          <div className="text-xs font-bold text-white">{aiParsedResult.title}</div>
+                          <div className="text-[10px] text-white/40">{format(new Date(aiParsedResult.startTime), 'MMM d, h:mm a')}</div>
+                        </div>
+                        <div className="text-[10px] text-white/60 line-clamp-2 italic">
+                          {aiParsedResult.description.substring(0, 100)}...
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-primary uppercase tracking-widest text-center block">Select Intensity</label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {(['low', 'moderate', 'high'] as WorkoutIntensity[]).map((i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => setWorkoutIntensity(i)}
+                              className={`py-2 rounded-xl border transition-all capitalize text-[10px] font-bold tracking-wider ${
+                                workoutIntensity === i 
+                                  ? 'bg-primary border-primary text-white' 
+                                  : 'bg-white/5 border-white/10 text-white/40 hover:bg-white/10'
+                              }`}
+                            >
+                              {i}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleConfirmAiLog}
+                        className="w-full bg-primary text-white py-3 rounded-2xl font-bold text-xs flex items-center justify-center space-x-2 hover:bg-primary/90 transition-all active:scale-95 shadow-lg shadow-primary/20"
+                      >
+                        <Plus size={16} />
+                        <span>Confirm & Log Workout</span>
+                      </button>
+                    </motion.div>
                   )}
+                  
                   <p className="text-[9px] text-white/30 text-center italic">
-                    AI will automatically extract time, duration, and intensity from your text.
+                    AI extracts timing and exercises. Review and confirm to log.
                   </p>
                 </div>
               </motion.div>

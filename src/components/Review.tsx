@@ -114,6 +114,62 @@ export const Review: FC<ReviewProps> = ({ history, sleep, water, weights, workou
     setExpandedSection(expandedSection === section ? null : section);
   };
 
+  // Wrapped Stats
+  const getWrappedStats = () => {
+    const currentData = view === 'monthly' ? monthlyData[monthlyData.length - 1] : {
+      workouts: yearlyData.reduce((acc, curr) => acc + curr.workouts, 0),
+      water: yearlyData.reduce((acc, curr) => acc + curr.water, 0),
+      weight: yearlyData[yearlyData.length - 1].weight,
+      startWeight: yearlyData.find(d => d.weight !== null)?.weight || 0,
+      sleep: yearlyData.reduce((acc, curr) => acc + curr.sleep, 0) / 12,
+      waterGoals: yearlyData.reduce((acc, curr) => acc + curr.waterGoalsMet, 0),
+    };
+
+    const periodName = view === 'monthly' ? 'This Month' : 'This Year';
+    
+    let weightChange = 0;
+    if (view === 'monthly') {
+      weightChange = monthWeightChange;
+    } else {
+      const yearly = currentData as any;
+      weightChange = yearly.weight && yearly.startWeight ? yearly.weight - yearly.startWeight : 0;
+    }
+
+    return [
+      {
+        label: 'Movement',
+        value: `${currentData.workouts} sessions`,
+        sub: `${periodName}`,
+        icon: <Dumbbell className="text-orange-500" />,
+        color: 'from-orange-500/20 to-orange-500/5'
+      },
+      {
+        label: 'Hydration',
+        value: `${(currentData.water as any).toFixed(1)}L`,
+        sub: `Total intake`,
+        icon: <Droplets className="text-blue-500" />,
+        color: 'from-blue-500/20 to-blue-500/5'
+      },
+      {
+        label: 'Body',
+        value: `${Math.abs(weightChange).toFixed(1)}kg`,
+        sub: weightChange < 0 ? 'Lost' : weightChange > 0 ? 'Gained' : 'Stable',
+        icon: weightChange < 0 ? <TrendingDown size={18} /> : weightChange > 0 ? <TrendingUp size={18} /> : <Scale size={18} />,
+        color: 'from-emerald-500/20 to-emerald-500/5',
+        iconColor: weightChange < 0 ? 'text-emerald-500' : weightChange > 0 ? 'text-red-500' : 'text-white/40'
+      },
+      {
+        label: 'Rest',
+        value: `${(currentData.sleep as any).toFixed(1)}h`,
+        sub: `Avg duration`,
+        icon: <Moon className="text-indigo-500" />,
+        color: 'from-indigo-500/20 to-indigo-500/5'
+      }
+    ];
+  };
+
+  const wrappedStats = getWrappedStats();
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -144,6 +200,27 @@ export const Review: FC<ReviewProps> = ({ history, sleep, water, weights, workou
           {loadingAi ? <RefreshCw size={14} className="animate-spin" /> : <Sparkles size={14} />}
           <span>AI {view === 'monthly' ? 'Month' : 'Year'} Review</span>
         </button>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        {wrappedStats.map((stat, i) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1 }}
+            className={`relative overflow-hidden bg-gradient-to-br ${stat.color} border border-white/5 p-5 rounded-[2rem] flex flex-col justify-between aspect-square`}
+          >
+            <div className={`p-2 bg-black/20 rounded-xl w-fit ${stat.iconColor || ''}`}>
+              {stat.icon}
+            </div>
+            <div>
+              <div className="text-2xl font-bold tracking-tight mb-0.5">{stat.value}</div>
+              <div className="text-[10px] font-bold uppercase tracking-widest text-white/30">{stat.label}</div>
+              <div className="text-[10px] text-white/50 mt-1">{stat.sub}</div>
+            </div>
+          </motion.div>
+        ))}
       </div>
 
       <AnimatePresence>
