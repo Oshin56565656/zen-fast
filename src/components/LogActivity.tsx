@@ -255,13 +255,30 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
   const handleConfirmAiLog = () => {
     if (!aiParsedResult) return;
+
+    // Adjust calories based on intensity change
+    let finalCalorieBurn = aiParsedResult.calorieBurn || 0;
+    if (workoutIntensity !== aiParsedResult.intensity) {
+      const multipliers: Record<WorkoutIntensity, number> = {
+        low: 0.7,
+        moderate: 1.0,
+        high: 1.4
+      };
+      
+      const originalMultiplier = multipliers[aiParsedResult.intensity as WorkoutIntensity] || 1.0;
+      const newMultiplier = multipliers[workoutIntensity] || 1.0;
+      
+      // Calculate adjusted calories: (Original / Original Multiplier) * New Multiplier
+      finalCalorieBurn = Math.round((finalCalorieBurn / originalMultiplier) * newMultiplier);
+    }
+
     onLogWorkout(
       aiParsedResult.startTime,
       aiParsedResult.endTime,
       workoutIntensity,
       workoutType,
       aiParsedResult.description,
-      aiParsedResult.calorieBurn,
+      finalCalorieBurn,
       aiParsedResult.exercises
     );
     setShowWorkoutAI(false);
@@ -280,7 +297,10 @@ const LogActivity: React.FC<LogActivityProps> = ({
         </div>
         <p class="text-[10px] font-bold uppercase tracking-[0.2em]">Workout Logged</p>
       </div>
-      <p class="text-xs font-black tracking-tight">${workoutIntensity} Intensity Logged</p>
+      <div class="flex flex-col items-center">
+        <p class="text-xs font-black tracking-tight">${workoutIntensity} Intensity Logged</p>
+        <p class="text-[10px] opacity-60">Estimated: ${finalCalorieBurn} kcal</p>
+      </div>
     `;
     document.body.appendChild(toast);
     requestAnimationFrame(() => toast.classList.remove('opacity-0', 'translate-y-4'));
