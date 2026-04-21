@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { GoogleGenAI, Type } from "@google/genai";
 import { formatDurationShort } from '../lib/utils';
 import { format } from 'date-fns';
-import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, DailySummary, AIInsightsSync, Supplement, SupplementLog } from '../types';
+import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, DailySummary, AIInsightsSync, Supplement, SupplementLog, MoodRecord, MoodScore, EnergyLevel } from '../types';
 import { 
   auth, 
   db, 
@@ -65,6 +65,7 @@ export function useFasting() {
   const [dailySummaries, setDailySummaries] = useState<DailySummary[]>([]);
   const [supplements, setSupplements] = useState<Supplement[]>([]);
   const [supplementLogs, setSupplementLogs] = useState<SupplementLog[]>([]);
+  const [moods, setMoods] = useState<MoodRecord[]>([]);
   const [aiInsights, setAiInsights] = useState<AIInsightsSync | null>(null);
   const [hasNotifiedTarget, setHasNotifiedTarget] = useState(false);
   const [lastWaterReminder, setLastWaterReminder] = useState<number>(() => {
@@ -383,6 +384,23 @@ export function useFasting() {
       setSupplementLogs(records.sort((a, b) => b.time - a.time));
     }, (error) => {
       handleFirestoreError(error, 'list', `users/${user.uid}/supplementLogs`);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  // Sync moods with Firestore
+  useEffect(() => {
+    if (!user) return;
+    const moodsRef = collection(db, 'users', user.uid, 'moods');
+    const q = query(moodsRef);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const records: MoodRecord[] = [];
+      snapshot.forEach((doc) => {
+        records.push({ id: doc.id, ...doc.data() } as MoodRecord);
+      });
+      setMoods(records.sort((a, b) => b.time - a.time));
+    }, (error) => {
+      handleFirestoreError(error, 'list', `users/${user.uid}/moods`);
     });
     return () => unsubscribe();
   }, [user]);
@@ -1125,6 +1143,41 @@ export function useFasting() {
     }
   };
 
+  const logMood = async (mood: MoodScore, energy: EnergyLevel, time: number, note?: string, tags?: string[]) => {
+    if (!user) return;
+    try {
+      await addDoc(collection(db, 'users', user.uid, 'moods'), {
+        mood,
+        energy,
+        time,
+        note: note || '',
+        tags: tags || [],
+        createdAt: Timestamp.now()
+      });
+    } catch (error) {
+      handleFirestoreError(error, 'write', `users/${user.uid}/moods`);
+    }
+  };
+
+  const deleteMood = async (id: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'moods', id));
+    } catch (error) {
+      handleFirestoreError(error, 'delete', `users/${user.uid}/moods/${id}`);
+    }
+  };
+
+  const updateMood = async (id: string, updates: Partial<MoodRecord>) => {
+    if (!user) return;
+    try {
+      const moodRef = doc(db, 'users', user.uid, 'moods', id);
+      await updateDoc(moodRef, updates);
+    } catch (error) {
+      handleFirestoreError(error, 'update', `users/${user.uid}/moods/${id}`);
+    }
+  };
+
   const testNotification = async () => {
     await requestPermission();
     await sendNotification("Test Notification!", {
@@ -1149,6 +1202,7 @@ export function useFasting() {
     sleep,
     water,
     weights,
+    moods,
     startFast,
     pauseFast,
     resumeFast,
@@ -1163,16 +1217,19 @@ export function useFasting() {
     logSleep,
     logWater,
     logWeight,
+    logMood,
     deleteMeal,
     deleteWorkout,
     deleteSleep,
     deleteWater,
     deleteWeight,
+    deleteMood,
     updateMeal,
     updateWorkout,
     updateSleep,
     updateWater,
     updateWeight,
+    updateMood,
     parseWorkoutText,
     setHeight: (height: number) => updateState({ height }),
     setWeight: (weight: number) => updateState({ weight }),

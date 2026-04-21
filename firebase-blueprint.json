@@ -140,6 +140,20 @@
         "createdAt": { "type": "object", "description": "Firestore server timestamp." }
       },
       "required": ["insights", "createdAt"]
+    },
+    "MoodRecord": {
+      "title": "Mood Record",
+      "description": "A log of user mood and energy level.",
+      "type": "object",
+      "properties": {
+        "time": { "type": "number", "description": "Timestamp of log." },
+        "mood": { "type": "number", "description": "Mood score (1-5)." },
+        "energy": { "type": "number", "description": "Energy level (1-5)." },
+        "note": { "type": "string", "description": "Optional note." },
+        "tags": { "type": "array", "items": { "type": "string" }, "description": "Optional tags." },
+        "createdAt": { "type": "object", "description": "Firestore server timestamp." }
+      },
+      "required": ["time", "mood", "energy", "createdAt"]
     }
   },
   "firestore": {
@@ -182,6 +196,10 @@
     "/users/{userId}/supplementLogs/{logId}": {
       "schema": "SupplementLog",
       "description": "Stores the user's daily supplement intake logs."
+    },
+    "/users/{userId}/moods/{moodId}": {
+      "schema": "MoodRecord",
+      "description": "Stores the user's mood and energy logs."
     }
   }
 }

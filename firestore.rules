@@ -170,6 +170,17 @@ service cloud.firestore {
              data.createdAt is timestamp;
     }
 
+    function isValidMood(data) {
+      return hasRequiredFields(['time', 'mood', 'energy', 'createdAt']) &&
+             hasOnlyAllowedFields(['time', 'mood', 'energy', 'note', 'tags', 'createdAt']) &&
+             data.time is number &&
+             data.mood is number && data.mood >= 1 && data.mood <= 5 &&
+             data.energy is number && data.energy >= 1 && data.energy <= 5 &&
+             (!('note' in data) || data.note is string) &&
+             (!('tags' in data) || data.tags is list) &&
+             data.createdAt is timestamp;
+    }
+
     function isValidAIInsights(data) {
       return hasRequiredFields(['insights', 'createdAt']) &&
              hasOnlyAllowedFields(['insights', 'calorieGuess', 'caloriesBurned', 'lastRefreshed', 'createdAt']) &&
@@ -237,6 +248,12 @@ service cloud.firestore {
       match /weights/{weightId} {
         allow read: if request.auth.uid == userId || isAdmin();
         allow create, update: if (request.auth.uid == userId || isAdmin()) && isValidWeight(request.resource.data);
+        allow delete: if request.auth.uid == userId || isAdmin();
+      }
+
+      match /moods/{moodId} {
+        allow read: if request.auth.uid == userId || isAdmin();
+        allow create, update: if (request.auth.uid == userId || isAdmin()) && isValidMood(request.resource.data);
         allow delete: if request.auth.uid == userId || isAdmin();
       }
 

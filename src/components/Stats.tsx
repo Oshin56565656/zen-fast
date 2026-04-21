@@ -1,8 +1,8 @@
 import React, { FC, ReactNode } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
-import { FastRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutRecord, DailySummary } from '../types';
-import { format, subDays, isSameDay, startOfDay, eachDayOfInterval, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, addMonths, isPast } from 'date-fns';
-import { Trophy, Clock, Flame, Target, Moon, Zap, Star, Droplets, Scale, TrendingDown, TrendingUp, Minus, Calendar, Award, CheckCircle2, XCircle, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { FastRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutRecord, DailySummary, MoodRecord } from '../types';
+import { format, subDays, isSameDay, startOfDay, eachDayOfInterval, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, addMonths, isPast, startOfToday } from 'date-fns';
+import { Trophy, Clock, Flame, Target, Moon, Zap, Star, Droplets, Scale, TrendingDown, TrendingUp, Minus, Calendar, Award, CheckCircle2, XCircle, ChevronLeft, ChevronRight, X, Heart } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Milestones } from './Milestones';
@@ -14,16 +14,32 @@ interface StatsProps {
   water: WaterRecord[];
   weights: WeightRecord[];
   workouts: WorkoutRecord[];
+  moods: MoodRecord[];
   waterGoal?: number;
   dailySummaries?: DailySummary[];
 }
 
-export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts, waterGoal = 2000, dailySummaries = [] }) => {
-  const [activeTab, setActiveTab] = React.useState<'fasting' | 'sleep' | 'water' | 'weight' | 'milestones' | 'review' | 'consistency'>('fasting');
+export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts, moods, waterGoal = 2000, dailySummaries = [] }) => {
+  const [activeTab, setActiveTab] = React.useState<'fasting' | 'sleep' | 'water' | 'weight' | 'mood' | 'milestones' | 'review' | 'consistency'>('fasting');
   const [searchDate, setSearchDate] = React.useState<string>('');
   const [currentMonth, setCurrentMonth] = React.useState(new Date());
   
   const totalFasts = history.length;
+
+  // Mood Stats
+  const totalMoodLogs = moods.length;
+  const avgMood = totalMoodLogs > 0 ? moods.reduce((acc, curr) => acc + curr.mood, 0) / totalMoodLogs : 0;
+  const avgEnergy = totalMoodLogs > 0 ? moods.reduce((acc, curr) => acc + curr.energy, 0) / totalMoodLogs : 0;
+  
+  const moodTrends = Array.from({ length: 7 }).map((_, i) => {
+    const date = subDays(startOfToday(), 6 - i);
+    const dayMoods = moods.filter(m => isSameDay(new Date(m.time), date));
+    return {
+      name: format(date, 'EEE'),
+      mood: dayMoods.length > 0 ? dayMoods.reduce((acc, curr) => acc + curr.mood, 0) / dayMoods.length : null,
+      energy: dayMoods.length > 0 ? dayMoods.reduce((acc, curr) => acc + curr.energy, 0) / dayMoods.length : null,
+    };
+  });
 
   // Consistency Stats (Total Met vs Total Logged)
   const waterDaysLogged = new Set(water.map(w => format(new Date(w.time), 'yyyy-MM-dd')));
@@ -208,6 +224,15 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
               title="Weight"
             >
               <Scale size={18} />
+            </button>
+            <button
+              onClick={() => setActiveTab('mood')}
+              className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
+                activeTab === 'mood' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
+              }`}
+              title="Mood"
+            >
+              <Heart size={18} />
             </button>
             <button
               onClick={() => setActiveTab('milestones')}
@@ -416,6 +441,61 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
                     ))}
                   </Bar>
                 </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      ) : activeTab === 'mood' ? (
+        <div className="space-y-8">
+          <div className="grid grid-cols-2 gap-4">
+            <StatCard icon={<Heart className="text-pink-500" />} label="Average Mood" value={`${avgMood.toFixed(1)}/5`} />
+            <StatCard icon={<Zap className="text-yellow-500" />} label="Average Energy" value={`${avgEnergy.toFixed(1)}/5`} />
+            <StatCard icon={<Star className="text-primary" />} label="Logs" value={totalMoodLogs.toString()} />
+            <StatCard icon={<Clock className="text-white/40" />} label="Last Log" value={moods.length > 0 ? format(new Date(moods[moods.length - 1].time), 'MMM d') : 'N/A'} />
+          </div>
+
+          <div className="bg-card p-6 rounded-3xl border border-white/5">
+            <h3 className="text-sm font-medium text-white/40 mb-6">Recent Mood & Energy Trends</h3>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={moodTrends}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                  <XAxis 
+                    dataKey="name" 
+                    axisLine={false} 
+                    tickLine={false} 
+                    tick={{ fill: 'rgba(255,255,255,0.4)', fontSize: 12 }}
+                  />
+                  <YAxis hide domain={[0, 5]} />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#18181b', 
+                      border: '1px solid rgba(255,255,255,0.1)', 
+                      borderRadius: '12px',
+                      color: '#fff'
+                    }}
+                    itemStyle={{ color: '#fff' }}
+                    labelStyle={{ color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="mood" 
+                    name="Mood"
+                    stroke="#ec4899" 
+                    strokeWidth={3} 
+                    dot={{ fill: '#ec4899', strokeWidth: 2, r: 4, stroke: '#18181b' }}
+                    activeDot={{ r: 6, strokeWidth: 0 }}
+                  />
+                  <Line 
+                    type="monotone" 
+                    dataKey="energy" 
+                    name="Energy"
+                    stroke="#eab308" 
+                    strokeWidth={3} 
+                    dot={{ fill: '#eab308', strokeWidth: 2, r: 4, stroke: '#18181b' }}
+                    activeDot={{ r: 6, strokeWidth: 0 }}
+                  />
+                </LineChart>
               </ResponsiveContainer>
             </div>
           </div>

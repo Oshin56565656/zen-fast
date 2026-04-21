@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets, LineChart, Mic, MicOff, Sparkles, MapPin, Play, X, RefreshCw, Pill } from 'lucide-react';
+import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets, LineChart, Mic, MicOff, Sparkles, MapPin, Play, X, RefreshCw, Pill, Heart, Zap, Smile, Frown, Meh, Sun, CloudRain } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { formatTime, formatDate, formatDurationShort } from '../lib/utils';
 import { format, subHours, addMinutes, isSameDay } from 'date-fns';
@@ -9,7 +9,7 @@ import BarcodeScanner from './BarcodeScanner';
 import { Supplements } from './Supplements';
 import { parseWorkoutText } from '../services/aiService';
 import { GoogleGenAI } from "@google/genai";
-import { Supplement, SupplementLog, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, FastRecord } from '../types';
+import { Supplement, SupplementLog, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, FastRecord, MoodRecord, MoodScore, EnergyLevel } from '../types';
 
 interface LogActivityProps {
   history: FastRecord[];
@@ -20,6 +20,7 @@ interface LogActivityProps {
   weights: WeightRecord[];
   supplements: Supplement[];
   supplementLogs: SupplementLog[];
+  moods: MoodRecord[];
   waterGoal: number;
   waterPresets?: number[];
   onLogMeal: (time: number, scale: 'light' | 'normal' | 'large', description?: string, barcode?: string) => void;
@@ -27,6 +28,7 @@ interface LogActivityProps {
   onLogSleep: (bedtime: number, wakeUpTime: number, quality: 'poor' | 'fair' | 'good' | 'excellent') => void;
   onLogWater: (time: number, amount: number) => void;
   onLogWeight: (time: number, weight: number, note?: string) => void;
+  onLogMood: (mood: MoodScore, energy: EnergyLevel, time: number, note?: string, tags?: string[]) => void;
   onAddSupplement: (s: Omit<Supplement, 'id' | 'createdAt'>) => void;
   onUpdateSupplement: (id: string, s: Partial<Supplement>) => void;
   onDeleteSupplement: (id: string) => void;
@@ -37,12 +39,14 @@ interface LogActivityProps {
   onDeleteSleep: (id: string) => void;
   onDeleteWater: (id: string) => void;
   onDeleteWeight: (id: string) => void;
+  onDeleteMood: (id: string) => void;
   onUpdateMeal: (id: string, updates: Partial<MealRecord>) => void;
   onUpdateWorkout: (id: string, updates: Partial<WorkoutRecord>) => void;
   onUpdateSleep: (id: string, updates: Partial<SleepRecord>) => void;
   onUpdateWater: (id: string, updates: Partial<WaterRecord>) => void;
   onUpdateWeight: (id: string, updates: Partial<WeightRecord>) => void;
   onUpdateSupplementLog: (id: string, updates: Partial<SupplementLog>) => void;
+  onUpdateMood: (id: string, updates: Partial<MoodRecord>) => void;
 }
 
 const LogActivity: React.FC<LogActivityProps> = ({
@@ -54,6 +58,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
   weights,
   supplements,
   supplementLogs,
+  moods,
   waterGoal,
   waterPresets = [100, 150, 250, 300],
   onLogMeal,
@@ -61,6 +66,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
   onLogSleep,
   onLogWater,
   onLogWeight,
+  onLogMood,
   onAddSupplement,
   onUpdateSupplement,
   onDeleteSupplement,
@@ -71,14 +77,16 @@ const LogActivity: React.FC<LogActivityProps> = ({
   onDeleteSleep,
   onDeleteWater,
   onDeleteWeight,
+  onDeleteMood,
   onUpdateMeal,
   onUpdateWorkout,
   onUpdateSleep,
   onUpdateWater,
   onUpdateWeight,
-  onUpdateSupplementLog
+  onUpdateSupplementLog,
+  onUpdateMood
 }) => {
-  const [activeType, setActiveType] = useState<'water' | 'meal' | 'workout' | 'sleep' | 'weight' | 'supplements'>('water');
+  const [activeType, setActiveType] = useState<'water' | 'meal' | 'workout' | 'sleep' | 'weight' | 'supplements' | 'mood'>('water');
   const [searchDate, setSearchDate] = useState<string>('');
   const [selectedLog, setSelectedLog] = useState<{ type: string; data: any } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -278,6 +286,14 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const [weightTime, setWeightTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   const [isWeightTimeDirty, setIsWeightTimeDirty] = useState(false);
 
+  // Mood Form State
+  const [moodScore, setMoodScore] = useState<MoodScore>(3);
+  const [energyLevel, setEnergyLevel] = useState<EnergyLevel>(3);
+  const [moodNote, setMoodNote] = useState('');
+  const [moodTags, setMoodTags] = useState<string[]>([]);
+  const [moodTime, setMoodTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+  const [isMoodTimeDirty, setIsMoodTimeDirty] = useState(false);
+
   React.useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -392,9 +408,10 @@ const LogActivity: React.FC<LogActivityProps> = ({
       if (!isBedtimeDirty) setBedtime(format(subHours(now, 8), "yyyy-MM-dd'T'HH:mm"));
       if (!isWakeUpTimeDirty) setWakeUpTime(format(now, "yyyy-MM-dd'T'HH:mm"));
       if (!isWeightTimeDirty) setWeightTime(format(now, "yyyy-MM-dd'T'HH:mm"));
+      if (!isMoodTimeDirty) setMoodTime(format(now, "yyyy-MM-dd'T'HH:mm"));
     }, 1000);
     return () => clearInterval(interval);
-  }, [isMealTimeDirty, isWorkoutStartTimeDirty, isWorkoutEndTimeDirty, isBedtimeDirty, isWakeUpTimeDirty, isWeightTimeDirty]);
+  }, [isMealTimeDirty, isWorkoutStartTimeDirty, isWorkoutEndTimeDirty, isBedtimeDirty, isWakeUpTimeDirty, isWeightTimeDirty, isMoodTimeDirty]);
 
   const handleLogMeal = (e: React.FormEvent) => {
     e.preventDefault();
@@ -508,6 +525,16 @@ const LogActivity: React.FC<LogActivityProps> = ({
     setIsWeightTimeDirty(false);
   };
 
+  const handleLogMood = (e: React.FormEvent) => {
+    e.preventDefault();
+    onLogMood(moodScore, energyLevel, new Date(moodTime).getTime(), moodNote, moodTags);
+    setMoodNote('');
+    setMoodTags([]);
+    setMoodScore(3);
+    setEnergyLevel(3);
+    setIsMoodTimeDirty(false);
+  };
+
   const filterByDate = <T extends { time?: number; startTime?: number; bedtime?: number; wakeUpTime?: number }>(logs: T[]) => {
     // Determine the sorting field for the logs
     const getSortTime = (log: T) => log.time || log.startTime || log.wakeUpTime || log.bedtime || 0;
@@ -533,6 +560,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const filteredSleep = ([...filterByDate(sleep)] as SleepRecord[]).sort((a, b) => b.wakeUpTime - a.wakeUpTime);
   const filteredWater = ([...filterByDate(water)] as WaterRecord[]).sort((a, b) => b.time - a.time);
   const filteredWeights = ([...filterByDate(weights)] as WeightRecord[]).sort((a, b) => b.time - a.time);
+  const filteredMoods = ([...filterByDate(moods)] as MoodRecord[]).sort((a, b) => b.time - a.time);
   const filteredSupplements = ([...filterByDate(supplementLogs)] as SupplementLog[]).sort((a, b) => b.time - a.time);
 
   const handleUpdate = () => {
@@ -544,6 +572,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
     if (selectedLog.type === 'water') onUpdateWater(id, editingData);
     if (selectedLog.type === 'weight') onUpdateWeight(id, editingData);
     if (selectedLog.type === 'supplement') onUpdateSupplementLog(id, editingData);
+    if (selectedLog.type === 'mood') onUpdateMood(id, editingData);
     setSelectedLog(null);
     setIsEditing(false);
   };
@@ -605,10 +634,130 @@ const LogActivity: React.FC<LogActivityProps> = ({
           <Scale size={18} />
           <span className="font-bold">Weight</span>
         </button>
+        <button
+          onClick={() => setActiveType('mood')}
+          className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
+            activeType === 'mood' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
+          }`}
+        >
+          <Heart size={18} />
+          <span className="font-bold">Mood</span>
+        </button>
       </div>
 
       <AnimatePresence mode="wait">
-        {activeType === 'supplements' ? (
+        {activeType === 'mood' ? (
+          <motion.form
+            key="mood-tab"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            onSubmit={handleLogMood}
+            className="bg-card p-6 rounded-3xl border border-white/5 space-y-6"
+          >
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Time</label>
+                  <button 
+                    type="button"
+                    onClick={() => setIsMoodTimeDirty(false)}
+                    className={cn(
+                      "text-[10px] font-bold uppercase px-2 py-1 rounded-lg transition-all",
+                      !isMoodTimeDirty ? "text-primary bg-primary/10" : "text-white/20 hover:text-white/40"
+                    )}
+                  >
+                    Live
+                  </button>
+                </div>
+                <input
+                  type="datetime-local"
+                  value={moodTime}
+                  onChange={(e) => {
+                    setMoodTime(e.target.value);
+                    setIsMoodTimeDirty(true);
+                  }}
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors"
+                />
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-xs font-bold text-white/40 uppercase tracking-widest block">How do you feel?</label>
+                <div className="flex items-center justify-between px-2">
+                  {[
+                    { val: 1, icon: <Frown className="text-red-400" />, label: 'Sad' },
+                    { val: 2, icon: <Meh className="text-orange-400" />, label: 'Meh' },
+                    { val: 3, icon: <Smile className="text-yellow-400" />, label: 'Good' },
+                    { val: 4, icon: <Sun className="text-green-400" />, label: 'Happy' },
+                    { val: 5, icon: <Heart className="text-pink-400" />, label: 'Great' }
+                  ].map((m) => (
+                    <button
+                      key={m.val}
+                      type="button"
+                      onClick={() => setMoodScore(m.val as MoodScore)}
+                      className={cn(
+                        "flex flex-col items-center space-y-1 transition-all",
+                        moodScore === m.val ? "scale-125 translate-y-[-4px]" : "opacity-40 grayscale-[50%] hover:opacity-70"
+                      )}
+                    >
+                      <div className={cn(
+                        "p-3 rounded-2xl border transition-all",
+                        moodScore === m.val ? "bg-white/10 border-white/20 shadow-lg" : "bg-transparent border-transparent"
+                      )}>
+                        {React.cloneElement(m.icon as React.ReactElement, { size: 24 })}
+                      </div>
+                      <span className="text-[10px] font-bold text-white/40">{m.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-xs font-bold text-white/40 uppercase tracking-widest block">Energy Level</label>
+                <div className="flex items-center space-x-2">
+                  {[1, 2, 3, 4, 5].map((e) => (
+                    <button
+                      key={e}
+                      type="button"
+                      onClick={() => setEnergyLevel(e as EnergyLevel)}
+                      className={cn(
+                        "flex-1 py-3 rounded-xl border transition-all text-sm font-bold flex flex-col items-center justify-center space-y-1",
+                        energyLevel === e 
+                          ? 'bg-primary/20 border-primary text-primary shadow-lg shadow-primary/10' 
+                          : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
+                      )}
+                    >
+                      <Zap size={14} className={cn(energyLevel >= e ? "fill-current" : "opacity-20")} />
+                      <span>{e}</span>
+                    </button>
+                  ))}
+                </div>
+                <div className="flex justify-between px-2 mt-1">
+                  <span className="text-[9px] text-white/20 font-bold uppercase tracking-tight">Drained</span>
+                  <span className="text-[9px] text-white/20 font-bold uppercase tracking-tight">Vibrant</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Notes or Tags</label>
+                <textarea
+                  value={moodNote}
+                  onChange={(e) => setMoodNote(e.target.value)}
+                  placeholder="What's causing this feeling? (Optional)"
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors min-h-[80px] resize-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full bg-primary text-white py-4 rounded-2xl font-bold flex items-center justify-center space-x-2 hover:bg-primary/90 transition-all active:scale-95 shadow-lg shadow-primary/20"
+              >
+                <Heart size={20} className="fill-white/20" />
+                <span>Log Mood & Energy</span>
+              </button>
+            </div>
+          </motion.form>
+        ) : activeType === 'supplements' ? (
           <motion.div
             key="supplements-tab"
             initial={{ opacity: 0, y: 10 }}
@@ -1516,6 +1665,40 @@ const LogActivity: React.FC<LogActivityProps> = ({
             ) : (
               <p className="text-center text-white/20 py-8 italic">No supplement history found</p>
             )
+          ) : activeType === 'mood' ? (
+            filteredMoods.length > 0 ? (
+              filteredMoods.map((m) => (
+                <div 
+                  key={m.id} 
+                  onClick={() => setSelectedLog({ type: 'mood', data: m })}
+                  className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between cursor-pointer hover:bg-white/10 transition-colors"
+                >
+                  <div className="flex items-center space-x-4">
+                    <div className="w-10 h-10 bg-pink-500/20 rounded-xl flex items-center justify-center text-pink-500">
+                      <Heart size={20} />
+                    </div>
+                    <div>
+                      <p className="font-bold text-white">Mood: {m.mood}/5 • Energy: {m.energy}/5</p>
+                      {m.note && (
+                        <p className="text-sm text-white/60 line-clamp-1">{m.note}</p>
+                      )}
+                      <p className="text-xs text-white/40">{formatDate(m.time)}, {formatTime(m.time)}</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteMood(m.id);
+                    }}
+                    className="p-2 text-white/20 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              ))
+            ) : (
+              <p className="text-center text-white/20 py-8 italic">No mood logs found</p>
+            )
           ) : null}
         </div>
       </div>
@@ -1581,6 +1764,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                       selectedLog.type === 'water' && "bg-blue-400/20 text-blue-400",
                       selectedLog.type === 'weight' && "bg-emerald-500/20 text-emerald-500",
                       selectedLog.type === 'supplement' && "bg-primary/20 text-primary",
+                      selectedLog.type === 'mood' && "bg-pink-500/20 text-pink-500",
                     )}>
                       {selectedLog.type === 'meal' && <Utensils size={32} />}
                       {selectedLog.type === 'workout' && <Dumbbell size={32} />}
@@ -1588,6 +1772,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                       {selectedLog.type === 'water' && <Droplets size={32} />}
                       {selectedLog.type === 'weight' && <Scale size={32} />}
                       {selectedLog.type === 'supplement' && <Pill size={32} />}
+                      {selectedLog.type === 'mood' && <Heart size={32} />}
                     </div>
                     <div>
                       <h4 className="text-2xl font-black text-white capitalize">
@@ -1599,6 +1784,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                             {selectedLog.type === 'water' && 'Hydration'}
                             {selectedLog.type === 'weight' && 'Weight Check'}
                             {selectedLog.type === 'supplement' && (supplements.find(s => s.id === selectedLog.data.supplementId)?.name || 'Supplement')}
+                            {selectedLog.type === 'mood' && 'Mood & Energy Log'}
                           </>
                         )}
                       </h4>
@@ -1647,6 +1833,34 @@ const LogActivity: React.FC<LogActivityProps> = ({
                             className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary"
                           />
                         </div>
+                      )}
+
+                      {/* Mood Fields */}
+                      {selectedLog.type === 'mood' && (
+                        <>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Mood Score (1-5)</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="5"
+                              value={editingData.mood}
+                              onChange={(e) => setEditingData({ ...editingData, mood: Number(e.target.value) })}
+                              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Energy Level (1-5)</label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="5"
+                              value={editingData.energy}
+                              onChange={(e) => setEditingData({ ...editingData, energy: Number(e.target.value) })}
+                              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary"
+                            />
+                          </div>
+                        </>
                       )}
 
                       {/* Amount/Weight Fields */}

@@ -81,6 +81,19 @@ export interface WeightRecord {
   createdAt?: any;
 }
 
+export type MoodScore = 1 | 2 | 3 | 4 | 5;
+export type EnergyLevel = 1 | 2 | 3 | 4 | 5;
+
+export interface MoodRecord {
+  id: string;
+  time: number;
+  mood: MoodScore;
+  energy: EnergyLevel;
+  note?: string;
+  tags?: string[];
+  createdAt?: any;
+}
+
 export interface Supplement {
   id: string;
   name: string;

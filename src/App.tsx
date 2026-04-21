@@ -70,6 +70,10 @@ export default function App() {
     updateSleep,
     updateWater,
     updateWeight,
+    moods,
+    logMood,
+    deleteMood,
+    updateMood,
     supplements,
     supplementLogs,
     addSupplement,
@@ -131,6 +135,7 @@ export default function App() {
             water={water} 
             weights={weights} 
             workouts={workouts} 
+            moods={moods}
             waterGoal={state.waterGoal} 
             dailySummaries={dailySummaries}
           />
@@ -143,6 +148,7 @@ export default function App() {
             workouts={workouts} 
             sleep={sleep}
             water={water}
+            moods={moods}
             height={state.height}
             weight={state.weight}
             age={state.age}
@@ -166,6 +172,7 @@ export default function App() {
             weights={weights}
             supplements={supplements}
             supplementLogs={supplementLogs}
+            moods={moods}
             waterGoal={state.waterGoal}
             waterPresets={state.waterPresets}
             onLogMeal={logMeal} 
@@ -173,6 +180,7 @@ export default function App() {
             onLogSleep={logSleep}
             onLogWater={logWater}
             onLogWeight={logWeight}
+            onLogMood={logMood}
             onAddSupplement={addSupplement}
             onUpdateSupplement={updateSupplement}
             onDeleteSupplement={deleteSupplement}
@@ -183,12 +191,14 @@ export default function App() {
             onDeleteSleep={deleteSleep}
             onDeleteWater={deleteWater}
             onDeleteWeight={deleteWeight}
+            onDeleteMood={deleteMood}
             onUpdateMeal={updateMeal}
             onUpdateWorkout={updateWorkout}
             onUpdateSleep={updateSleep}
             onUpdateWater={updateWater}
             onUpdateWeight={updateWeight}
             onUpdateSupplementLog={updateSupplementLog}
+            onUpdateMood={updateMood}
           />
         );
       case 'settings':

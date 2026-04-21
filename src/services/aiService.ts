@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
-import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, Supplement, SupplementLog } from "../types";
+import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, Supplement, SupplementLog, MoodRecord } from "../types";
 
 const getAIInstance = () => {
   let apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
@@ -58,9 +58,10 @@ export async function getFastingInsights(
   sex?: string,
   age?: number,
   supplements: Supplement[] = [],
-  supplementLogs: SupplementLog[] = []
+  supplementLogs: SupplementLog[] = [],
+  moods: MoodRecord[] = []
 ): Promise<InsightResponse | []> {
-  if (history.length === 0 && meals.length === 0 && workouts.length === 0 && sleep.length === 0 && water.length === 0 && supplements.length === 0) {
+  if (history.length === 0 && meals.length === 0 && workouts.length === 0 && sleep.length === 0 && water.length === 0 && supplements.length === 0 && moods.length === 0) {
     return [];
   }
 
@@ -147,6 +148,18 @@ export async function getFastingInsights(
       .sort((a, b) => b.time - a.time)[0]?.time ? formatLocalTime(supplementLogs.filter(l => l.supplementId === s.id).sort((a, b) => b.time - a.time)[0].time) : 'Never'
   }));
 
+  const moodData = moods
+    .filter(m => m.time >= fourDaysAgo)
+    .slice(0, 20)
+    .map(m => ({
+      localTime: formatLocalTime(m.time),
+      moodScore: m.mood,
+      energyLevel: m.energy,
+      note: m.note,
+      tags: m.tags,
+      relativeTime: `${Math.round((now.getTime() - m.time) / 60000)} minutes ago`
+    }));
+
   const prompt = `
     User's Current Local Time: ${userLocalTime}
     Current UTC Time: ${now.toISOString()}
@@ -161,13 +174,14 @@ export async function getFastingInsights(
     Focus on:
     1. The relationship between fasting windows, sleep quality, and energy levels.
     2. Specific recommendations for the BEST TIME and INTENSITY for their next workout based on their most recent meal(s), current fasting state, and sleep quality.
-    3. Supplement Timing: Based on their current supplement list and history, provide advice on the OPTIMAL TIMING for each supplement relative to their meals, workouts, and fasting schedule. (e.g., "Take Creatine post-workout for better absorption" or "Move Magnesium to before-bed for sleep support").
-    4. How their sleep patterns are affecting their fasting performance.
+    3. Supplement Timing: Based on their current supplement list and history, provide advice on the OPTIMAL TIMING for each supplement relative to their meals, workouts, and fasting schedule.
+    4. How their mood and energy scores correlate with their diet and fasting success.
     5. Calorie & Macro Estimation.
     
     CRITICAL: 
     1. Use "User's Current Local Time" as primary reference.
     2. Suggest specific timing for their existing supplements to maximize efficacy.
+    3. Use the Mood & Energy data to identify emotional or physical fatigue patterns.
     
     Fasting History: ${JSON.stringify(historyData)}
     Recent Meals: ${JSON.stringify(mealData)}
@@ -175,6 +189,7 @@ export async function getFastingInsights(
     Recent Sleep: ${JSON.stringify(sleepData)}
     Recent Water Intake: ${JSON.stringify(waterData)}
     Supplements & Regimen: ${JSON.stringify(supplementData)}
+    Mood & Energy Logs: ${JSON.stringify(moodData)}
     
     Structure the response as a JSON object with the following structure:
     {
