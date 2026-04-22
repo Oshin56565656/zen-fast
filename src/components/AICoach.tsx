@@ -453,9 +453,36 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                       </div>
                     )}
 
-                    <p className="text-white/70 text-xs leading-relaxed italic">
-                      "{calorieGuess.reasoning}"
-                    </p>
+                    {calorieGuess.foods && calorieGuess.foods.length > 0 ? (
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center justify-between text-[10px] font-black text-white/20 uppercase tracking-widest px-1">
+                          <span>Food Item</span>
+                          <div className="flex space-x-4">
+                            <span className="w-8 text-center">P</span>
+                            <span className="w-8 text-center">C</span>
+                            <span className="w-8 text-center">F</span>
+                            <span className="w-10 text-right">Kcal</span>
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          {calorieGuess.foods.map((food, idx) => (
+                            <div key={idx} className="flex items-center justify-between bg-white/5 rounded-lg p-2 border border-white/5">
+                              <span className="text-[10px] font-bold text-white truncate max-w-[100px]">{food.name}</span>
+                              <div className="flex space-x-4 text-[10px] font-mono text-white/40">
+                                <span className="w-8 text-center">{food.protein}g</span>
+                                <span className="w-8 text-center">{food.carbs}g</span>
+                                <span className="w-8 text-center">{food.fats}g</span>
+                                <span className="w-10 text-right font-bold text-orange-500">{food.calories}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-white/70 text-xs leading-relaxed italic mb-4">
+                        "{calorieGuess.reasoning}"
+                      </p>
+                    )}
                     <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
                       <Sparkles size={40} className="text-orange-500" />
                     </div>
@@ -479,9 +506,32 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                         <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">kcal</p>
                       </div>
                     </div>
-                    <p className="text-white/70 text-xs leading-relaxed italic">
-                      "{caloriesBurned.reasoning}"
-                    </p>
+                    {caloriesBurned.activities && caloriesBurned.activities.length > 0 ? (
+                      <div className="space-y-2 mb-4">
+                        <div className="flex items-center justify-between text-[10px] font-black text-white/20 uppercase tracking-widest px-1">
+                          <span>Activity</span>
+                          <div className="flex space-x-6">
+                            <span className="w-12 text-center">Time</span>
+                            <span className="w-10 text-right">Kcal</span>
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          {caloriesBurned.activities.map((act, idx) => (
+                            <div key={idx} className="flex items-center justify-between bg-white/5 rounded-lg p-2 border border-white/5">
+                              <span className="text-[10px] font-bold text-white truncate max-w-[100px]">{act.name}</span>
+                              <div className="flex space-x-6 text-[10px] font-mono text-white/40">
+                                <span className="w-12 text-center">{act.duration ? `${act.duration}m` : '--'}</span>
+                                <span className="w-10 text-right font-bold text-orange-500">{act.calories}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-white/70 text-xs leading-relaxed italic mb-4">
+                        "{caloriesBurned.reasoning}"
+                      </p>
+                    )}
                     <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
                       <Sparkles size={40} className="text-orange-500" />
                     </div>

@@ -7,7 +7,7 @@ import { format, subHours, addMinutes, isSameDay } from 'date-fns';
 import { AnimatePresence } from 'motion/react';
 import BarcodeScanner from './BarcodeScanner';
 import { Supplements } from './Supplements';
-import { parseWorkoutText } from '../services/aiService';
+import { parseWorkoutText, estimateMealCalories } from '../services/aiService';
 import { GoogleGenAI } from "@google/genai";
 import { Supplement, SupplementLog, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, FastRecord, MoodRecord, MoodScore, EnergyLevel } from '../types';
 
@@ -147,6 +147,8 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const [mealTime, setMealTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   const [isMealTimeDirty, setIsMealTimeDirty] = useState(false);
   const [mealDescription, setMealDescription] = useState('');
+  const [mealCalories, setMealCalories] = useState<string>('');
+  const [isEstimatingMealCalories, setIsEstimatingMealCalories] = useState(false);
   const [mealBarcode, setMealBarcode] = useState('');
   const [showScanner, setShowScanner] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -450,10 +452,40 @@ const LogActivity: React.FC<LogActivityProps> = ({
     return () => clearInterval(interval);
   }, [isMealTimeDirty, isWorkoutStartTimeDirty, isWorkoutEndTimeDirty, isBedtimeDirty, isWakeUpTimeDirty, isWeightTimeDirty, isMoodTimeDirty]);
 
-  const handleLogMeal = (e: React.FormEvent) => {
+  const handleEstimateMealCalories = async () => {
+    if (!mealDescription.trim() || isEstimatingMealCalories) return;
+    setIsEstimatingMealCalories(true);
+    try {
+      const estimated = await estimateMealCalories(mealDescription, mealScale);
+      if (estimated > 0) {
+        setMealCalories(estimated.toString());
+      }
+    } catch (error) {
+      console.error('Failed to estimate calories:', error);
+    } finally {
+      setIsEstimatingMealCalories(false);
+    }
+  };
+
+  const handleLogMeal = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    let finalCalories = mealCalories ? parseInt(mealCalories) : 0;
+    
+    // If no calories entered, and we have a description, try one last auto-guess
+    if (!finalCalories && mealDescription.trim()) {
+      setIsEstimatingMealCalories(true);
+      try {
+        finalCalories = await estimateMealCalories(mealDescription, mealScale);
+      } catch (err) {
+        console.warn('Auto calorie guess failed before save:', err);
+      } finally {
+        setIsEstimatingMealCalories(false);
+      }
+    }
+
     const mealTimestamp = new Date(mealTime).getTime();
-    onLogMeal(mealTimestamp, mealScale, mealDescription, mealBarcode);
+    onLogMeal(mealTimestamp, mealScale, mealDescription, mealBarcode, finalCalories);
 
     // Check for "with meal" supplements
     const hasWithMealSupps = supplements.some(s => s.preferredTime === 'with-meal');
@@ -491,8 +523,10 @@ const LogActivity: React.FC<LogActivityProps> = ({
     }
 
     setMealDescription('');
-    setMealBarcode('');
+    setMealCalories('');
     setIsMealTimeDirty(false);
+    setMealBarcode('');
+    if ("vibrate" in navigator) navigator.vibrate(100);
   };
 
   const handleScan = (barcode: string, product: any) => {
@@ -1110,12 +1144,44 @@ const LogActivity: React.FC<LogActivityProps> = ({
             )}
           </div>
 
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Calories (Optional)</label>
+              <button 
+                type="button"
+                onClick={handleEstimateMealCalories}
+                disabled={!mealDescription.trim() || isEstimatingMealCalories}
+                className="flex items-center space-x-1 text-primary text-[10px] font-bold uppercase hover:bg-primary/10 px-2 py-1 rounded-lg transition-colors disabled:opacity-30"
+              >
+                {isEstimatingMealCalories ? (
+                  <RefreshCw size={12} className="animate-spin" />
+                ) : (
+                  <Sparkles size={12} />
+                )}
+                <span>AI Guess</span>
+              </button>
+            </div>
+            <div className="relative">
+              <input
+                type="number"
+                value={mealCalories}
+                onChange={(e) => setMealCalories(e.target.value)}
+                placeholder="0"
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors font-bold text-lg"
+              />
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 text-xs font-bold uppercase tracking-widest pointer-events-none">
+                kcal
+              </div>
+            </div>
+          </div>
+
           <button
             type="submit"
-            className="w-full bg-primary text-white py-4 rounded-2xl font-bold flex items-center justify-center space-x-2 hover:bg-primary/90 transition-all active:scale-95"
+            disabled={isEstimatingMealCalories}
+            className="w-full bg-primary text-white py-4 rounded-2xl font-bold flex items-center justify-center space-x-2 hover:bg-primary/90 transition-all active:scale-95 disabled:opacity-50"
           >
             <Plus size={20} />
-            <span>Log Meal</span>
+            <span>{isEstimatingMealCalories ? 'Calculating...' : 'Log Meal'}</span>
           </button>
         </motion.form>
       ) : activeType === 'sleep' ? (
@@ -1573,7 +1639,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
           </div>
         </div>
         
-        <div className="space-y-3">
+        <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 no-scrollbar">
           {activeType === 'meal' ? (
             filteredMeals.length > 0 ? (
               filteredMeals.map((meal) => (
@@ -1592,6 +1658,12 @@ const LogActivity: React.FC<LogActivityProps> = ({
                         <p className="text-sm text-white/60 line-clamp-1">{meal.description}</p>
                       )}
                       <p className="text-xs text-white/40">{formatDate(meal.time)}, {formatTime(meal.time)}</p>
+                      {meal.calories && meal.calories > 0 && (
+                        <div className="flex items-center space-x-1 mt-1">
+                          <Sparkles size={10} className="text-primary" />
+                          <span className="text-[10px] font-black text-primary uppercase tracking-wider">{meal.calories} kcal</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -2002,23 +2074,35 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
                       {/* Scale / Quality / Intensity / Type Selectors */}
                       {selectedLog.type === 'meal' && (
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Scale</label>
-                          <div className="grid grid-cols-3 gap-2">
-                            {(['light', 'normal', 'large'] as const).map(s => (
-                              <button
-                                key={s}
-                                onClick={() => setEditingData({ ...editingData, scale: s })}
-                                className={cn(
-                                  "py-2 rounded-xl border text-xs font-bold transition-all",
-                                  editingData.scale === s ? "bg-primary border-primary text-white" : "bg-white/5 border-white/10 text-white/40"
-                                )}
-                              >
-                                {s}
-                              </button>
-                            ))}
+                        <>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Scale</label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {(['light', 'normal', 'large'] as const).map(s => (
+                                <button
+                                  key={s}
+                                  onClick={() => setEditingData({ ...editingData, scale: s })}
+                                  className={cn(
+                                    "py-2 rounded-xl border text-xs font-bold transition-all",
+                                    editingData.scale === s ? "bg-primary border-primary text-white" : "bg-white/5 border-white/10 text-white/40"
+                                  )}
+                                >
+                                  {s}
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Calories (kcal)</label>
+                            <input
+                              type="number"
+                              value={editingData.calories ?? ''}
+                              onChange={(e) => setEditingData({ ...editingData, calories: e.target.value ? Number(e.target.value) : 0 })}
+                              className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary font-bold text-center"
+                              placeholder="e.g. 450"
+                            />
+                          </div>
+                        </>
                       )}
 
                       {selectedLog.type === 'sleep' && (
@@ -2134,6 +2218,13 @@ const LogActivity: React.FC<LogActivityProps> = ({
                           </div>
                         )}
                       </div>
+
+                      {selectedLog.type === 'meal' && selectedLog.data.calories && (
+                        <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                          <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-1">Calories</p>
+                          <p className="text-lg font-black text-primary">{selectedLog.data.calories} kcal</p>
+                        </div>
+                      )}
 
                       {selectedLog.type === 'workout' && (
                         <div className="grid grid-cols-2 gap-4">

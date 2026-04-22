@@ -38,6 +38,7 @@ export interface MealRecord {
   scale: 'light' | 'normal' | 'large';
   description?: string;
   barcode?: string;
+  calories?: number;
   createdAt?: any;
 }
 
@@ -147,6 +148,7 @@ export interface AIInsight {
 export interface CalorieGuess {
   amount: number;
   reasoning: string;
+  foods?: { name: string; calories: number; protein: number; carbs: number; fats: number }[];
   macros?: {
     protein: number;
     carbs: number;
@@ -157,6 +159,7 @@ export interface CalorieGuess {
 export interface CaloriesBurned {
   amount: number;
   reasoning: string;
+  activities?: { name: string; calories: number; duration?: number }[];
 }
 
 export interface AIInsightsSync {

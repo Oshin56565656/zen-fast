@@ -460,6 +460,39 @@ export function useFasting() {
     return () => clearTimeout(timeout);
   }, [user, water, state.waterGoal, isAuthReady]);
 
+  // Automatically update daily summary's calorie intake
+  useEffect(() => {
+    if (!user || isAuthReady === false) return;
+    
+    const updateCalorieSummary = async () => {
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      
+      const todayIntake = meals
+        .filter(m => format(new Date(m.time), 'yyyy-MM-dd') === todayStr)
+        .reduce((sum, curr) => sum + (curr.calories || 0), 0);
+      
+      const todayBurn = workouts
+        .filter(w => format(new Date(w.startTime), 'yyyy-MM-dd') === todayStr)
+        .reduce((sum, curr) => sum + (curr.calorieBurn || 0), 0);
+
+      try {
+        const summaryRef = doc(db, 'users', user.uid, 'dailySummaries', todayStr);
+        await setDoc(summaryRef, {
+          date: todayStr,
+          intake: todayIntake,
+          burn: todayBurn,
+          isDeficit: todayIntake < (todayBurn + 2000), // Very rough BMR calc
+          updatedAt: Timestamp.now()
+        }, { merge: true });
+      } catch (error) {
+        console.error("Background calorie summary sync failed:", error);
+      }
+    };
+
+    const timeout = setTimeout(updateCalorieSummary, 1000); // 1s debounce
+    return () => clearTimeout(timeout);
+  }, [user, meals, workouts, isAuthReady]);
+
   const saveDailySummary = async (summary: Omit<DailySummary, 'id' | 'createdAt'>) => {
     if (!user) return;
     try {
@@ -835,7 +868,7 @@ export function useFasting() {
     isWaterLoaded
   ]);
 
-  const logMeal = async (time: number, scale: 'light' | 'normal' | 'large', description?: string, barcode?: string) => {
+  const logMeal = async (time: number, scale: 'light' | 'normal' | 'large', description?: string, barcode?: string, calories?: number) => {
     if (!user) return;
     try {
       await addDoc(collection(db, 'users', user.uid, 'meals'), {
@@ -843,6 +876,7 @@ export function useFasting() {
         scale,
         description: description || '',
         barcode: barcode || '',
+        calories: calories || 0,
         createdAt: Timestamp.now()
       });
     } catch (error) {

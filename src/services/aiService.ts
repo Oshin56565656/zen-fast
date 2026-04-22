@@ -99,6 +99,7 @@ export async function getFastingInsights(
       localTime: formatLocalTime(m.time),
       scale: m.scale,
       description: m.description || 'No description provided',
+      calories: m.calories || 0,
       relativeTime: `${Math.round((now.getTime() - m.time) / 60000)} minutes ago`
     }));
 
@@ -171,6 +172,8 @@ export async function getFastingInsights(
     - Weight: ${weight ? `${weight}kg` : 'Not provided'}
     
     Analyze this user's health data and provide 3-4 concise, personalized insights.
+    If any meals or workouts have 'calories' or 'calorieBurn' values listed, treat them as the primary source of truth for your summary calculations. Do not recalculate them unless you are specifically spotting a massive discrepancy that warrants a coaching tip.
+    
     Focus on:
     1. The relationship between fasting windows, sleep quality, and energy levels.
     2. Specific recommendations for the BEST TIME and INTENSITY for their next workout based on their most recent meal(s), current fasting state, and sleep quality.
@@ -199,11 +202,17 @@ export async function getFastingInsights(
       "calorieGuess": { 
         "amount": number, 
         "reasoning": "string", 
+        "foods": [
+          { "name": "string", "calories": number, "protein": number, "carbs": number, "fats": number }
+        ],
         "macros": { "protein": number, "carbs": number, "fats": number } 
       },
       "caloriesBurned": { 
         "amount": number, 
-        "reasoning": "string" 
+        "reasoning": "string",
+        "activities": [
+          { "name": "string", "calories": number, "duration": number }
+        ]
       }
     }
   `;
@@ -214,7 +223,7 @@ export async function getFastingInsights(
         model: "gemini-flash-latest",
         contents: prompt,
         config: {
-          systemInstruction: "You are an expert fasting and fitness coach. Provide data-driven, structured insights based on the user's history and physical profile (age, sex, height, and weight if provided). Be precise about timing relationships. Specifically, recommend the optimal workout time and intensity based on the user's last meal, current fasting state, and body metrics. IMPORTANT: Never hallucinate or infer meal or workout data that is not explicitly provided in the user's logs. ALWAYS use 12-hour time format (e.g., 10:00 am) in your responses.",
+          systemInstruction: "You are an expert fasting and fitness coach. Provide data-driven, structured insights based on the user's history and physical profile (age, sex, height, and weight if provided). Be precise about timing relationships. Specifically, recommend the optimal workout time and intensity based on the user's last meal, current fasting state, and body metrics. IMPORTANT: If meals in the logs have non-zero 'calories' values provided, you MUST use those exact values for your 'calorieGuess' total and macro calculations instead of estimating them yourself. Keep 'reasoning' fields for calorie/burn guesses extremely brief (max 1 short sentence or even just 'Calculated from activity'), but ensure the main 'insights' array items are rich, detailed, and provide deep coaching expertise. For 'foods', provide a breakdown of the specific food items identified in the meal descriptions with their estimated calories and macros. For 'activities', provide a breakdown of estimated calorie burn from identified workouts plus a baseline BMR estimate. NEVER hallucinate or infer meal or workout data that is not explicitly provided in the user's logs. ALWAYS use 12-hour time format (e.g., 10:00 am) in your responses.",
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -236,7 +245,21 @@ export async function getFastingInsights(
                 type: Type.OBJECT,
                 properties: {
                   amount: { type: Type.NUMBER, description: "Estimated calories consumed today" },
-                  reasoning: { type: Type.STRING, description: "Brief explanation of how this was calculated" },
+                  reasoning: { type: Type.STRING, description: "Very brief explanation" },
+                  foods: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        name: { type: Type.STRING },
+                        calories: { type: Type.NUMBER },
+                        protein: { type: Type.NUMBER },
+                        carbs: { type: Type.NUMBER },
+                        fats: { type: Type.NUMBER }
+                      },
+                      required: ["name", "calories", "protein", "carbs", "fats"]
+                    }
+                  },
                   macros: {
                     type: Type.OBJECT,
                     properties: {
@@ -253,9 +276,21 @@ export async function getFastingInsights(
                 type: Type.OBJECT,
                 properties: {
                   amount: { type: Type.NUMBER, description: "Estimated calories burned today (BMR + Activity)" },
-                  reasoning: { type: Type.STRING, description: "Brief explanation of how this was calculated" }
+                  reasoning: { type: Type.STRING, description: "Very brief explanation" },
+                  activities: {
+                    type: Type.ARRAY,
+                    items: {
+                      type: Type.OBJECT,
+                      properties: {
+                        name: { type: Type.STRING },
+                        calories: { type: Type.NUMBER },
+                        duration: { type: Type.NUMBER, description: "Estimated duration in minutes" }
+                      },
+                      required: ["name", "calories", "duration"]
+                    }
+                  }
                 },
-                required: ["amount", "reasoning"]
+                required: ["amount", "reasoning", "activities"]
               }
             },
             required: ["insights", "calorieGuess", "caloriesBurned"]
@@ -375,6 +410,43 @@ export async function getPeriodicReview(
   } catch (error) {
     console.error("Periodic Review Error:", error);
     throw error;
+  }
+}
+
+export async function estimateMealCalories(description: string, scale: string) {
+  const ai = getAIInstance();
+  
+  const prompt = `
+    Estimate the calories for the following meal description and size.
+    Description: "${description}"
+    Size/Scale: "${scale}"
+    
+    Provide the most accurate estimate possible for total calories.
+    Response must be a JSON object with only the field: "calories" (number).
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-flash-latest",
+      contents: prompt,
+      config: {
+        systemInstruction: "You are a nutrition expert. Estimate calories based on meal descriptions. Return JSON.",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            calories: { type: Type.NUMBER }
+          },
+          required: ["calories"]
+        }
+      }
+    });
+
+    const result = JSON.parse(response.text || "{}");
+    return result.calories || 0;
+  } catch (error) {
+    console.error("Estimate Meal Calories Error:", error);
+    return 0;
   }
 }
 

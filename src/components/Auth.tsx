@@ -7,6 +7,7 @@ export const Auth: FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isIframe, setIsIframe] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => {
     setIsIframe(window.self !== window.top);
@@ -20,7 +21,7 @@ export const Auth: FC = () => {
         }
       } catch (err: any) {
         console.error('Redirect error:', err);
-        if (err.code === 'auth/user-cancelled' || err.code === 'auth/popup-closed-by-user') {
+        if (err.code === 'auth/user-cancelled' || err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
           // Silent ignore user cancellation
           return;
         }
@@ -34,7 +35,9 @@ export const Auth: FC = () => {
   }, []);
 
   const handleSignIn = async (method: 'popup' | 'redirect') => {
+    if (signingIn) return;
     setError(null);
+    setSigningIn(true);
     try {
       if (method === 'popup') {
         await signInWithPopup(auth, googleProvider);
@@ -43,8 +46,9 @@ export const Auth: FC = () => {
       }
     } catch (err: any) {
       console.error('Error signing in:', err);
-      if (err.code === 'auth/user-cancelled' || err.code === 'auth/popup-closed-by-user') {
+      if (err.code === 'auth/user-cancelled' || err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
         // Silent ignore user cancellation
+        setSigningIn(false);
         return;
       }
       if (err.code === 'auth/popup-blocked') {
@@ -58,6 +62,7 @@ export const Auth: FC = () => {
       } else {
         setError(err.message || 'Failed to sign in. Please try again.');
       }
+      setSigningIn(false);
     }
   };
 
@@ -114,10 +119,15 @@ export const Auth: FC = () => {
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.3 }}
           onClick={() => handleSignIn('popup')}
-          className="w-full flex items-center justify-center space-x-3 bg-white text-black px-8 py-4 rounded-2xl font-bold hover:bg-white/90 transition-all active:scale-95 shadow-xl"
+          disabled={signingIn}
+          className="w-full flex items-center justify-center space-x-3 bg-white text-black px-8 py-4 rounded-2xl font-bold hover:bg-white/90 transition-all active:scale-95 shadow-xl disabled:opacity-50"
         >
-          <LogIn size={20} />
-          <span>Continue with Google</span>
+          {signingIn ? (
+            <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+          ) : (
+            <LogIn size={20} />
+          )}
+          <span>{signingIn ? 'Signing in...' : 'Continue with Google'}</span>
         </motion.button>
 
         {isIframe && (
