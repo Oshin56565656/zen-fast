@@ -1639,7 +1639,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
           </div>
         </div>
         
-        <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 no-scrollbar">
+        <div className="space-y-3">
           {activeType === 'meal' ? (
             filteredMeals.length > 0 ? (
               filteredMeals.map((meal) => (
