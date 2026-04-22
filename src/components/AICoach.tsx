@@ -265,6 +265,33 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
     }
   };
 
+  // Automatic refresh at 11:55 PM
+  useEffect(() => {
+    const scheduleRefresh = () => {
+      const now = new Date();
+      const target = new Date();
+      target.setHours(23, 55, 0, 0);
+      
+      // If it's already past 11:55 PM, schedule for tomorrow
+      if (now > target) {
+        target.setDate(target.getDate() + 1);
+      }
+      
+      const timeToRefresh = target.getTime() - now.getTime();
+      
+      return setTimeout(() => {
+        if (!loading) {
+          fetchInsights();
+        }
+        // Reschedule for next day
+        scheduleRefresh();
+      }, timeToRefresh);
+    };
+    
+    const timerId = scheduleRefresh();
+    return () => clearTimeout(timerId);
+  }, [loading, history, meals, workouts, sleep, water, height, weight, sex, age, supplements, supplementLogs, moods, fetchInsights]);
+
   // Removed automatic fetch on mount to respect user preference
   // Insights are now only fetched via the manual refresh button
 
@@ -511,7 +538,7 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                         <div className="flex items-center justify-between text-[10px] font-black text-white/20 uppercase tracking-widest px-1">
                           <span>Activity</span>
                           <div className="flex space-x-6">
-                            <span className="w-12 text-center">Time</span>
+                            <span className="w-12 text-center">Duration</span>
                             <span className="w-10 text-right">Kcal</span>
                           </div>
                         </div>
