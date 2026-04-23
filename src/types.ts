@@ -148,7 +148,8 @@ export interface AIInsight {
 export interface CalorieGuess {
   amount: number;
   reasoning: string;
-  foods?: { name: string; calories: number; protein: number; carbs: number; fats: number }[];
+  asOfTime?: string;
+  foods?: { name: string; calories: number; protein: number; carbs: number; fats: number; time?: string }[];
   macros?: {
     protein: number;
     carbs: number;
@@ -159,7 +160,8 @@ export interface CalorieGuess {
 export interface CaloriesBurned {
   amount: number;
   reasoning: string;
-  activities?: { name: string; calories: number; duration?: number }[];
+  asOfTime?: string;
+  activities?: { name: string; calories: number; duration?: number; time?: string }[];
 }
 
 export interface AIInsightsSync {

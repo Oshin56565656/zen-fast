@@ -202,16 +202,18 @@ export async function getFastingInsights(
       "calorieGuess": { 
         "amount": number, 
         "reasoning": "string", 
+        "asOfTime": "string",
         "foods": [
-          { "name": "string", "calories": number, "protein": number, "carbs": number, "fats": number }
+          { "name": "string", "calories": number, "protein": number, "carbs": number, "fats": number, "time": "string" }
         ],
         "macros": { "protein": number, "carbs": number, "fats": number } 
       },
       "caloriesBurned": { 
         "amount": number, 
         "reasoning": "string",
+        "asOfTime": "string",
         "activities": [
-          { "name": "string", "calories": number, "duration": number }
+          { "name": "string", "calories": number, "duration": number, "time": "string" }
         ]
       }
     }
@@ -223,7 +225,7 @@ export async function getFastingInsights(
         model: "gemini-flash-latest",
         contents: prompt,
         config: {
-          systemInstruction: "You are an expert fasting and fitness coach. Provide data-driven, structured insights based on the user's history and physical profile (age, sex, height, and weight if provided). Be precise about timing relationships. Specifically, recommend the optimal workout time and intensity based on the user's last meal, current fasting state, and body metrics. IMPORTANT: If meals in the logs have non-zero 'calories' values provided, you MUST use those exact values for your 'calorieGuess' total and macro calculations instead of estimating them yourself. Keep 'reasoning' fields for calorie/burn guesses extremely brief (max 1 short sentence), but ensure the main 'insights' array items are rich and detailed. For 'activities', you MUST always include: 1. 'Basal Metabolic Rate (BMR)' - pro-rated to the current time of day. 2. 'Daily Movement & NEAT' - estimated non-exercise activity up to current time. 3. Specific workouts from logs. Ensure the total 'caloriesBurned.amount' matches the sum of these activities. Pro-rate BMR accurately according to the 'User's Current Local Time' provided in the prompt (e.g. if it's noon, BMR should be ~50% of daily total). NEVER hallucinate or infer meal or workout data that is not explicitly provided in the user's logs. ALWAYS use 12-hour time format (e.g., 10:00 am) in your responses.",
+          systemInstruction: "You are an expert fasting and fitness coach. Provide data-driven, structured insights based on the user's history and physical profile (age, sex, height, and weight if provided). Be precise about timing relationships. Specifically, recommend the optimal workout time and intensity based on the user's last meal, current fasting state, and body metrics. IMPORTANT: If meals in the logs have non-zero 'calories' values provided, you MUST use those exact values for your 'calorieGuess' total and macro calculations instead of estimating them yourself. Keep 'reasoning' fields for calorie/burn guesses extremely brief (max 1 short sentence), but ensure the main 'insights' array items are rich and detailed. For 'activities', you MUST always include: 1. 'Basal Metabolic Rate (BMR)' - pro-rated to the 'User's Current Local Time' provided. 2. 'Daily Movement & NEAT' - estimated non-exercise activity up to current time. 3. Specific workouts from logs. Ensure the total 'caloriesBurned.amount' matches the sum of these activities. Pro-rate BMR accurately according to the 'User's Current Local Time' provided in the prompt (e.g. if it's noon, BMR should be ~50% of daily total). NEVER hallucinate or infer meal or workout data that is not explicitly provided in the user's logs. ALWAYS use 12-hour time format (e.g., 10:00 am) in your responses and include the 'asOfTime' field (matching the user's current local time) in your JSON output.",
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -246,6 +248,7 @@ export async function getFastingInsights(
                 properties: {
                   amount: { type: Type.NUMBER, description: "Estimated calories consumed today" },
                   reasoning: { type: Type.STRING, description: "Very brief explanation" },
+                  asOfTime: { type: Type.STRING, description: "The local time for which this guess is calculated" },
                   foods: {
                     type: Type.ARRAY,
                     items: {
@@ -255,9 +258,10 @@ export async function getFastingInsights(
                         calories: { type: Type.NUMBER },
                         protein: { type: Type.NUMBER },
                         carbs: { type: Type.NUMBER },
-                        fats: { type: Type.NUMBER }
+                        fats: { type: Type.NUMBER },
+                        time: { type: Type.STRING, description: "e.g. 8:30 am" }
                       },
-                      required: ["name", "calories", "protein", "carbs", "fats"]
+                      required: ["name", "calories", "protein", "carbs", "fats", "time"]
                     }
                   },
                   macros: {
@@ -270,13 +274,14 @@ export async function getFastingInsights(
                     required: ["protein", "carbs", "fats"]
                   }
                 },
-                required: ["amount", "reasoning", "macros"]
+                required: ["amount", "reasoning", "macros", "asOfTime"]
               },
               caloriesBurned: {
                 type: Type.OBJECT,
                 properties: {
                   amount: { type: Type.NUMBER, description: "Estimated calories burned today (BMR + Activity)" },
                   reasoning: { type: Type.STRING, description: "Very brief explanation" },
+                  asOfTime: { type: Type.STRING, description: "The local time for which this burn is calculated" },
                   activities: {
                     type: Type.ARRAY,
                     items: {
@@ -284,13 +289,14 @@ export async function getFastingInsights(
                       properties: {
                         name: { type: Type.STRING },
                         calories: { type: Type.NUMBER },
-                        duration: { type: Type.NUMBER, description: "Estimated duration in minutes" }
+                        duration: { type: Type.NUMBER, description: "Estimated duration in minutes" },
+                        time: { type: Type.STRING, description: "e.g. 7:00 am - 12:00 pm" }
                       },
-                      required: ["name", "calories", "duration"]
+                      required: ["name", "calories", "duration", "time"]
                     }
                   }
                 },
-                required: ["amount", "reasoning", "activities"]
+                required: ["amount", "reasoning", "activities", "asOfTime"]
               }
             },
             required: ["insights", "calorieGuess", "caloriesBurned"]

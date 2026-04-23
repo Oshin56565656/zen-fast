@@ -131,6 +131,7 @@ export default function App() {
         return (
           <Stats 
             history={history} 
+            meals={meals}
             sleep={sleep} 
             water={water} 
             weights={weights} 
@@ -256,7 +257,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col md:flex-row relative">
+    <div className="min-h-screen bg-background flex flex-col md:flex-row relative overflow-hidden">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex flex-col w-20 lg:w-64 bg-card/30 border-r border-white/5 h-screen sticky top-0 shrink-0 z-50">
         <div className="p-6 lg:p-8 flex items-center space-x-3 mb-8">
@@ -317,9 +318,9 @@ export default function App() {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <div className="w-full max-w-md md:max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto flex flex-col min-h-screen relative">
-          {/* Header (Smaller on Desktop) */}
+      <div className="flex-1 flex flex-col min-w-0 h-screen">
+        <div className="w-full max-w-md md:max-w-4xl lg:max-w-5xl xl:max-w-6xl mx-auto flex flex-col h-full relative">
+          {/* Header (Sticky behavior on mobile restored via container overflow) */}
           <header className="p-6 md:px-8 md:py-6 flex items-center justify-between shrink-0">
             <div className="flex items-center space-x-2 md:hidden">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
@@ -362,16 +363,15 @@ export default function App() {
             )}
           </AnimatePresence>
 
-          {/* Tab Content */}
-          <main className="flex-1 pb-24 md:pb-8 md:px-4">
+          {/* Tab Content - Restoring overflow-y-auto for sticky header feel */}
+          <main className="flex-1 overflow-y-auto pb-24 md:pb-8 md:px-4 no-scrollbar">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
-                className="h-full"
               >
                 {renderContent()}
               </motion.div>

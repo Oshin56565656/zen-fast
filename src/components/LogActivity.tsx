@@ -1832,7 +1832,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                     className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between cursor-pointer hover:bg-white/10 transition-colors"
                   >
                     <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 bg-primary/20 rounded-xl flex items-center justify-center text-primary">
+                      <div className="w-10 h-10 bg-violet-500/20 rounded-xl flex items-center justify-center text-violet-500">
                         <Pill size={20} />
                       </div>
                       <div>
@@ -1953,7 +1953,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                       selectedLog.type === 'sleep' && "bg-indigo-500/20 text-indigo-500",
                       selectedLog.type === 'water' && "bg-blue-400/20 text-blue-400",
                       selectedLog.type === 'weight' && "bg-emerald-500/20 text-emerald-500",
-                      selectedLog.type === 'supplement' && "bg-primary/20 text-primary",
+                      selectedLog.type === 'supplement' && "bg-violet-500/20 text-violet-500",
                       selectedLog.type === 'mood' && "bg-pink-500/20 text-pink-500",
                     )}>
                       {selectedLog.type === 'meal' && <Utensils size={32} />}

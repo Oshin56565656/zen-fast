@@ -265,32 +265,7 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
     }
   };
 
-  // Automatic refresh at 11:55 PM
-  useEffect(() => {
-    const scheduleRefresh = () => {
-      const now = new Date();
-      const target = new Date();
-      target.setHours(23, 55, 0, 0);
-      
-      // If it's already past 11:55 PM, schedule for tomorrow
-      if (now > target) {
-        target.setDate(target.getDate() + 1);
-      }
-      
-      const timeToRefresh = target.getTime() - now.getTime();
-      
-      return setTimeout(() => {
-        if (!loading) {
-          fetchInsights();
-        }
-        // Reschedule for next day
-        scheduleRefresh();
-      }, timeToRefresh);
-    };
-    
-    const timerId = scheduleRefresh();
-    return () => clearTimeout(timerId);
-  }, [loading, history, meals, workouts, sleep, water, height, weight, sex, age, supplements, supplementLogs, moods, fetchInsights]);
+  // Automatic refresh at 11:55 PM moved to useFasting hook for global reliability
 
   // Removed automatic fetch on mount to respect user preference
   // Insights are now only fetched via the manual refresh button
@@ -447,21 +422,26 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {calorieGuess && (
                   <div className="bg-orange-500/10 p-6 rounded-3xl border border-orange-500/20 relative overflow-hidden group">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center text-orange-500">
-                          <Utensils size={20} />
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-bold text-white">Intake Guess</h3>
-                          <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">AI Estimation</p>
-                        </div>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center text-orange-500">
+                        <Utensils size={20} />
                       </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-black text-orange-500">~{calorieGuess.amount}</p>
-                        <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">kcal</p>
+                      <div>
+                        <h3 className="text-lg font-bold text-white">Intake Guess</h3>
+                        <div className="flex items-center space-x-1.5">
+                          <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">AI Estimation</p>
+                          {calorieGuess.asOfTime && (
+                            <span className="text-[10px] text-orange-500/60 font-medium">As of {calorieGuess.asOfTime}</span>
+                          )}
+                        </div>
                       </div>
                     </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-black text-orange-500">~{calorieGuess.amount}</p>
+                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">kcal</p>
+                    </div>
+                  </div>
 
                     {calorieGuess.macros && (
                       <div className="grid grid-cols-3 gap-2 mb-4">
@@ -483,7 +463,7 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                     {calorieGuess.foods && calorieGuess.foods.length > 0 ? (
                       <div className="space-y-2 mb-4">
                         <div className="flex items-center justify-between text-[10px] font-black text-white/20 uppercase tracking-widest px-1">
-                          <span>Food Item</span>
+                          <span>Food Item & Time</span>
                           <div className="flex space-x-4">
                             <span className="w-8 text-center">P</span>
                             <span className="w-8 text-center">C</span>
@@ -494,7 +474,10 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                         <div className="space-y-1">
                           {calorieGuess.foods.map((food, idx) => (
                             <div key={idx} className="flex items-center justify-between bg-white/5 rounded-lg p-2 border border-white/5">
-                              <span className="text-[10px] font-bold text-white truncate max-w-[100px]">{food.name}</span>
+                              <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-white truncate max-w-[100px]">{food.name}</span>
+                                {food.time && <span className="text-[8px] text-white/20">{food.time}</span>}
+                              </div>
                               <div className="flex space-x-4 text-[10px] font-mono text-white/40">
                                 <span className="w-8 text-center">{food.protein}g</span>
                                 <span className="w-8 text-center">{food.carbs}g</span>
@@ -525,7 +508,12 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                         </div>
                         <div>
                           <h3 className="text-lg font-bold text-white">Burned Guess</h3>
-                          <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">AI Estimation</p>
+                          <div className="flex items-center space-x-1.5">
+                            <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">AI Estimation</p>
+                            {caloriesBurned.asOfTime && (
+                              <span className="text-[10px] text-orange-500/60 font-medium">As of {caloriesBurned.asOfTime}</span>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className="text-right">
@@ -536,7 +524,7 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                     {caloriesBurned.activities && caloriesBurned.activities.length > 0 ? (
                       <div className="space-y-2 mb-4">
                         <div className="flex items-center justify-between text-[10px] font-black text-white/20 uppercase tracking-widest px-1">
-                          <span>Activity</span>
+                          <span>Activity & Time</span>
                           <div className="flex space-x-6">
                             <span className="w-12 text-center">Duration</span>
                             <span className="w-10 text-right">Kcal</span>
@@ -545,7 +533,10 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                         <div className="space-y-1">
                           {caloriesBurned.activities.map((act, idx) => (
                             <div key={idx} className="flex items-center justify-between bg-white/5 rounded-lg p-2 border border-white/5">
-                              <span className="text-[10px] font-bold text-white truncate max-w-[100px]">{act.name}</span>
+                              <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-white truncate max-w-[100px]">{act.name}</span>
+                                {act.time && <span className="text-[8px] text-white/20">{act.time}</span>}
+                              </div>
                               <div className="flex space-x-6 text-[10px] font-mono text-white/40">
                                 <span className="w-12 text-center">{act.duration ? `${act.duration}m` : '--'}</span>
                                 <span className="w-10 text-right font-bold text-orange-500">{act.calories}</span>

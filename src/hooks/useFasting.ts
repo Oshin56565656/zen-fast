@@ -467,31 +467,60 @@ export function useFasting() {
     const updateCalorieSummary = async () => {
       const todayStr = format(new Date(), 'yyyy-MM-dd');
       
-      const todayIntake = meals
-        .filter(m => format(new Date(m.time), 'yyyy-MM-dd') === todayStr)
-        .reduce((sum, curr) => sum + (curr.calories || 0), 0);
-      
-      const todayBurn = workouts
-        .filter(w => format(new Date(w.startTime), 'yyyy-MM-dd') === todayStr)
-        .reduce((sum, curr) => sum + (curr.calorieBurn || 0), 0);
+      // Find all unique dates in VERY recent tasks to keep it performant
+      const dates = new Set([
+        todayStr,
+        ...meals.slice(0, 10).map(m => format(new Date(m.time), 'yyyy-MM-dd')),
+        ...workouts.slice(0, 5).map(w => format(new Date(w.startTime), 'yyyy-MM-dd'))
+      ]);
 
-      try {
-        const summaryRef = doc(db, 'users', user.uid, 'dailySummaries', todayStr);
-        await setDoc(summaryRef, {
-          date: todayStr,
-          intake: todayIntake,
-          burn: todayBurn,
-          isDeficit: todayIntake < (todayBurn + 2000), // Very rough BMR calc
-          updatedAt: Timestamp.now()
-        }, { merge: true });
-      } catch (error) {
-        console.error("Background calorie summary sync failed:", error);
+      // We only background-update intake/burn for TODAY to avoid wiping out AI estimates for past days
+      // For past days, we only sync water/weight which are less "guess-heavy"
+      for (const dateStr of dates) {
+        const isToday = dateStr === todayStr;
+        
+        const dayIntake = meals
+          .filter(m => format(new Date(m.time), 'yyyy-MM-dd') === dateStr)
+          .reduce((sum, curr) => sum + (curr.calories || 0), 0);
+        
+        const dayWorkoutBurn = workouts
+          .filter(w => format(new Date(w.startTime), 'yyyy-MM-dd') === dateStr)
+          .reduce((sum, curr) => sum + (curr.calorieBurn || 0), 0);
+
+        try {
+          const summaryRef = doc(db, 'users', user.uid, 'dailySummaries', dateStr);
+          
+          // Calculate BMR for context
+          let baseline = 2000;
+          if (state.weight && state.height && state.age) {
+            const s = state.sex === 'female' ? -161 : 5;
+            baseline = (10 * state.weight) + (6.25 * state.height) - (5 * state.age) + s;
+            baseline = Math.round(baseline * 1.2); // NEAT factor
+          }
+
+          const updateData: any = {
+            date: dateStr,
+            updatedAt: Timestamp.now()
+          };
+
+          // ONLY update calorie fields if it's today (active tracking)
+          // OR if we actually have raw calorie data to contribute
+          if (isToday || dayIntake > 0 || dayWorkoutBurn > 0) {
+            updateData.intake = dayIntake;
+            updateData.burn = dayWorkoutBurn + baseline;
+            updateData.isDeficit = dayIntake < (dayWorkoutBurn + baseline);
+          }
+
+          await setDoc(summaryRef, updateData, { merge: true });
+        } catch (error) {
+          console.error(`Background calorie summary sync failed for ${dateStr}:`, error);
+        }
       }
     };
 
-    const timeout = setTimeout(updateCalorieSummary, 1000); // 1s debounce
+    const timeout = setTimeout(updateCalorieSummary, 2000); // 2s debounce
     return () => clearTimeout(timeout);
-  }, [user, meals, workouts, isAuthReady]);
+  }, [user, meals, workouts, isAuthReady, state.weight, state.height, state.age, state.sex]);
 
   const saveDailySummary = async (summary: Omit<DailySummary, 'id' | 'createdAt'>) => {
     if (!user) return;
@@ -1225,6 +1254,44 @@ export function useFasting() {
   // Weather and Hydration Logic removed
 
   // Weather is only refreshed manually via refreshWeather button as requested
+
+    // Move refresh logic inside useFasting for global availability
+    const fetchAIInsightsGlobal = async () => {
+      try {
+        const userLocalTime = new Date().toLocaleString();
+        const result = await getFastingInsights(history, meals, workouts, sleep, water, userLocalTime, state.height, state.weight, state.sex, state.age, supplements, supplementLogs, moods);
+        
+        if (!Array.isArray(result)) {
+          const timestamp = Date.now();
+          await saveAIInsights({
+            insights: result.insights || [],
+            calorieGuess: result.calorieGuess || null,
+            caloriesBurned: result.caloriesBurned || null,
+            lastRefreshed: timestamp
+          });
+
+          if (result.calorieGuess && result.caloriesBurned) {
+            const today = new Date();
+            const dateStr = today.toISOString().split('T')[0];
+            const todayWater = water
+              .filter(w => format(new Date(w.time), 'yyyy-MM-dd') === dateStr)
+              .reduce((acc, curr) => acc + curr.amount, 0);
+            
+            await saveDailySummary({
+              date: dateStr,
+              intake: result.calorieGuess.amount,
+              burn: result.caloriesBurned.amount,
+              waterTotal: todayWater,
+              waterGoal: state.waterGoal || 2000,
+              isDeficit: (result.calorieGuess.amount - result.caloriesBurned.amount) <= 0,
+              isWaterGoalMet: todayWater >= (state.waterGoal || 2000)
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Scheduled refresh failed:", error);
+      }
+    };
 
   return {
     user,

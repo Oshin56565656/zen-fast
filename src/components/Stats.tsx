@@ -1,6 +1,6 @@
 import React, { FC, ReactNode } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
-import { FastRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutRecord, DailySummary, MoodRecord } from '../types';
+import { FastRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutRecord, DailySummary, MoodRecord, MealRecord } from '../types';
 import { format, subDays, isSameDay, startOfDay, eachDayOfInterval, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, addMonths, isPast, startOfToday } from 'date-fns';
 import { Trophy, Clock, Flame, Target, Moon, Zap, Star, Droplets, Scale, TrendingDown, TrendingUp, Minus, Calendar, Award, CheckCircle2, XCircle, ChevronLeft, ChevronRight, X, Heart } from 'lucide-react';
 import { cn } from '../lib/utils';
@@ -10,6 +10,7 @@ import { Review } from './Review';
 
 interface StatsProps {
   history: FastRecord[];
+  meals: MealRecord[];
   sleep: SleepRecord[];
   water: WaterRecord[];
   weights: WeightRecord[];
@@ -19,9 +20,8 @@ interface StatsProps {
   dailySummaries?: DailySummary[];
 }
 
-export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts, moods, waterGoal = 2000, dailySummaries = [] }) => {
+export const Stats: FC<StatsProps> = ({ history, meals, sleep, water, weights, workouts, moods, waterGoal = 2000, dailySummaries = [] }) => {
   const [activeTab, setActiveTab] = React.useState<'fasting' | 'sleep' | 'water' | 'weight' | 'mood' | 'milestones' | 'review' | 'consistency'>('fasting');
-  const [searchDate, setSearchDate] = React.useState<string>('');
   const [currentMonth, setCurrentMonth] = React.useState(new Date());
   const [moodView, setMoodView] = React.useState<'weekly' | 'daily'>('weekly');
 
@@ -660,7 +660,6 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
                       const dateStr = format(date, 'yyyy-MM-dd');
                       const isCurrentMonth = isSameMonth(date, monthStart);
                       const isToday = isSameDay(date, new Date());
-                      const isSelected = searchDate === dateStr;
                       
                       const summary = dailySummaries.find(s => s.date === dateStr);
                       const isTodayDate = isSameDay(date, new Date());
@@ -676,183 +675,59 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
                       const dayIsPast = isPast(date) && !isToday;
 
                       return (
-                        <button
+                        <div
                           key={i}
-                          onClick={() => setSearchDate(isSelected ? '' : dateStr)}
                           className={cn(
                             "aspect-square rounded-xl p-1 flex flex-col items-center justify-between transition-all relative border border-transparent",
-                            !isCurrentMonth ? "opacity-10 cursor-default pointer-events-none" : "hover:bg-white/5",
-                            isToday && "bg-primary/10 border-primary/20",
-                            isSelected && "bg-primary text-white scale-105 z-10 shadow-lg shadow-primary/20"
+                            !isCurrentMonth ? "opacity-10 cursor-default pointer-events-none" : "bg-white/5",
+                            isToday && "bg-primary/20 border-primary/40 ring-1 ring-primary/20"
                           )}
                         >
                           <span className={cn(
                             "text-[10px] font-bold",
-                            isSelected ? "text-white" : isToday ? "text-primary" : "text-white/60"
+                            isToday ? "text-primary" : "text-white/60"
                           )}>
                             {format(date, 'd')}
                           </span>
                           
                           {isCurrentMonth && (
-                            <div className="flex space-x-0.5 mb-0.5">
-                              {/* Water Dot */}
+                            <div className="flex space-x-1 items-center mb-0.5">
+                              {/* Water Status */}
                               {waterMet ? (
-                                <div className={cn("w-1 h-1 rounded-full", isSelected ? "bg-white" : "bg-blue-400")} />
+                                <div className="w-1.5 h-1.5 bg-blue-400 rounded-full shadow-[0_0_8px_rgba(96,165,250,0.4)]" />
                               ) : dayIsPast ? (
-                                <div className={cn("w-1 h-1 rounded-full", isSelected ? "bg-white/20" : "bg-white/5")} />
+                                <div className="w-1.5 h-1.5 bg-white/10 rounded-full" />
                               ) : null}
                               
-                              {/* Deficit Dot */}
+                              {/* Deficit Status */}
                               {deficitMet === true ? (
-                                <div className={cn("w-1 h-1 rounded-full", isSelected ? "bg-white" : "bg-orange-500")} />
+                                <div className="w-1.5 h-1.5 bg-orange-500 rounded-full shadow-[0_0_8px_rgba(249,115,22,0.4)]" />
                               ) : dayIsPast && deficitMet === false ? (
-                                <div className={cn("w-1 h-1 rounded-full", isSelected ? "bg-white/20" : "bg-white/5")} />
+                                <div className="w-1.5 h-1.5 bg-white/10 rounded-full" />
                               ) : null}
                             </div>
                           )}
-                        </button>
+                        </div>
                       );
                     });
                   })()}
                 </div>
                 
                 {/* Legend */}
-                <div className="flex items-center justify-center space-x-4 pt-2 border-t border-white/5">
-                  <div className="flex items-center space-x-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                    <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Water Met</span>
+                <div className="flex items-center justify-center space-x-6 pt-4 border-t border-white/5">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 rounded-full bg-blue-400" />
+                    <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Hydration</span>
                   </div>
-                  <div className="flex items-center space-x-1.5">
-                    <div className="w-1.5 h-1.5 rounded-full bg-orange-500" />
-                    <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">Deficit Met</span>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 rounded-full bg-orange-500" />
+                    <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">Deficit</span>
                   </div>
                 </div>
-
-                {/* Selected Day Details */}
-                <AnimatePresence>
-                  {searchDate && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="mt-4 p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-xs font-bold text-white/60 uppercase tracking-widest">
-                            {format(new Date(searchDate), 'MMMM d, yyyy')}
-                          </h4>
-                          <button onClick={() => setSearchDate('')} className="text-white/20 hover:text-white/40">
-                            <X size={14} />
-                          </button>
-                        </div>
-                        
-                        {(() => {
-                          const date = new Date(searchDate);
-                          const summary = dailySummaries.find(s => s.date === searchDate);
-                          const isTodayDate = isSameDay(date, new Date());
-                          const dayWater = water
-                            .filter(w => isSameDay(new Date(w.time), date))
-                            .reduce((sum, curr) => sum + curr.amount, 0);
-                          const dayGoal = isTodayDate ? waterGoal : (summary?.waterGoal || waterGoal);
-                          const isMet = dayWater >= dayGoal;
-
-                          return (
-                            <div className="grid grid-cols-2 gap-3">
-                              {/* Water Stats */}
-                              <div className="bg-white/5 p-3 rounded-xl border border-white/5">
-                                <p className="text-[10px] font-bold text-white/20 uppercase tracking-tighter mb-1">Water Intake</p>
-                                <div className="flex items-baseline space-x-1">
-                                  <span className={cn("text-lg font-black", isMet ? "text-blue-400" : "text-white/60")}>
-                                    {dayWater}
-                                  </span>
-                                  <span className="text-[10px] text-white/20">/ {dayGoal}ml</span>
-                                </div>
-                                <div className="mt-2 h-1 bg-white/5 rounded-full overflow-hidden">
-                                  <div 
-                                    className={cn("h-full transition-all duration-500", isMet ? "bg-blue-400" : "bg-white/20")}
-                                    style={{ width: `${Math.min(100, (dayWater / dayGoal) * 100)}%` }}
-                                  />
-                                </div>
-                              </div>
-
-                              {/* Calories Stats */}
-                              <div className="bg-white/5 p-3 rounded-xl border border-white/5">
-                                <p className="text-[10px] font-bold text-white/20 uppercase tracking-tighter mb-1">Calories (Net)</p>
-                                {summary ? (
-                                  <>
-                                    <div className="flex items-baseline space-x-1">
-                                      <span className={cn("text-lg font-black", summary.isDeficit ? "text-orange-500" : "text-red-500")}>
-                                        {summary.intake - summary.burn > 0 ? '+' : ''}{summary.intake - summary.burn}
-                                      </span>
-                                      <span className="text-[10px] text-white/20">kcal</span>
-                                    </div>
-                                    <div className="flex items-center space-x-2 mt-1 text-[9px] text-white/40">
-                                      <span>In: {summary.intake}</span>
-                                      <span>•</span>
-                                      <span>Out: {summary.burn}</span>
-                                    </div>
-                                  </>
-                                ) : (
-                                  <div className="h-full flex items-center">
-                                    <p className="text-[10px] text-white/20 italic">No AI Insight yet</p>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Hydration Status */}
-                              <div className="bg-white/5 p-3 rounded-xl border border-white/5">
-                                <p className="text-[10px] font-bold text-white/20 uppercase tracking-tighter mb-1">Hydration</p>
-                                <div className="flex items-center space-x-2 mt-1">
-                                  {isMet ? (
-                                    <>
-                                      <div className="w-2 h-2 rounded-full bg-blue-400" />
-                                      <span className="text-sm font-bold text-blue-400">PASSED</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <div className="w-2 h-2 rounded-full bg-white/10" />
-                                      <span className="text-sm font-bold text-white/40">NOT MET</span>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Deficit Status */}
-                              <div className="bg-white/5 p-3 rounded-xl border border-white/5">
-                                <p className="text-[10px] font-bold text-white/20 uppercase tracking-tighter mb-1">Deficit</p>
-                                <div className="flex items-center space-x-2 mt-1">
-                                  {summary && typeof summary.isDeficit === 'boolean' ? (
-                                    summary.isDeficit ? (
-                                      <>
-                                        <div className="w-2 h-2 rounded-full bg-orange-500" />
-                                        <span className="text-sm font-bold text-orange-500">PASSED</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <div className="w-2 h-2 rounded-full bg-red-500" />
-                                        <span className="text-sm font-bold text-red-500">FAILED</span>
-                                      </>
-                                    )
-                                  ) : (
-                                    <>
-                                      <div className="w-2 h-2 rounded-full bg-white/10" />
-                                      <span className="text-sm font-bold text-white/40">N/A</span>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </div>
             </div>
-            <p className="mt-2 text-[10px] text-white/20 text-center italic">
-              * Calorie deficit data is tracked when you refresh AI Coach insights for that day.
+            <p className="mt-4 text-[10px] text-white/20 text-center italic">
+              * Calorie deficit data is tracked based on your AI Coach insights.
             </p>
           </div>
         </div>

@@ -304,7 +304,7 @@ export function Supplements({
                   {supplements.map(s => (
                     <div key={s.id} className="bg-white/5 border border-white/5 rounded-2xl p-4 flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-primary">
+                        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-violet-500">
                           <Pill size={18} />
                         </div>
                         <div>
