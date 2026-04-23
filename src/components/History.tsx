@@ -192,7 +192,8 @@ export const History: FC<HistoryProps> = ({ history, meals, onDelete, onManualLo
           <p className="mt-4 font-medium">{selectedDate ? "No history for this date" : "No fasting history yet"}</p>
         </div>
       ) : (
-        filteredHistory.map((record) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filteredHistory.map((record) => (
           <motion.div
             key={record.id}
             initial={{ opacity: 0, y: 10 }}
@@ -226,7 +227,8 @@ export const History: FC<HistoryProps> = ({ history, meals, onDelete, onManualLo
               </button>
             </div>
           </motion.div>
-        ))
+        ))}
+      </div>
       )}
     </div>
   );

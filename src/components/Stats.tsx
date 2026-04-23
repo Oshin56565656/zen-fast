@@ -344,7 +344,7 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
 
       {activeTab === 'fasting' ? (
         <div className="space-y-8">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard icon={<Target className="text-primary" />} label="Success Rate" value={`${successRate}%`} />
             <StatCard icon={<Trophy className="text-yellow-500" />} label="Longest" value={`${(longestFast / 3600).toFixed(1)}h`} />
             <StatCard icon={<Clock className="text-secondary" />} label="Average" value={`${(avgFastDuration / 3600).toFixed(1)}h`} />
@@ -385,7 +385,7 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
         </div>
       ) : activeTab === 'sleep' ? (
         <div className="space-y-8">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard icon={<Moon className="text-indigo-400" />} label="Avg Sleep" value={`${avgSleepDuration.toFixed(1)}h`} />
             <StatCard icon={<Star className="text-yellow-400" />} label="Avg Quality" value={getQualityLabel(avgQualityScore)} />
             <StatCard icon={<Zap className="text-blue-400" />} label="Excellent Nights" value={bestQuality.toString()} />
@@ -426,7 +426,7 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
         </div>
       ) : activeTab === 'weight' ? (
         <div className="space-y-8">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard 
               icon={<Scale className="text-emerald-500" />} 
               label="Current" 
@@ -483,7 +483,7 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
         </div>
       ) : activeTab === 'water' ? (
         <div className="space-y-8">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard icon={<Droplets className="text-blue-400" />} label="Total Water" value={`${(totalWaterAmount / 1000).toFixed(1)}L`} />
             <StatCard icon={<Target className="text-primary" />} label="Avg Daily" value={`${(avgWaterPerDay / 1000).toFixed(1)}L`} />
             <StatCard icon={<Trophy className="text-yellow-500" />} label="Max Day" value={`${(maxWaterDay / 1000).toFixed(1)}L`} />
@@ -524,7 +524,7 @@ export const Stats: FC<StatsProps> = ({ history, sleep, water, weights, workouts
         </div>
       ) : activeTab === 'mood' ? (
         <div className="space-y-8">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard icon={<Heart className="text-pink-500" />} label="Average Mood" value={`${avgMood.toFixed(1)}/5`} />
             <StatCard icon={<Zap className="text-yellow-500" />} label="Average Energy" value={`${avgEnergy.toFixed(1)}/5`} />
             <StatCard icon={<Star className="text-primary" />} label="Logs" value={totalMoodLogs.toString()} />

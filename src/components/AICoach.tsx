@@ -566,7 +566,7 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                 )}
               </div>
 
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {insights.map((insight, index) => (
                   <div 
                     key={`${insight.title}-${index}`} 

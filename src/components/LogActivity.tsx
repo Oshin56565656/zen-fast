@@ -1639,7 +1639,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
           </div>
         </div>
         
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {activeType === 'meal' ? (
             filteredMeals.length > 0 ? (
               filteredMeals.map((meal) => (
