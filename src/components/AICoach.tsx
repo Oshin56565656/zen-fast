@@ -429,12 +429,7 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                       </div>
                       <div>
                         <h3 className="text-lg font-bold text-white">Intake Guess</h3>
-                        <div className="flex items-center space-x-1.5">
-                          <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">AI Estimation</p>
-                          {calorieGuess.asOfTime && (
-                            <span className="text-[10px] text-orange-500/60 font-medium">As of {calorieGuess.asOfTime}</span>
-                          )}
-                        </div>
+                        <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">AI Estimation</p>
                       </div>
                     </div>
                     <div className="text-right">
@@ -508,12 +503,7 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                         </div>
                         <div>
                           <h3 className="text-lg font-bold text-white">Burned Guess</h3>
-                          <div className="flex items-center space-x-1.5">
-                            <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">AI Estimation</p>
-                            {caloriesBurned.asOfTime && (
-                              <span className="text-[10px] text-orange-500/60 font-medium">As of {caloriesBurned.asOfTime}</span>
-                            )}
-                          </div>
+                          <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">AI Estimation</p>
                         </div>
                       </div>
                       <div className="text-right">
