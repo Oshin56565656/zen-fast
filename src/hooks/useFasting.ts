@@ -506,13 +506,12 @@ export function useFasting() {
           // ONLY update calorie fields if it's today (active tracking)
           // OR if we actually have raw calorie data to contribute
           if (isToday || dayIntake > 0 || dayWorkoutBurn > 0) {
-            // Apply conservative bias (inflate intake by 10%, underplay burn by 10%)
-            const biasedIntake = Math.round(dayIntake * 1.1);
+            // Respect manual logs for intake, underplay burn by 10% for a safety margin
             const biasedBurn = Math.round((dayWorkoutBurn + baseline) * 0.9);
             
-            updateData.intake = biasedIntake;
+            updateData.intake = dayIntake;
             updateData.burn = biasedBurn;
-            updateData.isDeficit = biasedIntake < biasedBurn;
+            updateData.isDeficit = dayIntake < biasedBurn;
           }
 
           await setDoc(summaryRef, updateData, { merge: true });
