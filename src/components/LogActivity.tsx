@@ -7,7 +7,7 @@ import { format, subHours, addMinutes, isSameDay } from 'date-fns';
 import { AnimatePresence } from 'motion/react';
 import BarcodeScanner from './BarcodeScanner';
 import { Supplements } from './Supplements';
-import { parseWorkoutText, estimateMealCalories } from '../services/aiService';
+import { parseWorkoutText, estimateMealCalories, estimateWorkoutCalories } from '../services/aiService';
 import { GoogleGenAI } from "@google/genai";
 import { Supplement, SupplementLog, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, FastRecord, MoodRecord, MoodScore, EnergyLevel } from '../types';
 
@@ -165,6 +165,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const [isWorkoutEndTimeDirty, setIsWorkoutEndTimeDirty] = useState(false);
   const [workoutDescription, setWorkoutDescription] = useState('');
   const [workoutCalorieBurn, setWorkoutCalorieBurn] = useState<number | undefined>(undefined);
+  const [isEstimatingWorkoutCalories, setIsEstimatingWorkoutCalories] = useState(false);
   const [workoutParsedExercises, setWorkoutParsedExercises] = useState<string[]>([]);
   const [showWorkoutAI, setShowWorkoutAI] = useState(false);
   const [workoutAIInput, setWorkoutAIInput] = useState('');
@@ -205,7 +206,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
         }
         
         const normalizedType = result.type ? result.type.toLowerCase() as WorkoutType : workoutType;
-        const validTypes: WorkoutType[] = ['cardio', 'strength', 'running', 'walking', 'swimming', 'cycling', 'sports', 'home', 'custom'];
+        const validTypes: WorkoutType[] = ['cardio', 'strength', 'hiit', 'running', 'walking', 'swimming', 'cycling', 'football', 'home', 'custom'];
         const finalType = validTypes.includes(normalizedType) ? normalizedType : 'custom';
         
         const normalizedIntensity = result.intensity ? result.intensity.toLowerCase() as WorkoutIntensity : workoutIntensity;
@@ -464,6 +465,31 @@ const LogActivity: React.FC<LogActivityProps> = ({
       console.error('Failed to estimate calories:', error);
     } finally {
       setIsEstimatingMealCalories(false);
+    }
+  };
+
+  const handleEstimateWorkoutCalories = async () => {
+    if (isEstimatingWorkoutCalories) return;
+    setIsEstimatingWorkoutCalories(true);
+    try {
+      const start = new Date(workoutStartTime);
+      const end = new Date(workoutEndTime);
+      const durationMins = Math.round((end.getTime() - start.getTime()) / (1000 * 60));
+      
+      const estimated = await estimateWorkoutCalories(
+        workoutType,
+        workoutIntensity,
+        durationMins,
+        workoutDescription
+      );
+      
+      if (estimated > 0) {
+        setWorkoutCalorieBurn(estimated);
+      }
+    } catch (error) {
+      console.error('Failed to estimate workout calories:', error);
+    } finally {
+      setIsEstimatingWorkoutCalories(false);
     }
   };
 
@@ -1470,7 +1496,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
               <div className="space-y-2">
                 <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Workout Type</label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {(['cardio', 'strength', 'running', 'walking', 'swimming', 'cycling', 'sports', 'home', 'custom'] as WorkoutType[]).map((t) => (
+                  {(['cardio', 'strength', 'hiit', 'running', 'walking', 'swimming', 'cycling', 'football', 'home', 'custom'] as WorkoutType[]).map((t) => (
                     <button
                       key={t}
                       type="button"
@@ -1522,7 +1548,22 @@ const LogActivity: React.FC<LogActivityProps> = ({
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Calories Burned (optional)</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Calories Burned (optional)</label>
+                  <button 
+                    type="button"
+                    onClick={handleEstimateWorkoutCalories}
+                    disabled={isEstimatingWorkoutCalories}
+                    className="flex items-center space-x-1 text-primary text-[10px] font-bold uppercase hover:bg-primary/10 px-2 py-1 rounded-lg transition-colors disabled:opacity-30"
+                  >
+                    {isEstimatingWorkoutCalories ? (
+                      <RefreshCw size={12} className="animate-spin" />
+                    ) : (
+                      <Sparkles size={12} />
+                    )}
+                    <span>AI Guess</span>
+                  </button>
+                </div>
                 <div className="relative">
                   <input
                     type="number"
@@ -2126,7 +2167,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                           <div className="space-y-2">
                             <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Type</label>
                             <div className="grid grid-cols-3 gap-2">
-                              {(['cardio', 'strength', 'hiit', 'running', 'walking', 'swimming', 'cycling', 'sports', 'home', 'custom'] as const).map(t => (
+                              {(['cardio', 'strength', 'hiit', 'running', 'walking', 'swimming', 'cycling', 'football', 'home', 'custom'] as const).map(t => (
                                 <button
                                   key={t}
                                   onClick={() => setEditingData({ ...editingData, type: t })}

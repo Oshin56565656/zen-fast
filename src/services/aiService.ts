@@ -456,6 +456,46 @@ export async function estimateMealCalories(description: string, scale: string) {
   }
 }
 
+export async function estimateWorkoutCalories(type: string, intensity: string, durationMinutes: number, description?: string) {
+  const ai = getAIInstance();
+  
+  const prompt = `
+    Estimate the calories burned for the following workout.
+    Type: "${type}"
+    Intensity: "${intensity}"
+    Duration: ${durationMinutes} minutes
+    ${description ? `Description: "${description}"` : ''}
+    
+    Provide the most accurate estimate possible for total calories burned.
+    Response must be a JSON object with only the field: "calories" (number).
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-flash-latest",
+      contents: prompt,
+      config: {
+        systemInstruction: "You are a fitness expert. Estimate calories burned based on workout details. Return JSON.",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            calories: { type: Type.NUMBER }
+          },
+          required: ["calories"]
+        }
+      }
+    });
+
+    const result = JSON.parse(response.text || "{}");
+    // Apply the user's requested conservative bias (underplay burn by 10-15%) everywhere
+    return Math.round((result.calories || 0) * 0.9);
+  } catch (error) {
+    console.error("Estimate Workout Calories Error:", error);
+    return 0;
+  }
+}
+
 export async function parseWorkoutText(text: string) {
   const ai = getAIInstance();
   const now = new Date();
@@ -473,7 +513,7 @@ export async function parseWorkoutText(text: string) {
     - startTime: If date/time is mentioned (like "Friday, April 17, 2026, 6:14 PM"), parse it to ISO format. If only time is mentioned, use today's date.
     - duration: Total duration in minutes (look for "30m", "1h", etc.).
     - intensity: "low", "moderate", or "high" based on the volume and type of exercises.
-    - type: Choose the best fit from: cardio, strength, running, walking, swimming, cycling, sports, home, custom.
+    - type: Choose the best fit from: cardio, strength, hiit, running, walking, swimming, cycling, football, home, custom.
     - summary: A very brief summary of the exercises performed.
   `;
 
@@ -491,7 +531,7 @@ export async function parseWorkoutText(text: string) {
             startTime: { type: Type.STRING, description: "ISO 8601 string" },
             duration: { type: Type.NUMBER, description: "Minutes" },
             intensity: { type: Type.STRING, enum: ["low", "moderate", "high"] },
-            type: { type: Type.STRING, enum: ["cardio", "strength", "running", "walking", "swimming", "cycling", "sports", "home", "custom"] },
+            type: { type: Type.STRING, enum: ["cardio", "strength", "hiit", "running", "walking", "swimming", "cycling", "football", "home", "custom"] },
             calorieBurn: { type: Type.NUMBER, description: "Estimated calories burned (BMR + activity volume)" },
             exercises: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of exercise names" },
             summary: { type: Type.STRING }
