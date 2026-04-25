@@ -964,7 +964,7 @@ export function useFasting() {
         JSON object with fields:
         "duration": number (minutes),
         "intensity": "low" | "moderate" | "high",
-        "type": "strength" | "cardio" | "hiit" | ... (select best fit),
+        "type": "strength" | "cardio" | "football" | ... (select best fit),
         "calorieBurn": number,
         "exercises": string[] (just the names),
         "startTime": string (ISO format if found, otherwise null)

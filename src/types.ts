@@ -43,7 +43,7 @@ export interface MealRecord {
 }
 
 export type WorkoutIntensity = 'low' | 'moderate' | 'high';
-export type WorkoutType = 'cardio' | 'strength' | 'hiit' | 'running' | 'walking' | 'swimming' | 'cycling' | 'football' | 'home' | 'custom';
+export type WorkoutType = 'cardio' | 'strength' | 'running' | 'walking' | 'swimming' | 'cycling' | 'football' | 'home' | 'custom';
 
 export interface WorkoutRecord {
   id: string;

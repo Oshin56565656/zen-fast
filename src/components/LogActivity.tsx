@@ -206,7 +206,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
         }
         
         const normalizedType = result.type ? result.type.toLowerCase() as WorkoutType : workoutType;
-        const validTypes: WorkoutType[] = ['cardio', 'strength', 'hiit', 'running', 'walking', 'swimming', 'cycling', 'football', 'home', 'custom'];
+        const validTypes: WorkoutType[] = ['cardio', 'strength', 'running', 'walking', 'swimming', 'cycling', 'football', 'home', 'custom'];
         const finalType = validTypes.includes(normalizedType) ? normalizedType : 'custom';
         
         const normalizedIntensity = result.intensity ? result.intensity.toLowerCase() as WorkoutIntensity : workoutIntensity;
@@ -1495,8 +1495,8 @@ const LogActivity: React.FC<LogActivityProps> = ({
             <div className="space-y-4">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Workout Type</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {(['cardio', 'strength', 'hiit', 'running', 'walking', 'swimming', 'cycling', 'football', 'home', 'custom'] as WorkoutType[]).map((t) => (
+                <div className="grid grid-cols-3 gap-2">
+                  {(['cardio', 'strength', 'running', 'walking', 'swimming', 'cycling', 'football', 'home', 'custom'] as WorkoutType[]).map((t) => (
                     <button
                       key={t}
                       type="button"
@@ -1505,8 +1505,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                         "py-2 px-3 rounded-xl border transition-all capitalize text-[10px] font-bold tracking-wider",
                         workoutType === t 
                           ? 'bg-primary/20 border-primary text-primary' 
-                          : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10',
-                        t === 'custom' && "col-span-2 sm:col-span-3"
+                          : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
                       )}
                     >
                       {t === 'custom' ? 'Custom Input' : t.replace('-', ' ')}
@@ -2167,7 +2166,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                           <div className="space-y-2">
                             <label className="text-[10px] font-black text-white/40 uppercase tracking-widest">Type</label>
                             <div className="grid grid-cols-3 gap-2">
-                              {(['cardio', 'strength', 'hiit', 'running', 'walking', 'swimming', 'cycling', 'football', 'home', 'custom'] as const).map(t => (
+                              {(['cardio', 'strength', 'running', 'walking', 'swimming', 'cycling', 'football', 'home', 'custom'] as const).map(t => (
                                 <button
                                   key={t}
                                   onClick={() => setEditingData({ ...editingData, type: t })}
