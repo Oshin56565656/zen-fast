@@ -2,7 +2,7 @@ import React, { FC, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { cn, formatDurationShort } from '../lib/utils';
 import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info, Download, ChevronDown, User, Target, Settings as SettingsIcon, Database, Brain, Plus, Clock, RefreshCw } from 'lucide-react';
-import { FastRecord, MealRecord, WorkoutRecord, SleepRecord } from '../types';
+import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, MuscularityLevel } from '../types';
 
 interface SettingsProps {
   targetHours: number;
@@ -13,10 +13,12 @@ interface SettingsProps {
   weight?: number;
   age?: number;
   sex?: 'male' | 'female' | 'other';
+  muscularity?: MuscularityLevel;
   onHeightChange: (height: number) => Promise<void>;
   onWeightChange: (weight: number) => Promise<void>;
   onAgeChange: (age: number) => Promise<void>;
   onSexChange: (sex: 'male' | 'female' | 'other') => Promise<void>;
+  onMuscularityChange: (level: MuscularityLevel) => Promise<void>;
   waterGoal?: number;
   onWaterGoalChange: (goal: number) => Promise<void>;
   accentColor?: string;
@@ -115,10 +117,12 @@ export const Settings: FC<SettingsProps> = ({
   weight, 
   age,
   sex,
+  muscularity,
   onHeightChange, 
   onWeightChange, 
   onAgeChange,
   onSexChange,
+  onMuscularityChange,
   waterGoal = 2000,
   onWaterGoalChange,
   accentColor = '#f97316',
@@ -529,6 +533,20 @@ export const Settings: FC<SettingsProps> = ({
           </div>
 
           <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Muscularity</label>
+              <select
+                value={muscularity || 'average'}
+                onChange={(e) => onMuscularityChange(e.target.value as any)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors appearance-none"
+              >
+                <option value="low" className="bg-background">Lean/Low Muscle</option>
+                <option value="average" className="bg-background">Average</option>
+                <option value="above_average" className="bg-background">Above Average</option>
+                <option value="muscular" className="bg-background">Muscular</option>
+                <option value="highly_muscular" className="bg-background">Highly Muscular</option>
+              </select>
+            </div>
             <div className="space-y-2">
               <label className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Water Goal (ml)</label>
               <input

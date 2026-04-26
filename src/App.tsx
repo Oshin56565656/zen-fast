@@ -47,6 +47,7 @@ export default function App() {
     deleteWeight,
     setHeight,
     setWeight,
+    setMuscularity,
     setAge,
     setSex,
     setWaterGoal,
@@ -143,17 +144,18 @@ export default function App() {
         );
       case 'coach':
         return (
-          <AICoach 
-            history={history} 
-            meals={meals} 
-            workouts={workouts} 
-            sleep={sleep}
-            water={water}
-            moods={moods}
-            height={state.height}
-            weight={state.weight}
-            age={state.age}
-            sex={state.sex}
+            <AICoach 
+              history={history} 
+              meals={meals} 
+              workouts={workouts} 
+              sleep={sleep}
+              water={water}
+              moods={moods}
+              height={state.height}
+              weight={state.weight}
+              muscularity={state.muscularity}
+              age={state.age}
+              sex={state.sex}
             waterGoal={state.waterGoal}
             saveDailySummary={saveDailySummary}
             aiInsights={aiInsights}
@@ -212,10 +214,12 @@ export default function App() {
               onTargetEndTimeChange={setTargetEndTime}
               height={state.height}
               weight={state.weight}
+              muscularity={state.muscularity}
               age={state.age}
               sex={state.sex}
               onHeightChange={setHeight}
               onWeightChange={setWeight}
+              onMuscularityChange={setMuscularity}
               onAgeChange={setAge}
               onSexChange={setSex}
               waterGoal={state.waterGoal}

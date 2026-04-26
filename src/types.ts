@@ -10,6 +10,8 @@ export interface FastRecord {
   createdAt?: any; // Firestore timestamp
 }
 
+export type MuscularityLevel = 'low' | 'average' | 'above_average' | 'muscular' | 'highly_muscular';
+
 export interface CurrentFastState {
   startTime: number | null;
   endTime: number | null;
@@ -20,6 +22,7 @@ export interface CurrentFastState {
   totalPausedTime: number; // in milliseconds
   height?: number; // in cm
   weight?: number; // in kg
+  muscularity?: MuscularityLevel;
   sex?: 'male' | 'female' | 'other';
   age?: number;
   waterGoal?: number; // in ml

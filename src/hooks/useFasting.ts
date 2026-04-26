@@ -3,7 +3,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { formatDurationShort } from '../lib/utils';
 import { format } from 'date-fns';
 import { getFastingInsights } from '../services/aiService';
-import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, DailySummary, AIInsightsSync, Supplement, SupplementLog, MoodRecord, MoodScore, EnergyLevel } from '../types';
+import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, DailySummary, AIInsightsSync, Supplement, SupplementLog, MoodRecord, MoodScore, EnergyLevel, MuscularityLevel } from '../types';
 import { 
   auth, 
   db, 
@@ -499,10 +499,22 @@ export function useFasting() {
             // Mifflin-St Jeor Equation
             bmr = (10 * state.weight) + (6.25 * state.height) - (5 * state.age) + s;
             
+            // Adjust BMR based on muscularity
+            // baseline is avg (1.0)
+            const muscularityMultipliers: Record<string, number> = {
+              'low': 0.9,
+              'average': 1.0,
+              'above_average': 1.1,
+              'muscular': 1.2,
+              'highly_muscular': 1.3
+            };
+            const multiplier = muscularityMultipliers[state.muscularity || 'average'] || 1.0;
+            bmr = bmr * multiplier;
+
             // Separate NEAT (usually 15-30% of TDEE, but we'll use a conservative factor)
             neat = bmr * 0.2; 
             
-            // Apply conservative bias (underestimate by 10% as requested)
+            // Apply conservative bias (underestimate by 10% as requested by user)
             bmr = Math.round(bmr * 0.9);
             neat = Math.round(neat * 0.9);
           }
@@ -1351,6 +1363,7 @@ export function useFasting() {
     parseWorkoutText,
     setHeight: (height: number) => updateState({ height }),
     setWeight: (weight: number) => updateState({ weight }),
+    setMuscularity: (muscularity: MuscularityLevel) => updateState({ muscularity }),
     setAge: (age: number) => updateState({ age }),
     setSex: (sex: 'male' | 'female' | 'other') => updateState({ sex }),
     setWaterGoal: (goal: number) => updateState({ waterGoal: goal }),

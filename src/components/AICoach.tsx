@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, TrendingUp, Target, RefreshCw, Utensils, Dumbbell, Send, MessageCircle, Clock } from 'lucide-react';
 import { getFastingInsights, chatWithCoach } from '../services/aiService';
-import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, DailySummary, AIInsight, CalorieGuess, CaloriesBurned, AIInsightsSync, Supplement, SupplementLog, MoodRecord } from '../types';
+import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, DailySummary, AIInsight, CalorieGuess, CaloriesBurned, AIInsightsSync, Supplement, SupplementLog, MoodRecord, MuscularityLevel } from '../types';
 import { cn } from '../lib/utils';
 import { formatTime, formatDate } from '../lib/utils';
 
@@ -15,6 +15,7 @@ interface AICoachProps {
   moods: MoodRecord[];
   height?: number;
   weight?: number;
+  muscularity?: MuscularityLevel;
   sex?: string;
   age?: number;
   waterGoal?: number;
@@ -32,9 +33,10 @@ const ChatBox: React.FC<{
   onUpdateMessages: (messages: { role: 'user' | 'model'; text: string }[]) => void;
   height?: number;
   weight?: number;
+  muscularity?: MuscularityLevel;
   sex?: string;
   age?: number;
-}> = ({ insight, onUpdateMessages, height, weight, sex, age }) => {
+}> = ({ insight, onUpdateMessages, height, weight, muscularity, sex, age }) => {
   const [messages, setMessages] = useState<{ role: 'user' | 'model'; text: string }[]>(insight.messages || []);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -50,7 +52,7 @@ const ChatBox: React.FC<{
     setLoading(true);
 
     try {
-      const response = await chatWithCoach(insight, userMsg, messages, height, weight, sex, age);
+      const response = await chatWithCoach(insight, userMsg, messages, height, weight, sex, age, muscularity);
       const finalMessages: { role: 'user' | 'model'; text: string }[] = [...newMessages, { role: 'model', text: response }];
       setMessages(finalMessages);
       onUpdateMessages(finalMessages);
@@ -106,7 +108,7 @@ const ChatBox: React.FC<{
   );
 };
 
-const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, water, moods, height, weight, sex, age, waterGoal, saveDailySummary, aiInsights, saveAIInsights, supplements, supplementLogs }) => {
+const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, water, moods, height, weight, muscularity, sex, age, waterGoal, saveDailySummary, aiInsights, saveAIInsights, supplements, supplementLogs }) => {
     const [insights, setInsights] = useState<AIInsight[]>([]);
     const [calorieGuess, setCalorieGuess] = useState<CalorieGuess | null>(null);
     const [caloriesBurned, setCaloriesBurned] = useState<CaloriesBurned | null>(null);
@@ -196,7 +198,22 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
       setLoading(true);
       try {
         const userLocalTime = new Date().toLocaleString();
-        const result = await getFastingInsights(history, meals, workouts, sleep, water, userLocalTime, height, weight, sex, age, supplements, supplementLogs, moods);
+        const result = await getFastingInsights(
+          history, 
+          meals, 
+          workouts, 
+          sleep, 
+          water, 
+          userLocalTime, 
+          height, 
+          weight, 
+          sex, 
+          age, 
+          supplements, 
+          supplementLogs, 
+          moods,
+          muscularity
+        );
         
         if (Array.isArray(result)) {
           setInsights(result);
@@ -455,7 +472,7 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                       </div>
                     )}
 
-                    {calorieGuess.foods && calorieGuess.foods.length > 0 ? (
+                    {calorieGuess.foods && calorieGuess.foods.length > 0 && (
                       <div className="space-y-2 mb-4">
                         <div className="flex items-center justify-between text-[10px] font-black text-white/20 uppercase tracking-widest px-1">
                           <span>Food Item & Time</span>
@@ -483,10 +500,6 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                           ))}
                         </div>
                       </div>
-                    ) : (
-                      <p className="text-white/70 text-xs leading-relaxed italic mb-4">
-                        "{calorieGuess.reasoning}"
-                      </p>
                     )}
                     <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
                       <Sparkles size={40} className="text-orange-500" />
@@ -524,7 +537,7 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                         </div>
                       </div>
                     )}
-                    {caloriesBurned.activities && caloriesBurned.activities.length > 0 ? (
+                    {caloriesBurned.activities && caloriesBurned.activities.length > 0 && (
                       <div className="space-y-2 mb-4">
                         <div className="flex items-center justify-between text-[10px] font-black text-white/20 uppercase tracking-widest px-1">
                           <span>Activity & Time</span>
@@ -548,10 +561,6 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                           ))}
                         </div>
                       </div>
-                    ) : (
-                      <p className="text-white/70 text-xs leading-relaxed italic mb-4">
-                        "{caloriesBurned.reasoning}"
-                      </p>
                     )}
                     <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
                       <Sparkles size={40} className="text-orange-500" />
@@ -588,6 +597,7 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                       insight={insight} 
                       height={height}
                       weight={weight}
+                      muscularity={muscularity}
                       sex={sex}
                       age={age}
                       onUpdateMessages={(msgs) => {

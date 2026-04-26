@@ -43,7 +43,8 @@ export async function getFastingInsights(
   age?: number,
   supplements: Supplement[] = [],
   supplementLogs: SupplementLog[] = [],
-  moods: MoodRecord[] = []
+  moods: MoodRecord[] = [],
+  muscularity?: string
 ): Promise<InsightResponse | []> {
   if (history.length === 0 && meals.length === 0 && workouts.length === 0 && sleep.length === 0 && water.length === 0 && supplements.length === 0 && moods.length === 0) {
     return [];
@@ -154,6 +155,7 @@ export async function getFastingInsights(
     - Age: ${age || 'Not provided'}
     - Height: ${height ? `${height}cm` : 'Not provided'}
     - Weight: ${weight ? `${weight}kg` : 'Not provided'}
+    - Physique/Muscularity: ${muscularity || 'Average'}
     
     Analyze this user's health data and provide 3-4 concise, personalized insights.
     If any meals or workouts have 'calories' or 'calorieBurn' values listed, treat them as the primary source of truth for your summary calculations. Do not recalculate them unless you are specifically spotting a massive discrepancy that warrants a coaching tip.
@@ -167,7 +169,13 @@ export async function getFastingInsights(
     
     IMPORTANT for Calories Burned:
     - You MUST calculate BMR (Basal Metabolic Rate) and NEAT (Non-Exercise Activity Thermogenesis) SEPARATELY.
-    - Use the user's weight, height, age, and sex to calculate a realistic yet conservative BMR (Mifflin-St Jeor equation preferred).
+    - Use the user's weight, height, age, sex, and muscularity to calculate a realistic yet conservative BMR (Mifflin-St Jeor equation preferred, adjusted for muscularity).
+    - Muscularity definitions:
+      - 'low': Lower than average muscle mass.
+      - 'average': Standard population average.
+      - 'above_average': Regularly trains, visible muscle definition.
+      - 'muscular': High muscle mass, very active trainee.
+      - 'highly_muscular': Elite athlete/bodybuilder muscle levels.
     - NEAT should cover general daily movement not captured in logged workouts.
     - Both BMR and NEAT should be slightly underestimated (around 10-15% safety margin) as requested by the user.
     
@@ -325,7 +333,8 @@ export async function chatWithCoach(
   height?: number,
   weight?: number,
   sex?: string,
-  age?: number
+  age?: number,
+  muscularity?: string
 ) {
   const ai = getAIInstance();
   
@@ -353,6 +362,7 @@ User Profile:
 - Age: ${age || 'Not provided'}
 - Height: ${height ? `${height}cm` : 'Not provided'}
 - Weight: ${weight ? `${weight}kg` : 'Not provided'}
+- Physique/Muscularity: ${muscularity || 'Average'}
 
 Context Insight:
 Category: ${insight.category}
