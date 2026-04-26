@@ -119,6 +119,8 @@ export interface DailySummary {
   date: string; // YYYY-MM-DD
   intake: number;
   burn: number;
+  bmr?: number;
+  neat?: number;
   waterTotal: number;
   waterGoal: number;
   isDeficit: boolean;
@@ -160,6 +162,8 @@ export interface CalorieGuess {
 export interface CaloriesBurned {
   amount: number;
   reasoning: string;
+  bmr?: number;
+  neat?: number;
   asOfTime?: string;
   activities?: { name: string; calories: number; duration?: number; time?: string }[];
 }

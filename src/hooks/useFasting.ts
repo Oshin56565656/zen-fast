@@ -491,28 +491,39 @@ export function useFasting() {
         try {
           const summaryRef = doc(db, 'users', user.uid, 'dailySummaries', dateStr);
           
-          // Calculate BMR for context
-          let baseline = 2000;
+          // Calculate BMR and NEAT separately for context
+          let bmr = 1500;
+          let neat = 300;
           if (state.weight && state.height && state.age) {
             const s = state.sex === 'female' ? -161 : 5;
-            baseline = (10 * state.weight) + (6.25 * state.height) - (5 * state.age) + s;
-            baseline = Math.round(baseline * 1.2); // NEAT factor
+            // Mifflin-St Jeor Equation
+            bmr = (10 * state.weight) + (6.25 * state.height) - (5 * state.age) + s;
+            
+            // Separate NEAT (usually 15-30% of TDEE, but we'll use a conservative factor)
+            neat = bmr * 0.2; 
+            
+            // Apply conservative bias (underestimate by 10% as requested)
+            bmr = Math.round(bmr * 0.9);
+            neat = Math.round(neat * 0.9);
           }
 
           const updateData: any = {
             date: dateStr,
+            bmr,
+            neat,
             updatedAt: Timestamp.now()
           };
 
           // ONLY update calorie fields if it's today (active tracking)
           // OR if we actually have raw calorie data to contribute
           if (isToday || dayIntake > 0 || dayWorkoutBurn > 0) {
-            // Respect manual logs for intake, underplay burn by 10% for a safety margin
-            const biasedBurn = Math.round((dayWorkoutBurn + baseline) * 0.9);
+            // Respect manual logs for intake, underplay workout burn by 10% for a safety margin
+            const biasedWorkoutBurn = Math.round(dayWorkoutBurn * 0.9);
+            const totalBurn = bmr + neat + biasedWorkoutBurn;
             
             updateData.intake = dayIntake;
-            updateData.burn = biasedBurn;
-            updateData.isDeficit = dayIntake < biasedBurn;
+            updateData.burn = totalBurn;
+            updateData.isDeficit = dayIntake < totalBurn;
           }
 
           await setDoc(summaryRef, updateData, { merge: true });
@@ -1285,6 +1296,8 @@ export function useFasting() {
               date: dateStr,
               intake: result.calorieGuess.amount,
               burn: result.caloriesBurned.amount,
+              bmr: result.caloriesBurned.bmr,
+              neat: result.caloriesBurned.neat,
               waterTotal: todayWater,
               waterGoal: state.waterGoal || 2000,
               isDeficit: (result.calorieGuess.amount - result.caloriesBurned.amount) <= 0,

@@ -511,6 +511,19 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                         <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest">kcal</p>
                       </div>
                     </div>
+
+                    {(caloriesBurned.bmr || caloriesBurned.neat) && (
+                      <div className="grid grid-cols-2 gap-2 mb-4">
+                        <div className="bg-white/5 p-2 rounded-xl border border-white/5 text-center">
+                          <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">BMR (24h)</p>
+                          <p className="text-sm font-black text-white">{caloriesBurned.bmr} kcal</p>
+                        </div>
+                        <div className="bg-white/5 p-2 rounded-xl border border-white/5 text-center">
+                          <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">NEAT (24h)</p>
+                          <p className="text-sm font-black text-white">{caloriesBurned.neat} kcal</p>
+                        </div>
+                      </div>
+                    )}
                     {caloriesBurned.activities && caloriesBurned.activities.length > 0 ? (
                       <div className="space-y-2 mb-4">
                         <div className="flex items-center justify-between text-[10px] font-black text-white/20 uppercase tracking-widest px-1">

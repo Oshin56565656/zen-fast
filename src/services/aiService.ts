@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, GenerateContentResponse } from "@google/genai";
-import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, Supplement, SupplementLog, MoodRecord } from "../types";
+import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, Supplement, SupplementLog, MoodRecord, CalorieGuess, CaloriesBurned, AIInsight } from "../types";
 
 const getAIInstance = () => {
   let apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
@@ -25,25 +25,9 @@ const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, errorMessage: st
 };
 
 interface InsightResponse {
-  insights: {
-    category: string;
-    title: string;
-    content: string;
-    impact: 'positive' | 'neutral' | 'improvement';
-  }[];
-  calorieGuess?: {
-    amount: number;
-    reasoning: string;
-    macros?: {
-      protein: number;
-      carbs: number;
-      fats: number;
-    };
-  };
-  caloriesBurned?: {
-    amount: number;
-    reasoning: string;
-  };
+  insights: AIInsight[];
+  calorieGuess: CalorieGuess;
+  caloriesBurned: CaloriesBurned;
 }
 
 export async function getFastingInsights(
@@ -181,6 +165,12 @@ export async function getFastingInsights(
     4. How their mood and energy scores correlate with their diet and fasting success.
     5. Calorie & Macro Estimation.
     
+    IMPORTANT for Calories Burned:
+    - You MUST calculate BMR (Basal Metabolic Rate) and NEAT (Non-Exercise Activity Thermogenesis) SEPARATELY.
+    - Use the user's weight, height, age, and sex to calculate a realistic yet conservative BMR (Mifflin-St Jeor equation preferred).
+    - NEAT should cover general daily movement not captured in logged workouts.
+    - Both BMR and NEAT should be slightly underestimated (around 10-15% safety margin) as requested by the user.
+    
     CRITICAL: 
     1. Use "User's Current Local Time" as primary reference.
     2. Suggest specific timing for their existing supplements to maximize efficacy.
@@ -210,6 +200,8 @@ export async function getFastingInsights(
       },
       "caloriesBurned": { 
         "amount": number, 
+        "bmr": number,
+        "neat": number,
         "reasoning": "string",
         "asOfTime": "string",
         "activities": [
@@ -225,7 +217,7 @@ export async function getFastingInsights(
         model: "gemini-flash-latest",
         contents: prompt,
         config: {
-          systemInstruction: "You are an expert fasting and fitness coach. Provide data-driven, structured insights based on the user's history and physical profile. IMPORTANT: To provide a safe margin for weight loss, you MUST be conservative: 1. For 'calorieGuess' (intake), ONLY include calories from meals explicitly logged by the user today. If the user provided specific calorie values in the logs, use those EXACT values without any inflation. 2. Understate calories burned (burnGuess) by approximately 10-15% below your raw calculation for the FULL 24-HOUR projection (BMR + NEAT + logged workouts). DO NOT pro-rate burn based on time. NEVER hallucinate data. ALWAYS use 12-hour time format and include 'asOfTime'.",
+          systemInstruction: "You are an expert fasting and fitness coach. Provide data-driven, structured insights based on the user's history and physical profile. IMPORTANT: To provide a safe margin for weight loss, you MUST be conservative: 1. For 'calorieGuess' (intake), ONLY include calories from meals explicitly logged by the user today. If the user provided specific calorie values in the logs, use those EXACT values without any inflation. 2. For 'caloriesBurned', you MUST calculate BMR and NEAT separately and include them in the response. Understate all burn components (BMR, NEAT, and logged workouts) by approximately 10-15% below your raw calculation for a FULL 24-HOUR projection. DO NOT pro-rate burn based on time. NEVER hallucinate data. ALWAYS use 12-hour time format and include 'asOfTime'.",
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
@@ -279,7 +271,9 @@ export async function getFastingInsights(
               caloriesBurned: {
                 type: Type.OBJECT,
                 properties: {
-                  amount: { type: Type.NUMBER, description: "Estimated calories burned today (BMR + Activity)" },
+                  amount: { type: Type.NUMBER, description: "Total estimated calories burned today (BMR + NEAT + Workouts)" },
+                  bmr: { type: Type.NUMBER, description: "Basal Metabolic Rate calculated for 24h" },
+                  neat: { type: Type.NUMBER, description: "Non-Exercise Activity Thermogenesis for 24h" },
                   reasoning: { type: Type.STRING, description: "Very brief explanation" },
                   asOfTime: { type: Type.STRING, description: "The local time for which this burn is calculated" },
                   activities: {
@@ -296,7 +290,7 @@ export async function getFastingInsights(
                     }
                   }
                 },
-                required: ["amount", "reasoning", "activities", "asOfTime"]
+                required: ["amount", "bmr", "neat", "reasoning", "activities", "asOfTime"]
               }
             },
             required: ["insights", "calorieGuess", "caloriesBurned"]
