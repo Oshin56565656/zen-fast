@@ -529,9 +529,9 @@ export function useFasting() {
           // ONLY update calorie fields if it's today (active tracking)
           // OR if we actually have raw calorie data to contribute
           if (isToday || dayIntake > 0 || dayWorkoutBurn > 0) {
-            // Respect manual logs for intake, underplay workout burn by 10% for a safety margin
-            const biasedWorkoutBurn = Math.round(dayWorkoutBurn * 0.9);
-            const totalBurn = bmr + neat + biasedWorkoutBurn;
+            // Respect manual logs for both intake and workout burn. 
+            // Workout burn already has the user-requested 10% margin applied at the time of logging.
+            const totalBurn = bmr + neat + dayWorkoutBurn;
             
             updateData.intake = dayIntake;
             updateData.burn = totalBurn;

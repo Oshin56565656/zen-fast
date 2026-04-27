@@ -177,7 +177,9 @@ export async function getFastingInsights(
       - 'muscular': High muscle mass, very active trainee.
       - 'highly_muscular': Elite athlete/bodybuilder muscle levels.
     - NEAT should cover general daily movement not captured in logged workouts.
-    - Both BMR and NEAT should be slightly underestimated (around 10-15% safety margin) as requested by the user.
+    - FOR LOGGED WORKOUTS/MEALS: If the input data contains a 'burn' or 'calories' value, Use that EXACT value. Do not apply further reductions to it, as it is already considered a final, conservative log.
+    - FOR BMR/NEAT: Understate your raw calculation by exactly 10% (safety margin) as requested.
+    - Total 'amount' = Logged Workout Burn + Adjusted BMR + Adjusted NEAT.
     
     CRITICAL: 
     1. Use "User's Current Local Time" as primary reference.
@@ -225,7 +227,7 @@ export async function getFastingInsights(
         model: "gemini-flash-latest",
         contents: prompt,
         config: {
-          systemInstruction: "You are an expert fasting and fitness coach. Provide data-driven, structured insights based on the user's history and physical profile. IMPORTANT: To provide a safe margin for weight loss, you MUST be conservative: 1. For 'calorieGuess' (intake), ONLY include calories from meals explicitly logged by the user today. If the user provided specific calorie values in the logs, use those EXACT values without any inflation. 2. For 'caloriesBurned', you MUST calculate BMR and NEAT separately and include them in the response. Understate all burn components (BMR, NEAT, and logged workouts) by approximately 10-15% below your raw calculation for a FULL 24-HOUR projection. DO NOT pro-rate burn based on time. NEVER hallucinate data. ALWAYS use 12-hour time format and include 'asOfTime'.",
+          systemInstruction: "You are an expert fasting and fitness coach. Provide data-driven, structured insights based on the user's history and physical profile. IMPORTANT: 1. Use the EXACT calorie values provided in the logs for meals and workouts without any further reduction or inflation. 2. Calculate BMR and NEAT separately and include them in the response. Understate BMR and NEAT by exactly 10% below your raw calculation for a FULL 24-HOUR projection. 3. Total burn amount must be the sum of these adjusted BMR/NEAT and logged workouts. NEVER hallucinate data. ALWAYS use 12-hour time format and include 'asOfTime'.",
           responseMimeType: "application/json",
           responseSchema: {
             type: Type.OBJECT,
