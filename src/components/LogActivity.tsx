@@ -272,7 +272,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
       const newMultiplier = multipliers[workoutIntensity] || 1.0;
       
       // Calculate adjusted calories: (Original / Original Multiplier) * New Multiplier
-      finalCalorieBurn = Math.round((finalCalorieBurn / originalMultiplier) * newMultiplier);
+      finalCalorieBurn = Math.ceil((finalCalorieBurn / originalMultiplier) * newMultiplier);
     }
 
     onLogWorkout(

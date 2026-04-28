@@ -515,8 +515,8 @@ export function useFasting() {
             neat = bmr * 0.2; 
             
             // Apply conservative bias (underestimate by 10% as requested by user)
-            bmr = Math.round(bmr * 0.9);
-            neat = Math.round(neat * 0.9);
+            bmr = Math.ceil(bmr * 0.9);
+            neat = Math.ceil(neat * 0.9);
           }
 
           const updateData: any = {

@@ -337,7 +337,7 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                   Cancel
                 </button>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <div className="grid grid-cols-1 gap-2">
                 {(['sedentary', 'lightly_active', 'moderately_active', 'very_active', 'extra_active'] as DailyActivityLevel[]).map(level => (
                   <button
                     key={level}

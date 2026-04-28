@@ -181,6 +181,7 @@ export async function getFastingInsights(
       - 'extra_active': ~70% of BMR.
     - FOR LOGGED WORKOUTS/MEALS: If the input data contains a 'burn' or 'calories' value, Use that EXACT value. Do not apply further reductions to it, as it is already considered a final, conservative log.
     - FOR BMR/NEAT: Understate your final raw calculation by exactly 10% (safety margin) as requested.
+    - IMPORTANT: Ensure ALL calorie values (BMR, NEAT, total amount, calorieGuess) are whole numbers. If there are decimals, ROUND THEM UP.
     - Total 'amount' = Logged Workout Burn + Adjusted BMR + Adjusted NEAT.
     
     CRITICAL: 
@@ -499,7 +500,7 @@ export async function estimateWorkoutCalories(type: string, intensity: string, d
 
     const result = JSON.parse(response.text || "{}");
     // Apply the user's requested conservative bias (underplay burn by 10-15%) everywhere
-    return Math.round((result.calories || 0) * 0.9);
+    return Math.ceil((result.calories || 0) * 0.9);
   } catch (error) {
     console.error("Estimate Workout Calories Error:", error);
     return 0;
