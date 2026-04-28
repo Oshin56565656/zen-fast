@@ -172,21 +172,15 @@ export async function getFastingInsights(
     IMPORTANT for Calories Burned:
     - You MUST calculate BMR (Basal Metabolic Rate) and NEAT (Non-Exercise Activity Thermogenesis) SEPARATELY.
     - Use the user's weight, height, age, sex, and muscularity to calculate a realistic yet conservative BMR (Mifflin-St Jeor equation preferred, adjusted for muscularity).
-    - NEAT should cover general daily movement not captured in logged workouts and MUST be based on the provided activity level (${activityLevel || 'average'}).
-    - Activity Level Definitions for NEAT:
-      - 'sedentary': Minimal movement (desk job, mostly sitting).
-      - 'lightly_active': Light work, some walking, standing during the day.
-      - 'moderately_active': Active day, much walking, constant standing, light labor.
-      - 'very_active': Heavy movement, manual labor, physical job all day.
-      - 'extra_active': Extreme physical demand, high active movement baseline.
-    - Muscularity definitions:
-      - 'low': Lower than average muscle mass.
-      - 'average': Standard population average.
-      - 'above_average': Regularly trains, visible muscle definition.
-      - 'muscular': High muscle mass, very active trainee.
-      - 'highly_muscular': Elite athlete/bodybuilder muscle levels.
+    - NEAT should cover general daily movement not captured in logged workouts and MUST be based on the provided activity level (${activityLevel || 'average'}). 
+    - Use these CONSERVATIVE NEAT multipliers (percentage of BMR):
+      - 'sedentary': ~10% of BMR.
+      - 'lightly_active': ~20% of BMR.
+      - 'moderately_active': ~35% of BMR.
+      - 'very_active': ~50% of BMR.
+      - 'extra_active': ~70% of BMR.
     - FOR LOGGED WORKOUTS/MEALS: If the input data contains a 'burn' or 'calories' value, Use that EXACT value. Do not apply further reductions to it, as it is already considered a final, conservative log.
-    - FOR BMR/NEAT: Understate your raw calculation by exactly 10% (safety margin) as requested.
+    - FOR BMR/NEAT: Understate your final raw calculation by exactly 10% (safety margin) as requested.
     - Total 'amount' = Logged Workout Burn + Adjusted BMR + Adjusted NEAT.
     
     CRITICAL: 
