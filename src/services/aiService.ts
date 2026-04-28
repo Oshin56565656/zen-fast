@@ -44,7 +44,8 @@ export async function getFastingInsights(
   supplements: Supplement[] = [],
   supplementLogs: SupplementLog[] = [],
   moods: MoodRecord[] = [],
-  muscularity?: string
+  muscularity?: string,
+  activityLevel?: string
 ): Promise<InsightResponse | []> {
   if (history.length === 0 && meals.length === 0 && workouts.length === 0 && sleep.length === 0 && water.length === 0 && supplements.length === 0 && moods.length === 0) {
     return [];
@@ -156,6 +157,7 @@ export async function getFastingInsights(
     - Height: ${height ? `${height}cm` : 'Not provided'}
     - Weight: ${weight ? `${weight}kg` : 'Not provided'}
     - Physique/Muscularity: ${muscularity || 'Average'}
+    - Today's Activity Level (non-workout movement): ${activityLevel || 'Average'}
     
     Analyze this user's health data and provide 3-4 concise, personalized insights.
     If any meals or workouts have 'calories' or 'calorieBurn' values listed, treat them as the primary source of truth for your summary calculations. Do not recalculate them unless you are specifically spotting a massive discrepancy that warrants a coaching tip.
@@ -170,13 +172,19 @@ export async function getFastingInsights(
     IMPORTANT for Calories Burned:
     - You MUST calculate BMR (Basal Metabolic Rate) and NEAT (Non-Exercise Activity Thermogenesis) SEPARATELY.
     - Use the user's weight, height, age, sex, and muscularity to calculate a realistic yet conservative BMR (Mifflin-St Jeor equation preferred, adjusted for muscularity).
+    - NEAT should cover general daily movement not captured in logged workouts and MUST be based on the provided activity level (${activityLevel || 'average'}).
+    - Activity Level Definitions for NEAT:
+      - 'sedentary': Minimal movement (desk job, mostly sitting).
+      - 'lightly_active': Light work, some walking, standing during the day.
+      - 'moderately_active': Active day, much walking, constant standing, light labor.
+      - 'very_active': Heavy movement, manual labor, physical job all day.
+      - 'extra_active': Extreme physical demand, high active movement baseline.
     - Muscularity definitions:
       - 'low': Lower than average muscle mass.
       - 'average': Standard population average.
       - 'above_average': Regularly trains, visible muscle definition.
       - 'muscular': High muscle mass, very active trainee.
       - 'highly_muscular': Elite athlete/bodybuilder muscle levels.
-    - NEAT should cover general daily movement not captured in logged workouts.
     - FOR LOGGED WORKOUTS/MEALS: If the input data contains a 'burn' or 'calories' value, Use that EXACT value. Do not apply further reductions to it, as it is already considered a final, conservative log.
     - FOR BMR/NEAT: Understate your raw calculation by exactly 10% (safety margin) as requested.
     - Total 'amount' = Logged Workout Burn + Adjusted BMR + Adjusted NEAT.
@@ -336,7 +344,8 @@ export async function chatWithCoach(
   weight?: number,
   sex?: string,
   age?: number,
-  muscularity?: string
+  muscularity?: string,
+  activityLevel?: string
 ) {
   const ai = getAIInstance();
   
@@ -365,6 +374,7 @@ User Profile:
 - Height: ${height ? `${height}cm` : 'Not provided'}
 - Weight: ${weight ? `${weight}kg` : 'Not provided'}
 - Physique/Muscularity: ${muscularity || 'Average'}
+- Daily Activity Level: ${activityLevel || 'Average'}
 
 Context Insight:
 Category: ${insight.category}

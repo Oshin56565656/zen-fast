@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, TrendingUp, Target, RefreshCw, Utensils, Dumbbell, Send, MessageCircle, Clock } from 'lucide-react';
 import { getFastingInsights, chatWithCoach } from '../services/aiService';
-import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, DailySummary, AIInsight, CalorieGuess, CaloriesBurned, AIInsightsSync, Supplement, SupplementLog, MoodRecord, MuscularityLevel } from '../types';
+import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, DailySummary, AIInsight, CalorieGuess, CaloriesBurned, AIInsightsSync, Supplement, SupplementLog, MoodRecord, MuscularityLevel, DailyActivityLevel } from '../types';
 import { cn } from '../lib/utils';
 import { formatTime, formatDate } from '../lib/utils';
 
@@ -34,9 +34,10 @@ const ChatBox: React.FC<{
   height?: number;
   weight?: number;
   muscularity?: MuscularityLevel;
+  activityLevel?: string;
   sex?: string;
   age?: number;
-}> = ({ insight, onUpdateMessages, height, weight, muscularity, sex, age }) => {
+}> = ({ insight, onUpdateMessages, height, weight, muscularity, activityLevel, sex, age }) => {
   const [messages, setMessages] = useState<{ role: 'user' | 'model'; text: string }[]>(insight.messages || []);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -52,7 +53,7 @@ const ChatBox: React.FC<{
     setLoading(true);
 
     try {
-      const response = await chatWithCoach(insight, userMsg, messages, height, weight, sex, age, muscularity);
+      const response = await chatWithCoach(insight, userMsg, messages, height, weight, sex, age, muscularity, activityLevel);
       const finalMessages: { role: 'user' | 'model'; text: string }[] = [...newMessages, { role: 'model', text: response }];
       setMessages(finalMessages);
       onUpdateMessages(finalMessages);
@@ -113,6 +114,8 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
     const [calorieGuess, setCalorieGuess] = useState<CalorieGuess | null>(null);
     const [caloriesBurned, setCaloriesBurned] = useState<CaloriesBurned | null>(null);
     const [lastRefreshed, setLastRefreshed] = useState<number | null>(null);
+    const [showActivitySelector, setShowActivitySelector] = useState(false);
+    const [selectedActivity, setSelectedActivity] = useState<DailyActivityLevel | null>(null);
 
     // Sync local state with firestore insights when they load
     useEffect(() => {
@@ -193,7 +196,7 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
       }
     };
   
-    const fetchInsights = async () => {
+    const fetchInsights = async (activityLevelOverride?: DailyActivityLevel) => {
       setError(null);
       setLoading(true);
       try {
@@ -212,7 +215,8 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
           supplements, 
           supplementLogs, 
           moods,
-          muscularity
+          muscularity,
+          activityLevelOverride || selectedActivity || 'lightly_active'
         );
         
         if (Array.isArray(result)) {
@@ -303,14 +307,57 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
           )}
         </div>
         <button 
-          onClick={fetchInsights}
-          disabled={loading}
+          onClick={() => setShowActivitySelector(true)}
+          disabled={loading || showActivitySelector}
           className="p-4 hover:bg-white/10 bg-white/5 rounded-full transition-all disabled:opacity-50 active:scale-90"
           aria-label="Refresh Insights"
         >
           <RefreshCw className={`text-white/60 ${loading ? 'animate-spin' : ''}`} size={24} />
         </button>
       </div>
+
+      <AnimatePresence>
+        {showActivitySelector && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="bg-white/5 p-6 rounded-3xl border border-white/10 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-white">How active were you today?</h3>
+                  <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Excluding logged workouts</p>
+                </div>
+                <button 
+                  onClick={() => setShowActivitySelector(false)}
+                  className="text-xs text-white/40 hover:text-white"
+                >
+                  Cancel
+                </button>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                {(['sedentary', 'lightly_active', 'moderately_active', 'very_active', 'extra_active'] as DailyActivityLevel[]).map(level => (
+                  <button
+                    key={level}
+                    onClick={() => {
+                      setSelectedActivity(level);
+                      setShowActivitySelector(false);
+                      fetchInsights(level);
+                    }}
+                    className="p-3 bg-white/5 border border-white/5 rounded-xl text-center hover:bg-primary/20 hover:border-primary/40 transition-all group"
+                  >
+                    <p className="text-[10px] font-bold text-white/60 group-hover:text-white capitalize whitespace-nowrap">
+                      {level.replace('_', ' ')}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="space-y-4">
         <AnimatePresence mode="wait">
@@ -598,6 +645,7 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                       height={height}
                       weight={weight}
                       muscularity={muscularity}
+                      activityLevel={selectedActivity || 'lightly_active'}
                       sex={sex}
                       age={age}
                       onUpdateMessages={(msgs) => {

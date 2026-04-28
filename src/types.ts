@@ -11,6 +11,7 @@ export interface FastRecord {
 }
 
 export type MuscularityLevel = 'low' | 'average' | 'above_average' | 'muscular' | 'highly_muscular';
+export type DailyActivityLevel = 'sedentary' | 'lightly_active' | 'moderately_active' | 'very_active' | 'extra_active';
 
 export interface CurrentFastState {
   startTime: number | null;
