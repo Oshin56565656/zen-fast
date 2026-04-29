@@ -584,7 +584,8 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                         </div>
                       </div>
                     )}
-                    {caloriesBurned.activities && caloriesBurned.activities.length > 0 && (
+                    {caloriesBurned.activities && 
+                      caloriesBurned.activities.filter(act => !act.name.includes('Basal Metabolic Rate') && !act.name.includes('Daily Movement (NEAT)')).length > 0 && (
                       <div className="space-y-2 mb-4">
                         <div className="flex items-center justify-between text-[10px] font-black text-white/20 uppercase tracking-widest px-1">
                           <span>Activity & Time</span>
@@ -594,8 +595,10 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                           </div>
                         </div>
                         <div className="space-y-1">
-                          {caloriesBurned.activities.map((act, idx) => (
-                            <div key={idx} className="flex items-center justify-between bg-white/5 rounded-lg p-2 border border-white/5">
+                          {caloriesBurned.activities
+                            .filter(act => !act.name.includes('Basal Metabolic Rate') && !act.name.includes('Daily Movement (NEAT)'))
+                            .map((act, idx) => (
+                              <div key={idx} className="flex items-center justify-between bg-white/5 rounded-lg p-2 border border-white/5">
                               <div className="flex flex-col">
                                 <span className="text-[10px] font-bold text-white truncate max-w-[100px]">{act.name}</span>
                                 {act.time && <span className="text-[8px] text-white/20">{act.time}</span>}
