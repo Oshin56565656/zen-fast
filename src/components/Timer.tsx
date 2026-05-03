@@ -57,6 +57,8 @@ const BreathingBubble = () => {
   const [selectedKey, setSelectedKey] = useState<string>('box');
   const [isActive, setIsActive] = useState(false);
   const [phaseIndex, setPhaseIndex] = useState(0);
+  const [targetCycles, setTargetCycles] = useState(4);
+  const [currentCycle, setCurrentCycle] = useState(0);
   
   const technique = BREATHING_TECHNIQUES[selectedKey];
   const currentPhase = technique.phases[phaseIndex];
@@ -66,22 +68,41 @@ const BreathingBubble = () => {
     
     if (isActive) {
       timeout = window.setTimeout(() => {
-        setPhaseIndex((prev) => (prev + 1) % technique.phases.length);
+        const nextIndex = (phaseIndex + 1) % technique.phases.length;
+        
+        // If we've completed a full cycle (wrapped back to 0)
+        if (nextIndex === 0) {
+          const nextCycle = currentCycle + 1;
+          if (nextCycle >= targetCycles) {
+            setIsActive(false);
+            setPhaseIndex(0);
+            setCurrentCycle(0);
+            return;
+          }
+          setCurrentCycle(nextCycle);
+        }
+        
+        setPhaseIndex(nextIndex);
       }, currentPhase.duration);
     } else {
       setPhaseIndex(0);
+      setCurrentCycle(0);
     }
     
     return () => clearTimeout(timeout);
-  }, [isActive, phaseIndex, technique]);
+  }, [isActive, phaseIndex, technique, currentCycle, targetCycles]);
 
   const toggleActive = () => {
     setIsActive(!isActive);
+    if (!isActive) {
+      setPhaseIndex(0);
+      setCurrentCycle(0);
+    }
     if ("vibrate" in navigator) navigator.vibrate(50);
   };
 
   return (
-    <div className="flex flex-col items-center justify-center space-y-8 w-full max-w-sm">
+    <div className="flex flex-col items-center justify-center space-y-6 w-full max-w-sm">
       {/* Technique Selector */}
       <div className="grid grid-cols-3 gap-2 w-full p-1 bg-white/5 rounded-2xl border border-white/5">
         {Object.entries(BREATHING_TECHNIQUES).map(([key, t]) => (
@@ -91,6 +112,7 @@ const BreathingBubble = () => {
               setSelectedKey(key);
               setIsActive(false);
               setPhaseIndex(0);
+              setCurrentCycle(0);
             }}
             className={cn(
               "py-2 px-1 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
@@ -102,7 +124,39 @@ const BreathingBubble = () => {
         ))}
       </div>
 
-      <div className="text-center h-8">
+      {/* Cycle Selector */}
+      <div className="flex items-center justify-center space-x-6">
+        <button 
+          disabled={isActive || targetCycles <= 1}
+          onClick={() => setTargetCycles(prev => Math.max(1, prev - 1))}
+          className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:bg-white/10 disabled:opacity-30 transition-all font-bold"
+        >
+          -
+        </button>
+        <div className="text-center">
+          <p className="text-[10px] text-white/20 font-black uppercase tracking-widest mb-0.5">Cycles</p>
+          <div className="flex items-baseline space-x-1">
+            <span className={cn(
+              "text-2xl font-black tabular-nums transition-colors",
+              isActive ? "text-primary" : "text-white"
+            )}>
+              {isActive ? currentCycle + 1 : targetCycles}
+            </span>
+            {isActive && (
+              <span className="text-[10px] font-black text-white/20">/ {targetCycles}</span>
+            )}
+          </div>
+        </div>
+        <button 
+          disabled={isActive || targetCycles >= 20}
+          onClick={() => setTargetCycles(prev => Math.min(20, prev + 1))}
+          className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center text-white/40 hover:bg-white/10 disabled:opacity-30 transition-all font-bold"
+        >
+          +
+        </button>
+      </div>
+
+      <div className="text-center h-4">
         <p className="text-[10px] text-white/40 font-bold uppercase tracking-[0.2em]">{technique.description}</p>
       </div>
 

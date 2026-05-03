@@ -2,6 +2,7 @@ import React, { FC, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { LogIn, Timer, AlertCircle, ExternalLink, ArrowRight } from 'lucide-react';
 import { auth, googleProvider, signInWithPopup, signInWithRedirect, getRedirectResult } from '../firebase';
+import { cn } from '../lib/utils';
 
 export const Auth: FC = () => {
   const [error, setError] = useState<string | null>(null);
@@ -56,7 +57,11 @@ export const Auth: FC = () => {
       } else if (err.code === 'auth/unauthorized-domain') {
         setError('This domain is not authorized in Firebase. Please add it to the Authorized Domains list.');
       } else if (err.code === 'auth/network-request-failed') {
-        setError('Network error. Please check your internet connection.');
+        setError(
+          isIframe 
+            ? 'Network request failed. This often happens in code preview boxes due to browser security. Please click "Open in new tab" below to sign in.'
+            : 'Network error. Please check your internet connection or if third-party cookies are blocked.'
+        );
       } else if (err.code === 'auth/internal-error') {
         setError('An internal Firebase error occurred. Please try again later.');
       } else {
@@ -138,10 +143,15 @@ export const Auth: FC = () => {
             href={window.location.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center space-x-2 text-white/20 text-[10px] font-bold py-2 hover:text-primary transition-colors uppercase tracking-widest"
+            className={cn(
+              "flex items-center justify-center space-x-2 text-[10px] font-bold py-3 transition-all rounded-xl uppercase tracking-widest px-4 border",
+              error?.includes('Network request failed')
+                ? "bg-primary text-white border-primary shadow-lg shadow-primary/20 scale-105"
+                : "text-white/20 hover:text-primary border-transparent"
+            )}
           >
             <ExternalLink size={12} />
-            <span>Open in new tab</span>
+            <span>Open in new tab {error?.includes('Network request failed') && 'to fix'}</span>
           </motion.a>
         )}
       </div>
