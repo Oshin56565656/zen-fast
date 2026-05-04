@@ -86,6 +86,7 @@ export function useFasting() {
   const [isWaterLoaded, setIsWaterLoaded] = useState(false);
   const [firestoreError, setFirestoreError] = useState<string | null>(null);
   const isEndingRef = useRef(false);
+  const isManualLoggingRef = useRef(false);
 
   // Apply theme color to CSS variable
   useEffect(() => {
@@ -708,7 +709,9 @@ export function useFasting() {
     };
 
     try {
-      await addDoc(collection(db, 'users', user.uid, 'history'), newRecord);
+      // Use a deterministic ID based on start time to prevent duplicate records for the same session
+      const recordId = `fast_${state.startTime}`;
+      await setDoc(doc(db, 'users', user.uid, 'history', recordId), newRecord);
       
       sendNotification("Fast Ended!", {
         body: `You fasted for ${Math.floor(durationSec / 3600)}h ${Math.floor((durationSec % 3600) / 60)}m. Time to refuel!`,
@@ -750,7 +753,9 @@ export function useFasting() {
   };
 
   const manualLogFast = async (startTime: number, endTime: number, targetHours: number) => {
-    if (!user) return;
+    if (!user || isManualLoggingRef.current) return;
+    isManualLoggingRef.current = true;
+    
     const durationSec = Math.floor((endTime - startTime) / 1000);
     const targetSec = targetHours * 3600;
 
@@ -764,9 +769,13 @@ export function useFasting() {
     };
 
     try {
-      await addDoc(collection(db, 'users', user.uid, 'history'), newRecord);
+      // For manual logs, we can also use a deterministic ID based on startTime to prevent double-logging
+      const recordId = `manual_fast_${startTime}`;
+      await setDoc(doc(db, 'users', user.uid, 'history', recordId), newRecord);
     } catch (error) {
       handleFirestoreError(error, 'write', `users/${user.uid}/history`);
+    } finally {
+      isManualLoggingRef.current = false;
     }
   };
 

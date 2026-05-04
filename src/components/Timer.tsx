@@ -237,6 +237,7 @@ export const Timer: FC<TimerProps> = ({ state, meals, onStart, onPause, onResume
   const [elapsed, setElapsed] = useState(0);
   const [displayMode, setDisplayMode] = useState<'elapsed' | 'remaining'>('elapsed');
   const [activeTab, setActiveTab] = useState<'fasting' | 'relaxation'>('fasting');
+  const [isEnding, setIsEnding] = useState(false);
   
   const targetSeconds = state.targetEndTime && state.startTime 
     ? Math.max(Math.floor((state.targetEndTime - (state.startTime + state.totalPausedTime)) / 1000), 1)
@@ -283,6 +284,18 @@ export const Timer: FC<TimerProps> = ({ state, meals, onStart, onPause, onResume
   const displayTime = displayMode === 'elapsed' 
       ? formatDuration(elapsed) 
       : formatDuration(timeRemaining);
+
+  const handleEnd = async () => {
+    if (isEnding) return;
+    setIsEnding(true);
+    try {
+      await onEnd();
+    } catch (error) {
+      console.error("Failed to end fast:", error);
+    } finally {
+      setIsEnding(false);
+    }
+  };
 
   return (
     <div className="flex flex-col items-center justify-center p-8 space-y-8 min-h-[600px]">
@@ -407,10 +420,11 @@ export const Timer: FC<TimerProps> = ({ state, meals, onStart, onPause, onResume
                     </button>
                   )}
                   <button
-                    onClick={onEnd}
-                    className="bg-red-500/20 hover:bg-red-500/30 text-red-500 p-5 rounded-full transition-all active:scale-95"
+                    onClick={handleEnd}
+                    disabled={isEnding}
+                    className="bg-red-500/20 hover:bg-red-500/30 text-red-500 p-5 rounded-full transition-all active:scale-95 disabled:opacity-50"
                   >
-                    <Square size={28} fill="currentColor" />
+                    <Square size={28} fill="currentColor" className={isEnding ? "animate-pulse" : ""} />
                   </button>
                 </>
               )}

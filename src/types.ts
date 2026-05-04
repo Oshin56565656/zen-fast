@@ -155,11 +155,12 @@ export interface CalorieGuess {
   amount: number;
   reasoning: string;
   asOfTime?: string;
-  foods?: { name: string; calories: number; protein: number; carbs: number; fats: number; time?: string }[];
+  foods?: { name: string; calories: number; protein: number; carbs: number; fats: number; fiber?: number; time?: string }[];
   macros?: {
     protein: number;
     carbs: number;
     fats: number;
+    fiber: number;
   };
 }
 

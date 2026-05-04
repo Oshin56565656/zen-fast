@@ -503,7 +503,7 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                   </div>
 
                     {calorieGuess.macros && (
-                      <div className="grid grid-cols-3 gap-2 mb-4">
+                      <div className="grid grid-cols-4 gap-2 mb-4">
                         <div className="bg-white/5 p-2 rounded-xl border border-white/5 text-center">
                           <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">Protein</p>
                           <p className="text-sm font-black text-white">{calorieGuess.macros.protein}g</p>
@@ -516,6 +516,10 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                           <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">Fats</p>
                           <p className="text-sm font-black text-white">{calorieGuess.macros.fats}g</p>
                         </div>
+                        <div className="bg-white/5 p-2 rounded-xl border border-white/5 text-center">
+                          <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">Fiber</p>
+                          <p className="text-sm font-black text-white">{calorieGuess.macros.fiber || 0}g</p>
+                        </div>
                       </div>
                     )}
 
@@ -523,25 +527,27 @@ const AICoach: React.FC<AICoachProps> = ({ history, meals, workouts, sleep, wate
                       <div className="space-y-2 mb-4">
                         <div className="flex items-center justify-between text-[10px] font-black text-white/20 uppercase tracking-widest px-1">
                           <span>Food Item & Time</span>
-                          <div className="flex space-x-4">
-                            <span className="w-8 text-center">P</span>
-                            <span className="w-8 text-center">C</span>
-                            <span className="w-8 text-center">F</span>
-                            <span className="w-10 text-right">Kcal</span>
+                          <div className="flex space-x-3">
+                            <span className="w-6 text-center">P</span>
+                            <span className="w-6 text-center">C</span>
+                            <span className="w-6 text-center">F</span>
+                            <span className="w-6 text-center">Fi</span>
+                            <span className="w-8 text-right">Kcal</span>
                           </div>
                         </div>
                         <div className="space-y-1">
                           {calorieGuess.foods.map((food, idx) => (
                             <div key={idx} className="flex items-center justify-between bg-white/5 rounded-lg p-2 border border-white/5">
                               <div className="flex flex-col">
-                                <span className="text-[10px] font-bold text-white truncate max-w-[100px]">{food.name}</span>
+                                <span className="text-[10px] font-bold text-white truncate max-w-[80px]">{food.name}</span>
                                 {food.time && <span className="text-[8px] text-white/20">{food.time}</span>}
                               </div>
-                              <div className="flex space-x-4 text-[10px] font-mono text-white/40">
-                                <span className="w-8 text-center">{food.protein}g</span>
-                                <span className="w-8 text-center">{food.carbs}g</span>
-                                <span className="w-8 text-center">{food.fats}g</span>
-                                <span className="w-10 text-right font-bold text-orange-500">{food.calories}</span>
+                              <div className="flex space-x-3 text-[10px] font-mono text-white/40">
+                                <span className="w-6 text-center">{food.protein}</span>
+                                <span className="w-6 text-center">{food.carbs}</span>
+                                <span className="w-6 text-center">{food.fats}</span>
+                                <span className="w-6 text-center">{food.fiber || 0}</span>
+                                <span className="w-8 text-right font-bold text-orange-500">{food.calories}</span>
                               </div>
                             </div>
                           ))}

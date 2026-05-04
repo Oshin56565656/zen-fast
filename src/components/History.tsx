@@ -18,6 +18,7 @@ export const History: FC<HistoryProps> = ({ history, meals, onDelete, onManualLo
   const [endTime, setEndTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   const [targetHours, setTargetHours] = useState(16);
   const [selectedDate, setSelectedDate] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const sortedMeals = [...meals].sort((a, b) => b.time - a.time);
   const lastMeal = sortedMeals[0];
@@ -39,16 +40,26 @@ export const History: FC<HistoryProps> = ({ history, meals, onDelete, onManualLo
     }
   };
 
-  const handleManualLog = (e: React.FormEvent) => {
+  const handleManualLog = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
+    
     const start = new Date(startTime).getTime();
     const end = new Date(endTime).getTime();
     if (start >= end) {
       alert("Start time must be before end time");
       return;
     }
-    onManualLog(start, end, targetHours);
-    setIsLogging(false);
+    
+    setIsSubmitting(true);
+    try {
+      await onManualLog(start, end, targetHours);
+      setIsLogging(false);
+    } catch (error) {
+      console.error("Failed to log fast manual:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const filteredHistory = selectedDate 
@@ -176,9 +187,10 @@ export const History: FC<HistoryProps> = ({ history, meals, onDelete, onManualLo
 
                 <button
                   type="submit"
-                  className="w-full bg-primary hover:bg-primary/90 text-white py-4 rounded-2xl font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 mt-4"
+                  disabled={isSubmitting}
+                  className="w-full bg-primary hover:bg-primary/90 text-white py-4 rounded-2xl font-bold shadow-lg shadow-primary/20 transition-all active:scale-95 mt-4 disabled:opacity-50"
                 >
-                  Save Fast
+                  {isSubmitting ? 'Saving...' : 'Save Fast'}
                 </button>
               </form>
             </motion.div>

@@ -167,7 +167,7 @@ export async function getFastingInsights(
     2. Specific recommendations for the BEST TIME and INTENSITY for their next workout based on their most recent meal(s), current fasting state, and sleep quality.
     3. Supplement Timing: Based on their current supplement list and history, provide advice on the OPTIMAL TIMING for each supplement relative to their meals, workouts, and fasting schedule.
     4. How their mood and energy scores correlate with their diet and fasting success.
-    5. Calorie & Macro Estimation.
+    5. Calorie & Macro Estimation (Protein, Carbs, Fats, and Dietary Fiber).
     
     IMPORTANT for Calories Burned:
     - You MUST calculate BMR (Basal Metabolic Rate) and NEAT (Non-Exercise Activity Thermogenesis) SEPARATELY.
@@ -207,9 +207,9 @@ export async function getFastingInsights(
         "reasoning": "string", 
         "asOfTime": "string",
         "foods": [
-          { "name": "string", "calories": number, "protein": number, "carbs": number, "fats": number, "time": "string" }
+          { "name": "string", "calories": number, "protein": number, "carbs": number, "fats": number, "fiber": number, "time": "string" }
         ],
-        "macros": { "protein": number, "carbs": number, "fats": number } 
+        "macros": { "protein": number, "carbs": number, "fats": number, "fiber": number } 
       },
       "caloriesBurned": { 
         "amount": number, 
@@ -264,9 +264,10 @@ export async function getFastingInsights(
                         protein: { type: Type.NUMBER },
                         carbs: { type: Type.NUMBER },
                         fats: { type: Type.NUMBER },
+                        fiber: { type: Type.NUMBER, description: "Estimated fiber in grams" },
                         time: { type: Type.STRING, description: "e.g. 8:30 am" }
                       },
-                      required: ["name", "calories", "protein", "carbs", "fats", "time"]
+                      required: ["name", "calories", "protein", "carbs", "fats", "fiber", "time"]
                     }
                   },
                   macros: {
@@ -274,9 +275,10 @@ export async function getFastingInsights(
                     properties: {
                       protein: { type: Type.NUMBER, description: "Estimated protein in grams" },
                       carbs: { type: Type.NUMBER, description: "Estimated carbohydrates in grams" },
-                      fats: { type: Type.NUMBER, description: "Estimated fats in grams" }
+                      fats: { type: Type.NUMBER, description: "Estimated fats in grams" },
+                      fiber: { type: Type.NUMBER, description: "Estimated dietary fiber in grams" }
                     },
-                    required: ["protein", "carbs", "fats"]
+                    required: ["protein", "carbs", "fats", "fiber"]
                   }
                 },
                 required: ["amount", "reasoning", "macros", "asOfTime"]

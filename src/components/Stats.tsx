@@ -70,8 +70,8 @@ export const Stats: FC<StatsProps> = ({ history, meals, sleep, water, weights, w
         const dayMoods = moods.filter(m => isSameDay(new Date(m.time), date));
         return {
           name: format(date, 'EEE'),
-          mood: dayMoods.length > 0 ? dayMoods.reduce((acc, curr) => acc + curr.mood, 0) / dayMoods.length : null,
-          energy: dayMoods.length > 0 ? dayMoods.reduce((acc, curr) => acc + curr.energy, 0) / dayMoods.length : null,
+          mood: dayMoods.length > 0 ? Number((dayMoods.reduce((acc, curr) => acc + curr.mood, 0) / dayMoods.length).toFixed(1)) : null,
+          energy: dayMoods.length > 0 ? Number((dayMoods.reduce((acc, curr) => acc + curr.energy, 0) / dayMoods.length).toFixed(1)) : null,
         };
       })
     : moods
@@ -372,6 +372,7 @@ export const Stats: FC<StatsProps> = ({ history, meals, sleep, water, weights, w
                     }}
                     itemStyle={{ color: '#fff' }}
                     labelStyle={{ color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}
+                    formatter={(value: number) => [value.toFixed(1), 'Hours']}
                   />
                   <Bar dataKey="hours" radius={[4, 4, 0, 0]}>
                     {last7DaysFast.map((entry, index) => (
@@ -413,6 +414,7 @@ export const Stats: FC<StatsProps> = ({ history, meals, sleep, water, weights, w
                     }}
                     itemStyle={{ color: '#fff' }}
                     labelStyle={{ color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}
+                    formatter={(value: number) => [value.toFixed(1), 'Hours']}
                   />
                   <Bar dataKey="hours" radius={[4, 4, 0, 0]}>
                     {last7DaysSleep.map((entry, index) => (
@@ -467,6 +469,7 @@ export const Stats: FC<StatsProps> = ({ history, meals, sleep, water, weights, w
                     }}
                     itemStyle={{ color: '#fff' }}
                     labelStyle={{ color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}
+                    formatter={(value: number) => [value.toFixed(1), 'kg']}
                   />
                   <Line 
                     type="monotone" 
@@ -574,6 +577,7 @@ export const Stats: FC<StatsProps> = ({ history, meals, sleep, water, weights, w
                     }}
                     itemStyle={{ color: '#fff' }}
                     labelStyle={{ color: 'rgba(255,255,255,0.5)', marginBottom: '4px' }}
+                    formatter={(value: number) => [value.toFixed(1), '']}
                   />
                   <Line 
                     type="monotone" 
