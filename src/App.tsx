@@ -85,6 +85,7 @@ export default function App() {
     logSupplementIntake,
     deleteSupplementLog,
     updateSupplementLog,
+    isDataLoaded,
   } = useFasting();
 
   useEffect(() => {
@@ -430,7 +431,8 @@ export default function App() {
         weights={weights} 
         sleep={sleep} 
         workouts={workouts} 
-        dailySummaries={dailySummaries} 
+        dailySummaries={dailySummaries}
+        isLoaded={isDataLoaded}
       />
     </div>
   );

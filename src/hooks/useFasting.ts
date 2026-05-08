@@ -84,6 +84,15 @@ export function useFasting() {
     localStorage.setItem('fasttrack_last_water_reminder', lastWaterReminder.toString());
   }, [lastWaterReminder]);
   const [isWaterLoaded, setIsWaterLoaded] = useState(false);
+  const [isHistoryLoaded, setIsHistoryLoaded] = useState(false);
+  const [isMealsLoaded, setIsMealsLoaded] = useState(false);
+  const [isWorkoutsLoaded, setIsWorkoutsLoaded] = useState(false);
+  const [isSleepLoaded, setIsSleepLoaded] = useState(false);
+  const [isWeightsLoaded, setIsWeightsLoaded] = useState(false);
+  const [isDailySummariesLoaded, setIsDailySummariesLoaded] = useState(false);
+  const [isMoodsLoaded, setIsMoodsLoaded] = useState(false);
+  const [isSupplementsLoaded, setIsSupplementsLoaded] = useState(false);
+  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
   const [firestoreError, setFirestoreError] = useState<string | null>(null);
   const isEndingRef = useRef(false);
   const isManualLoggingRef = useRef(false);
@@ -178,6 +187,7 @@ export function useFasting() {
         const newState = snapshot.data() as CurrentFastState;
         setState(newState);
         localStorage.setItem(STORAGE_KEY_STATE, JSON.stringify(newState));
+        setIsSettingsLoaded(true);
       } else {
         // Initialize state in Firestore if it doesn't exist
         const localState = localStorage.getItem(STORAGE_KEY_STATE);
@@ -191,9 +201,11 @@ export function useFasting() {
         };
         setDoc(stateDocRef, initialState).catch(err => handleFirestoreError(err, 'write', `users/${user.uid}/settings/currentFast`));
         setState(initialState);
+        setIsSettingsLoaded(true);
       }
     }, (error) => {
       handleFirestoreError(error, 'get', `users/${user.uid}/settings/currentFast`);
+      setIsSettingsLoaded(true);
     });
 
     return () => unsubscribe();
@@ -213,6 +225,7 @@ export function useFasting() {
       });
       // Sort by startTime descending
       setHistory(records.sort((a, b) => b.startTime - a.startTime));
+      setIsHistoryLoaded(true);
 
       // Migration from localStorage if history is empty in Firestore
       if (records.length === 0) {
@@ -256,8 +269,10 @@ export function useFasting() {
         records.push({ id: doc.id, ...doc.data() } as MealRecord);
       });
       setMeals(records.sort((a, b) => b.time - a.time));
+      setIsMealsLoaded(true);
     }, (error) => {
       handleFirestoreError(error, 'list', `users/${user.uid}/meals`);
+      setIsMealsLoaded(true);
     });
     return () => unsubscribe();
   }, [user]);
@@ -273,8 +288,10 @@ export function useFasting() {
         records.push({ id: doc.id, ...doc.data() } as WorkoutRecord);
       });
       setWorkouts(records.sort((a, b) => b.startTime - a.startTime));
+      setIsWorkoutsLoaded(true);
     }, (error) => {
       handleFirestoreError(error, 'list', `users/${user.uid}/workouts`);
+      setIsWorkoutsLoaded(true);
     });
     return () => unsubscribe();
   }, [user]);
@@ -290,8 +307,10 @@ export function useFasting() {
         records.push({ id: doc.id, ...doc.data() } as SleepRecord);
       });
       setSleep(records.sort((a, b) => b.wakeUpTime - a.wakeUpTime));
+      setIsSleepLoaded(true);
     }, (error) => {
       handleFirestoreError(error, 'list', `users/${user.uid}/sleep`);
+      setIsSleepLoaded(true);
     });
     return () => unsubscribe();
   }, [user]);
@@ -330,8 +349,10 @@ export function useFasting() {
         records.push({ id: doc.id, ...doc.data() } as WeightRecord);
       });
       setWeights(records.sort((a, b) => b.time - a.time));
+      setIsWeightsLoaded(true);
     }, (error) => {
       handleFirestoreError(error, 'list', `users/${user.uid}/weights`);
+      setIsWeightsLoaded(true);
     });
 
     return () => unsubscribe();
@@ -348,8 +369,10 @@ export function useFasting() {
         records.push({ id: doc.id, ...doc.data() } as DailySummary);
       });
       setDailySummaries(records.sort((a, b) => b.date.localeCompare(a.date)));
+      setIsDailySummariesLoaded(true);
     }, (error) => {
       handleFirestoreError(error, 'list', `users/${user.uid}/dailySummaries`);
+      setIsDailySummariesLoaded(true);
     });
     return () => unsubscribe();
   }, [user]);
@@ -365,8 +388,10 @@ export function useFasting() {
         records.push({ id: doc.id, ...doc.data() } as Supplement);
       });
       setSupplements(records.sort((a, b) => a.name.localeCompare(b.name)));
+      setIsSupplementsLoaded(true);
     }, (error) => {
       handleFirestoreError(error, 'list', `users/${user.uid}/supplements`);
+      setIsSupplementsLoaded(true);
     });
     return () => unsubscribe();
   }, [user]);
@@ -401,8 +426,10 @@ export function useFasting() {
         records.push({ id: doc.id, ...doc.data() } as MoodRecord);
       });
       setMoods(records.sort((a, b) => b.time - a.time));
+      setIsMoodsLoaded(true);
     }, (error) => {
       handleFirestoreError(error, 'list', `users/${user.uid}/moods`);
+      setIsMoodsLoaded(true);
     });
     return () => unsubscribe();
   }, [user]);
@@ -1410,6 +1437,7 @@ export function useFasting() {
     logSupplementIntake,
     deleteSupplementLog,
     updateSupplementLog,
-    firestoreError
+    firestoreError,
+    isDataLoaded: isHistoryLoaded && isMealsLoaded && isWorkoutsLoaded && isSleepLoaded && isWaterLoaded && isWeightsLoaded && isDailySummariesLoaded && isMoodsLoaded && isSupplementsLoaded && isSettingsLoaded
   };
 }

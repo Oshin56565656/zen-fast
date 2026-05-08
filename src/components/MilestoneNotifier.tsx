@@ -10,12 +10,13 @@ interface MilestoneNotifierProps {
   sleep: SleepRecord[];
   workouts: WorkoutRecord[];
   dailySummaries: DailySummary[];
+  isLoaded: boolean;
 }
 
-export const MilestoneNotifier: FC<MilestoneNotifierProps> = ({ water, weights, sleep, workouts, dailySummaries }) => {
+export const MilestoneNotifier: FC<MilestoneNotifierProps> = ({ water, weights, sleep, workouts, dailySummaries, isLoaded }) => {
   const [activeMilestone, setActiveMilestone] = useState<Milestone | null>(null);
   const notifiedIds = useRef<Set<string>>(new Set());
-  const isFirstRun = useRef(true);
+  const isInitialized = useRef(false);
 
   // Helper to calculate milestone status - keeping it in sync with Milestones.tsx
   const getMilestones = (): Milestone[] => {
@@ -82,12 +83,14 @@ export const MilestoneNotifier: FC<MilestoneNotifierProps> = ({ water, weights, 
   }, []);
 
   useEffect(() => {
+    if (!isLoaded) return;
+
     const milestones = getMilestones();
     const newlyAchieved = milestones.find(m => m.achieved && !notifiedIds.current.has(m.id));
 
     if (newlyAchieved) {
       // Don't notify on first run (prevents popups when loading existing data)
-      if (!isFirstRun.current) {
+      if (isInitialized.current) {
         setActiveMilestone(newlyAchieved);
         
         // Auto-close after 5 seconds
@@ -106,12 +109,12 @@ export const MilestoneNotifier: FC<MilestoneNotifierProps> = ({ water, weights, 
           if (m.achieved) notifiedIds.current.add(m.id);
         });
         localStorage.setItem('fasttrack_notified_milestones', JSON.stringify([...notifiedIds.current]));
-        isFirstRun.current = false;
+        isInitialized.current = true;
       }
-    } else if (isFirstRun.current) {
-        isFirstRun.current = false;
+    } else if (!isInitialized.current) {
+        isInitialized.current = true;
     }
-  }, [water, weights, sleep, workouts, dailySummaries]);
+  }, [water, weights, sleep, workouts, dailySummaries, isLoaded]);
 
   return (
     <AnimatePresence>
