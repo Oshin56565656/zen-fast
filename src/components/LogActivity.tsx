@@ -1,13 +1,12 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Scan, Droplets, LineChart, Mic, MicOff, Sparkles, MapPin, Play, X, RefreshCw, Pill, Heart, Zap, Smile, Frown, Meh, Sun, CloudRain, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Image, Droplets, LineChart, Mic, MicOff, Sparkles, MapPin, Play, X, RefreshCw, Pill, Heart, Zap, Smile, Frown, Meh, Sun, CloudRain, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { formatTime, formatDate, formatDurationShort } from '../lib/utils';
 import { format, subHours, addMinutes, isSameDay } from 'date-fns';
 import { AnimatePresence } from 'motion/react';
-import BarcodeScanner from './BarcodeScanner';
 import { Supplements } from './Supplements';
-import { parseWorkoutText, estimateMealCalories, estimateWorkoutCalories } from '../services/aiService';
+import { parseWorkoutText, estimateMealCalories, estimateWorkoutCalories, estimateMealFromImage, analyzeNutritionLabel } from '../services/aiService';
 import { GoogleGenAI } from "@google/genai";
 import { Supplement, SupplementLog, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, FastRecord, MoodRecord, MoodScore, EnergyLevel } from '../types';
 
@@ -23,7 +22,7 @@ interface LogActivityProps {
   moods: MoodRecord[];
   waterGoal: number;
   waterPresets?: number[];
-  onLogMeal: (time: number, scale: 'light' | 'normal' | 'large', description?: string, barcode?: string) => void;
+  onLogMeal: (time: number, scale: 'light' | 'normal' | 'large', description?: string, calories?: number, protein?: number, carbs?: number, fats?: number, fiber?: number) => void;
   onLogWorkout: (startTime: number, endTime: number, intensity: WorkoutIntensity, type: WorkoutType, description?: string, calorieBurn?: number, parsedExercises?: string[]) => void;
   onLogSleep: (bedtime: number, wakeUpTime: number, quality: 'poor' | 'fair' | 'good' | 'excellent') => void;
   onLogWater: (time: number, amount: number) => void;
@@ -148,9 +147,16 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const [isMealTimeDirty, setIsMealTimeDirty] = useState(false);
   const [mealDescription, setMealDescription] = useState('');
   const [mealCalories, setMealCalories] = useState<string>('');
+  const [mealProtein, setMealProtein] = useState<number | undefined>(undefined);
+  const [mealCarbs, setMealCarbs] = useState<number | undefined>(undefined);
+  const [mealFats, setMealFats] = useState<number | undefined>(undefined);
+  const [mealFiber, setMealFiber] = useState<number | undefined>(undefined);
   const [isEstimatingMealCalories, setIsEstimatingMealCalories] = useState(false);
-  const [mealBarcode, setMealBarcode] = useState('');
-  const [showScanner, setShowScanner] = useState(false);
+  const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
+  const [analysisMode, setAnalysisMode] = useState<'meal' | 'label'>('meal');
+  const [labelAmount, setLabelAmount] = useState('1 serving');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
   const [isListening, setIsListening] = useState(false);
   const [isSpeechSupported, setIsSpeechSupported] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
@@ -459,7 +465,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
     try {
       const estimated = await estimateMealCalories(mealDescription, mealScale);
       if (estimated > 0) {
-        setMealCalories(estimated.toString());
+        setMealCalories(Math.round(estimated).toString());
       }
     } catch (error) {
       console.error('Failed to estimate calories:', error);
@@ -484,7 +490,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
       );
       
       if (estimated > 0) {
-        setWorkoutCalorieBurn(estimated);
+        setWorkoutCalorieBurn(Math.round(estimated));
       }
     } catch (error) {
       console.error('Failed to estimate workout calories:', error);
@@ -496,13 +502,14 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const handleLogMeal = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    let finalCalories = mealCalories ? parseInt(mealCalories) : 0;
+    let finalCalories = mealCalories ? Math.round(Number(mealCalories)) : 0;
     
     // If no calories entered, and we have a description, try one last auto-guess
     if (!finalCalories && mealDescription.trim()) {
       setIsEstimatingMealCalories(true);
       try {
-        finalCalories = await estimateMealCalories(mealDescription, mealScale);
+        const est = await estimateMealCalories(mealDescription, mealScale);
+        finalCalories = Math.round(est);
       } catch (err) {
         console.warn('Auto calorie guess failed before save:', err);
       } finally {
@@ -511,7 +518,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
     }
 
     const mealTimestamp = new Date(mealTime).getTime();
-    onLogMeal(mealTimestamp, mealScale, mealDescription, mealBarcode, finalCalories);
+    onLogMeal(mealTimestamp, mealScale, mealDescription, finalCalories, mealProtein, mealCarbs, mealFats, mealFiber);
 
     // Check for "with meal" supplements
     const hasWithMealSupps = supplements.some(s => s.preferredTime === 'with-meal');
@@ -550,34 +557,77 @@ const LogActivity: React.FC<LogActivityProps> = ({
 
     setMealDescription('');
     setMealCalories('');
+    setMealProtein(undefined);
+    setMealCarbs(undefined);
+    setMealFats(undefined);
+    setMealFiber(undefined);
     setIsMealTimeDirty(false);
-    setMealBarcode('');
     if ("vibrate" in navigator) navigator.vibrate(100);
   };
 
-  const handleScan = (barcode: string, product: any) => {
-    setMealBarcode(barcode);
-    if (product) {
-      const productName = product.product_name || product.generic_name || product.product_name_en || 'Unknown Product';
-      const brand = product.brands ? ` (${product.brands})` : '';
-      setMealDescription(`${productName}${brand}`);
-      // Optional: If there's nutritional info, we could add it too
-    } else {
-      setMealDescription('');
-      // We'll use a temporary state to show a "not found" message
-      const toast = document.createElement('div');
-      toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-full font-bold text-sm shadow-2xl z-[200] animate-bounce';
-      toast.innerText = 'Product not found. Please enter details manually.';
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 3000);
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file.');
+      return;
     }
-    setShowScanner(false);
-    
-    // Focus the description field after a short delay to allow the modal to close
-    setTimeout(() => {
-      const textarea = document.querySelector('textarea');
-      if (textarea) textarea.focus();
-    }, 300);
+
+    setIsAnalyzingImage(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64 = (reader.result as string).split(',')[1];
+        try {
+          let result;
+          if (analysisMode === 'label') {
+            result = await analyzeNutritionLabel(base64, file.type, labelAmount);
+          } else {
+            result = await estimateMealFromImage(base64, file.type);
+          }
+          
+          if (result) {
+            if (!mealDescription.trim()) {
+              setMealDescription(result.name);
+            }
+            setMealCalories(Math.round(result.calories).toString());
+            setMealProtein(result.protein);
+            setMealCarbs(result.carbs);
+            setMealFats(result.fats);
+            setMealFiber(result.fiber);
+            
+            // Show success toast
+            const toast = document.createElement('div');
+            toast.className = 'fixed top-24 left-1/2 -translate-x-1/2 bg-primary text-white px-8 py-4 rounded-[2rem] shadow-2xl z-[200] flex flex-col items-center space-y-1 text-center transform transition-all duration-500 ease-out opacity-0 translate-y-4';
+            toast.innerHTML = `
+              <div class="flex items-center space-x-2">
+                <Sparkles size={14} />
+                <p class="text-[10px] font-bold uppercase tracking-[0.2em]">AI ${analysisMode === 'label' ? 'Label' : 'Image'} Analysis</p>
+              </div>
+              <p class="text-xs font-black tracking-tight">${result.name} Identified</p>
+              <p class="text-[10px] opacity-60">Est: ${Math.round(result.calories)} kcal</p>
+              ${result.perServingInfo ? `<p class="text-[8px] opacity-40 italic">${result.perServingInfo}</p>` : ''}
+            `;
+            document.body.appendChild(toast);
+            requestAnimationFrame(() => toast.classList.remove('opacity-0', 'translate-y-4'));
+            setTimeout(() => {
+              toast.classList.add('opacity-0', '-translate-y-4');
+              setTimeout(() => toast.remove(), 500);
+            }, 4000);
+          }
+        } catch (err: any) {
+          console.error('Image analysis error:', err);
+          alert(err.message || 'Failed to analyze image. Please try again.');
+        } finally {
+          setIsAnalyzingImage(false);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      console.error('File reading error:', err);
+      setIsAnalyzingImage(false);
+    }
   };
 
   const handleLogWorkout = (e: React.FormEvent) => {
@@ -1101,14 +1151,6 @@ const LogActivity: React.FC<LogActivityProps> = ({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Meal Scale</label>
-              <button 
-                type="button"
-                onClick={() => setShowScanner(true)}
-                className="flex items-center space-x-1 text-primary text-xs font-bold uppercase hover:bg-primary/10 px-2 py-1 rounded-lg transition-colors"
-              >
-                <Scan size={14} />
-                <span>Scan Barcode</span>
-              </button>
             </div>
             <div className="grid grid-cols-3 gap-2">
               {(['light', 'normal', 'large'] as const).map((s) => (
@@ -1129,47 +1171,127 @@ const LogActivity: React.FC<LogActivityProps> = ({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-xs font-bold text-white/40 uppercase tracking-widest">What did you eat?</label>
-            <div className="relative">
-              <textarea
-                value={mealDescription}
-                onChange={(e) => setMealDescription(e.target.value)}
-                placeholder="e.g. Grilled chicken salad with avocado..."
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors min-h-[100px] resize-none pr-12"
-              />
-              <div className="absolute bottom-3 right-3 flex items-center space-x-2">
+            <div className="flex items-center justify-between mb-4 bg-white/5 p-1 rounded-2xl border border-white/5">
+              {(['meal', 'label'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setAnalysisMode(mode)}
+                  className={cn(
+                    "flex-1 py-2 px-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                    analysisMode === mode
+                      ? "bg-primary text-white shadow-lg"
+                      : "text-white/20 hover:text-white/40"
+                  )}
+                >
+                  {mode === 'meal' ? 'Meal Photo' : 'Nutrition Label'}
+                </button>
+              ))}
+            </div>
+
+            {analysisMode === 'label' && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="mb-4"
+              >
+                <label className="text-[10px] font-black text-white/20 uppercase tracking-widest block mb-2 px-1">How much did you eat?</label>
+                <input 
+                  type="text"
+                  value={labelAmount}
+                  onChange={(e) => setLabelAmount(e.target.value)}
+                  placeholder="e.g. 2 servings, 150g, 1/2 pack..."
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors text-sm"
+                />
+              </motion.div>
+            )}
+
+          <div className="space-y-6">
+            <div className="space-y-4">
+              <label className="text-xs font-bold text-white/40 uppercase tracking-widest px-1">What did you eat?</label>
+              
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 px-1">
+                <input 
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageUpload}
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                />
+                <input 
+                  type="file"
+                  ref={galleryInputRef}
+                  onChange={handleImageUpload}
+                  accept="image/*"
+                  className="hidden"
+                />
+                
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isAnalyzingImage}
+                  className={cn(
+                    "flex flex-col items-center justify-center space-y-2 p-5 rounded-3xl transition-all text-xs font-black uppercase tracking-widest border",
+                    isAnalyzingImage 
+                      ? "bg-primary border-primary text-white animate-pulse" 
+                      : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border-white/10"
+                  )}
+                  title="Snap Photo"
+                >
+                  {isAnalyzingImage ? <RefreshCw size={24} className="animate-spin" /> : <Camera size={24} />}
+                  <span>Snap</span>
+                </button>
+                
+                <button
+                  type="button"
+                  onClick={() => galleryInputRef.current?.click()}
+                  disabled={isAnalyzingImage}
+                  className={cn(
+                    "flex flex-col items-center justify-center space-y-2 p-5 rounded-3xl transition-all text-xs font-black uppercase tracking-widest border bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border-white/10"
+                  )}
+                  title="Choose from Gallery"
+                >
+                  <Image size={24} />
+                  <span>Upload</span>
+                </button>
+
                 {isSpeechSupported && (
                   <button
                     type="button"
                     onClick={toggleListening}
                     className={cn(
-                      "p-2 rounded-xl transition-all",
+                      "flex flex-col items-center justify-center space-y-2 p-5 rounded-3xl transition-all text-xs font-black uppercase tracking-widest border",
                       isListening 
-                        ? "bg-red-500 text-white animate-pulse" 
-                        : "bg-white/5 text-white/40 hover:bg-white/10"
+                        ? "bg-red-500 border-red-500 text-white animate-pulse shadow-lg shadow-red-500/20" 
+                        : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border-white/10",
+                      "col-span-2 sm:col-span-1"
                     )}
-                    title={isListening ? "Stop Listening" : "Start Voice Log"}
                   >
-                    {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+                    {isListening ? <MicOff size={24} /> : <Mic size={24} />}
+                    <span>{isListening ? 'Stop' : 'Voice'}</span>
                   </button>
                 )}
-                {mealBarcode && (
-                  <div className="flex items-center space-x-1 bg-primary/20 text-primary text-[10px] font-bold px-2 py-1 rounded-full border border-primary/30 h-8">
-                    <Scan size={10} />
-                    <span>{mealBarcode}</span>
-                  </div>
-                )}
               </div>
+
+              <textarea
+                value={mealDescription}
+                onChange={(e) => setMealDescription(e.target.value)}
+                placeholder="e.g. Grilled chicken salad with avocado..."
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-primary transition-colors min-h-[120px] resize-none text-base placeholder:text-white/20"
+              />
             </div>
             {isSpeechSupported && (
-              <p className="text-[10px] text-white/20 mt-2 italic flex items-center space-x-1">
-                <Sparkles size={10} className="text-primary" />
-                <span>Tip: For best voice stability, open the app in a new tab.</span>
-              </p>
+              <div className="text-[10px] text-white/20 mt-2 italic flex items-center space-x-2">
+                <div className="flex items-center space-x-1">
+                  <Sparkles size={10} className="text-primary" />
+                  <span>Try logging with voice or snapping a photo!</span>
+                </div>
+                <span className="opacity-50">|</span>
+                <span>Tip: For best stability, use a new tab.</span>
+              </div>
             )}
-          </div>
-
+          
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Calories (Optional)</label>
@@ -1190,16 +1312,47 @@ const LogActivity: React.FC<LogActivityProps> = ({
             <div className="relative">
               <input
                 type="number"
+                inputMode="decimal"
                 value={mealCalories}
                 onChange={(e) => setMealCalories(e.target.value)}
                 placeholder="0"
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors font-bold text-lg"
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-primary transition-all font-bold text-lg"
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 text-xs font-bold uppercase tracking-widest pointer-events-none">
                 kcal
               </div>
             </div>
+
+            <AnimatePresence>
+              {(mealProtein !== undefined || mealCarbs !== undefined || mealFats !== undefined) && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="overflow-hidden"
+                >
+                  <div className="grid grid-cols-4 gap-2 pt-2">
+                    <div className="bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
+                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">Prot</p>
+                      <p className="text-sm font-black text-white">{mealProtein || 0}g</p>
+                    </div>
+                    <div className="bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
+                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">Carbs</p>
+                      <p className="text-sm font-black text-white">{mealCarbs || 0}g</p>
+                    </div>
+                    <div className="bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
+                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">Fats</p>
+                      <p className="text-sm font-black text-white">{mealFats || 0}g</p>
+                    </div>
+                    <div className="bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
+                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">Fiber</p>
+                      <p className="text-sm font-black text-white">{mealFiber || 0}g</p>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
+        </div>
 
           <button
             type="submit"
@@ -1693,10 +1846,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                       <Utensils size={20} />
                     </div>
                     <div>
-                      <p className="font-bold text-white capitalize">{meal.scale} Meal</p>
-                      {meal.description && (
-                        <p className="text-sm text-white/60 line-clamp-1">{meal.description}</p>
-                      )}
+                      <p className="font-bold text-white capitalize">{meal.description || `${meal.scale} Meal`}</p>
                       <p className="text-xs text-white/40">{formatDate(meal.time)}, {formatTime(meal.time)}</p>
                       {meal.calories && meal.calories > 0 && (
                         <div className="flex items-center space-x-1 mt-1">
@@ -2290,16 +2440,6 @@ const LogActivity: React.FC<LogActivityProps> = ({
                         </div>
                       )}
 
-                      {selectedLog.data.barcode && (
-                        <div className="bg-white/5 p-6 rounded-3xl border border-white/5 flex items-center justify-between">
-                          <div>
-                            <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-1">Barcode</p>
-                            <p className="text-lg font-mono font-bold text-white">{selectedLog.data.barcode}</p>
-                          </div>
-                          <Scan className="text-primary opacity-50" size={32} />
-                        </div>
-                      )}
-
                       <button
                         onClick={() => {
                           if (selectedLog.type === 'meal') onDeleteMeal(selectedLog.data.id);
@@ -2323,13 +2463,6 @@ const LogActivity: React.FC<LogActivityProps> = ({
           </motion.div>
         )}
       </AnimatePresence>
-
-      {showScanner && (
-        <BarcodeScanner 
-          onScan={handleScan}
-          onClose={() => setShowScanner(false)}
-        />
-      )}
     </div>
   );
 };

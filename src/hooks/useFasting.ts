@@ -933,15 +933,18 @@ export function useFasting() {
     isWaterLoaded
   ]);
 
-  const logMeal = async (time: number, scale: 'light' | 'normal' | 'large', description?: string, barcode?: string, calories?: number) => {
+  const logMeal = async (time: number, scale: 'light' | 'normal' | 'large', description?: string, calories?: number, protein?: number, carbs?: number, fats?: number, fiber?: number) => {
     if (!user) return;
     try {
       await addDoc(collection(db, 'users', user.uid, 'meals'), {
         time,
         scale,
         description: description || '',
-        barcode: barcode || '',
         calories: calories || 0,
+        protein: protein || 0,
+        carbs: carbs || 0,
+        fats: fats || 0,
+        fiber: fiber || 0,
         createdAt: Timestamp.now()
       });
     } catch (error) {

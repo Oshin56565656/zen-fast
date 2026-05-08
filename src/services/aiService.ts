@@ -86,6 +86,12 @@ export async function getFastingInsights(
       scale: m.scale,
       description: m.description || 'No description provided',
       calories: m.calories || 0,
+      macros: {
+        protein: m.protein || 0,
+        carbs: m.carbs || 0,
+        fats: m.fats || 0,
+        fiber: m.fiber || 0
+      },
       relativeTime: `${Math.round((now.getTime() - m.time) / 60000)} minutes ago`
     }));
 
@@ -227,7 +233,7 @@ export async function getFastingInsights(
   try {
     const response = await withTimeout(
       ai.models.generateContent({
-        model: "gemini-flash-latest",
+        model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
           systemInstruction: "You are an expert fasting and fitness coach. Provide data-driven, structured insights based on the user's history and physical profile. IMPORTANT: 1. Use the EXACT calorie values provided in the logs for meals and workouts without any further reduction or inflation. 2. Calculate BMR and NEAT separately and include them in the response. Understate BMR and NEAT by exactly 10% below your raw calculation for a FULL 24-HOUR projection. 3. Total burn amount must be the sum of these adjusted BMR/NEAT and logged workouts. NEVER hallucinate data. ALWAYS use 12-hour time format and include 'asOfTime'.",
@@ -385,7 +391,7 @@ User Question: ${userMessage}` }]
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
+      model: "gemini-3-flash-preview",
       contents: contents,
       config: {
         systemInstruction: "You are an expert fasting and fitness coach. A user is asking you a question about a specific insight you previously provided. Answer their question concisely and accurately based on the context of that insight and their physical profile. Be supportive and data-driven. Keep responses under 3 sentences if possible."
@@ -418,7 +424,7 @@ export async function getPeriodicReview(
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
+      model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
         systemInstruction: "You are an expert health and fitness coach providing a high-level periodic review. Be concise, data-driven, and motivating."
@@ -428,6 +434,131 @@ export async function getPeriodicReview(
     return response.text || "I couldn't generate a review at this time. Keep up the great work!";
   } catch (error) {
     console.error("Periodic Review Error:", error);
+    throw error;
+  }
+}
+
+export async function analyzeNutritionLabel(base64Image: string, mimeType: string, consumedAmount: string) {
+  const ai = getAIInstance();
+  
+  const prompt = `
+    Analyze this image of a nutrition facts label.
+    Extract the "per serving" or "per 100g" values and then calculate the total nutrients for the amount the user consumed.
+    
+    User Consumed: "${consumedAmount}"
+    
+    Return a JSON object with:
+    1. name: A short, concise name for the product (3-5 words max). Do NOT include explanation here.
+    2. calories: Calculated total calories (rounded to nearest integer).
+    3. protein: Calculated total protein (number).
+    4. carbs: Calculated total carbohydrates (number).
+    5. fats: Calculated total fats (number).
+    6. fiber: Calculated total dietary fiber (number).
+    7. perServingInfo: A brief string explaining the serving size used for calculation.
+    8. reasoning: An internal explanation of calculation (will be hidden from main UI).
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: prompt },
+            {
+              inlineData: {
+                data: base64Image,
+                mimeType: mimeType
+              }
+            }
+          ]
+        }
+      ],
+      config: {
+        systemInstruction: "You are a nutrition label specialist. Extract serving-size data and calculate consumed nutrients accurately. Return JSON.",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            name: { type: Type.STRING },
+            calories: { type: Type.NUMBER },
+            protein: { type: Type.NUMBER },
+            carbs: { type: Type.NUMBER },
+            fats: { type: Type.NUMBER },
+            fiber: { type: Type.NUMBER },
+            perServingInfo: { type: Type.STRING },
+            reasoning: { type: Type.STRING }
+          },
+          required: ["name", "calories", "protein", "carbs", "fats", "fiber", "perServingInfo", "reasoning"]
+        }
+      }
+    });
+
+    const result = JSON.parse(response.text || "{}");
+    return result;
+  } catch (error) {
+    console.error("Analyze Nutrition Label Error:", error);
+    throw error;
+  }
+}
+
+export async function estimateMealFromImage(base64Image: string, mimeType: string) {
+  const ai = getAIInstance();
+  
+  const prompt = `
+    Analyze this image of a meal and estimate the calories and macros.
+    
+    Return a JSON object with:
+    1. name: A short, concise name for the meal (3-5 words max).
+    2. calories: Total calories (rounded to nearest integer).
+    3. protein: Grams of protein (number).
+    4. carbs: Grams of carbohydrates (number).
+    5. fats: Grams of fats (number).
+    6. fiber: Grams of dietary fiber (number).
+    7. reasoning: Internal identified components.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: [
+        {
+          role: "user",
+          parts: [
+            { text: prompt },
+            {
+              inlineData: {
+                data: base64Image,
+                mimeType: mimeType
+              }
+            }
+          ]
+        }
+      ],
+      config: {
+        systemInstruction: "You are a nutrition expert capable of analyzing food images. Estimate nutritional values as accurately as possible. Return JSON.",
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            name: { type: Type.STRING },
+            calories: { type: Type.NUMBER },
+            protein: { type: Type.NUMBER },
+            carbs: { type: Type.NUMBER },
+            fats: { type: Type.NUMBER },
+            fiber: { type: Type.NUMBER },
+            reasoning: { type: Type.STRING }
+          },
+          required: ["name", "calories", "protein", "carbs", "fats", "fiber", "reasoning"]
+        }
+      }
+    });
+
+    const result = JSON.parse(response.text || "{}");
+    return result;
+  } catch (error) {
+    console.error("Estimate Meal From Image Error:", error);
     throw error;
   }
 }
@@ -446,7 +577,7 @@ export async function estimateMealCalories(description: string, scale: string) {
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
+      model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
         systemInstruction: "You are a nutrition expert. Estimate calories based on meal descriptions. Return JSON.",
@@ -485,7 +616,7 @@ export async function estimateWorkoutCalories(type: string, intensity: string, d
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
+      model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
         systemInstruction: "You are a fitness expert. Estimate calories burned based on workout details. Return JSON.",

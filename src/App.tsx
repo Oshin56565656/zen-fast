@@ -12,6 +12,8 @@ import { useFasting } from './hooks/useFasting';
 import { auth, signOut } from './firebase';
 import { cn } from './lib/utils';
 
+import { MilestoneNotifier } from './components/MilestoneNotifier';
+
 type Tab = 'timer' | 'history' | 'stats' | 'coach' | 'log' | 'settings';
 
 export default function App() {
@@ -423,6 +425,13 @@ export default function App() {
           </nav>
         </div>
       </div>
+      <MilestoneNotifier 
+        water={water} 
+        weights={weights} 
+        sleep={sleep} 
+        workouts={workouts} 
+        dailySummaries={dailySummaries} 
+      />
     </div>
   );
 }

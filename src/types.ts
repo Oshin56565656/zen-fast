@@ -41,8 +41,11 @@ export interface MealRecord {
   time: number;
   scale: 'light' | 'normal' | 'large';
   description?: string;
-  barcode?: string;
   calories?: number;
+  protein?: number;
+  carbs?: number;
+  fats?: number;
+  fiber?: number;
   createdAt?: any;
 }
 
