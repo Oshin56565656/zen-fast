@@ -154,6 +154,18 @@
         "createdAt": { "type": "object", "description": "Firestore server timestamp." }
       },
       "required": ["time", "mood", "energy", "createdAt"]
+    },
+    "BodyCheckin": {
+      "title": "Body Check-in",
+      "description": "A daily progress photo and optional note.",
+      "type": "object",
+      "properties": {
+        "time": { "type": "number", "description": "Timestamp of the photo." },
+        "photoUrl": { "type": "string", "description": "URL or base64 of the progress photo." },
+        "note": { "type": "string", "description": "Optional reflection or note." },
+        "createdAt": { "type": "object", "description": "Firestore server timestamp." }
+      },
+      "required": ["time", "photoUrl", "createdAt"]
     }
   },
   "firestore": {
@@ -200,6 +212,10 @@
     "/users/{userId}/moods/{moodId}": {
       "schema": "MoodRecord",
       "description": "Stores the user's mood and energy logs."
+    },
+    "/users/{userId}/bodyCheckins/{checkinId}": {
+      "schema": "BodyCheckin",
+      "description": "Stores the user's daily progress photos."
     }
   }
 }

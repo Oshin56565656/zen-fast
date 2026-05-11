@@ -2,13 +2,13 @@ import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
 import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Image, Droplets, LineChart, Mic, MicOff, Sparkles, MapPin, Play, X, RefreshCw, Pill, Heart, Zap, Smile, Frown, Meh, Sun, CloudRain, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { cn } from '../lib/utils';
-import { formatTime, formatDate, formatDurationShort } from '../lib/utils';
+import { formatTime, formatDate, formatDurationShort, compressImage } from '../lib/utils';
 import { format, subHours, addMinutes, isSameDay } from 'date-fns';
 import { AnimatePresence } from 'motion/react';
 import { Supplements } from './Supplements';
 import { parseWorkoutText, estimateMealCalories, estimateWorkoutCalories, estimateMealFromImage, analyzeNutritionLabel } from '../services/aiService';
 import { GoogleGenAI } from "@google/genai";
-import { Supplement, SupplementLog, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, FastRecord, MoodRecord, MoodScore, EnergyLevel } from '../types';
+import { Supplement, SupplementLog, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, BodyCheckin, WorkoutType, WorkoutIntensity, FastRecord, MoodRecord, MoodScore, EnergyLevel } from '../types';
 
 interface LogActivityProps {
   history: FastRecord[];
@@ -46,6 +46,9 @@ interface LogActivityProps {
   onUpdateWeight: (id: string, updates: Partial<WeightRecord>) => void;
   onUpdateSupplementLog: (id: string, updates: Partial<SupplementLog>) => void;
   onUpdateMood: (id: string, updates: Partial<MoodRecord>) => void;
+  bodyCheckins: BodyCheckin[];
+  onLogBodyCheckin: (time: number, photoUrl: string, note?: string) => void;
+  onDeleteBodyCheckin: (id: string) => void;
 }
 
 const LogActivity: React.FC<LogActivityProps> = ({
@@ -83,9 +86,12 @@ const LogActivity: React.FC<LogActivityProps> = ({
   onUpdateWater,
   onUpdateWeight,
   onUpdateSupplementLog,
-  onUpdateMood
+  onUpdateMood,
+  bodyCheckins,
+  onLogBodyCheckin,
+  onDeleteBodyCheckin
 }) => {
-  const [activeType, setActiveType] = useState<'water' | 'meal' | 'workout' | 'sleep' | 'weight' | 'supplements' | 'mood'>('water');
+  const [activeType, setActiveType] = useState<'water' | 'meal' | 'workout' | 'sleep' | 'weight' | 'supplements' | 'mood' | 'body'>('water');
   const [searchDate, setSearchDate] = useState<string>('');
   const [selectedLog, setSelectedLog] = useState<{ type: string; data: any } | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -153,6 +159,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const [mealFiber, setMealFiber] = useState<number | undefined>(undefined);
   const [isEstimatingMealCalories, setIsEstimatingMealCalories] = useState(false);
   const [isAnalyzingImage, setIsAnalyzingImage] = useState(false);
+  const [analyzingSource, setAnalyzingSource] = useState<'camera' | 'gallery' | null>(null);
   const [analysisMode, setAnalysisMode] = useState<'meal' | 'label'>('meal');
   const [labelAmount, setLabelAmount] = useState('1 serving');
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -340,6 +347,15 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const [moodTime, setMoodTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   const [isMoodTimeDirty, setIsMoodTimeDirty] = useState(false);
 
+  // Body Check-in state
+  const [bodyPhoto, setBodyPhoto] = useState<string | null>(null);
+  const [bodyNote, setBodyNote] = useState('');
+  const [bodyTime, setBodyTime] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+  const [isBodyTimeDirty, setIsBodyTimeDirty] = useState(false);
+  const bodyPhotoRef = useRef<HTMLInputElement>(null);
+  const bodyGalleryRef = useRef<HTMLInputElement>(null);
+  const [isLoggingBody, setIsLoggingBody] = useState(false);
+
   React.useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -455,20 +471,107 @@ const LogActivity: React.FC<LogActivityProps> = ({
       if (!isWakeUpTimeDirty) setWakeUpTime(format(now, "yyyy-MM-dd'T'HH:mm"));
       if (!isWeightTimeDirty) setWeightTime(format(now, "yyyy-MM-dd'T'HH:mm"));
       if (!isMoodTimeDirty) setMoodTime(format(now, "yyyy-MM-dd'T'HH:mm"));
+      if (!isBodyTimeDirty) setBodyTime(format(now, "yyyy-MM-dd'T'HH:mm"));
     }, 1000);
     return () => clearInterval(interval);
   }, [isMealTimeDirty, isWorkoutStartTimeDirty, isWorkoutEndTimeDirty, isBedtimeDirty, isWakeUpTimeDirty, isWeightTimeDirty, isMoodTimeDirty]);
+
+  const clearMealForm = () => {
+    setMealDescription('');
+    setMealScale('normal');
+    setMealCalories('');
+    setMealProtein(undefined);
+    setMealCarbs(undefined);
+    setMealFats(undefined);
+    setMealFiber(undefined);
+    setAnalysisMode('meal');
+    setLabelAmount('1 serving');
+    setIsMealTimeDirty(false);
+    setMealTime(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+    setIsEstimatingMealCalories(false);
+    setIsAnalyzingImage(false);
+    setAnalyzingSource(null);
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    }
+  };
+
+  const clearWorkoutForm = () => {
+    setWorkoutDescription('');
+    setWorkoutIntensity('moderate');
+    setWorkoutType('cardio');
+    setWorkoutCalorieBurn(undefined);
+    setWorkoutParsedExercises([]);
+    setWorkoutAIInput('');
+    setAiParsedResult(null);
+    setIsWorkoutStartTimeDirty(false);
+    setIsWorkoutEndTimeDirty(false);
+    setShowWorkoutAI(false);
+  };
+
+  const clearSleepForm = () => {
+    setSleepQuality('good');
+    setIsBedtimeDirty(false);
+    setIsWakeUpTimeDirty(false);
+  };
+
+  const clearWeightForm = () => {
+    setWeightValue('');
+    setWeightNote('');
+    setIsWeightTimeDirty(false);
+  };
+
+  const clearMoodForm = () => {
+    setMoodScore(3);
+    setEnergyLevel(3);
+    setMoodNote('');
+    setMoodTags([]);
+    setIsMoodTimeDirty(false);
+  };
+
+  const clearBodyForm = () => {
+    setBodyPhoto(null);
+    setBodyNote('');
+    setIsBodyTimeDirty(false);
+  };
+
+  const handleClearAll = () => {
+    clearMealForm();
+    clearWorkoutForm();
+    clearSleepForm();
+    clearWeightForm();
+    clearMoodForm();
+    clearBodyForm();
+    setWaterAmount(250);
+    setCustomWater('');
+    setSearchDate('');
+    
+    // Toast confirmation
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-20 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-xl text-white px-6 py-3 rounded-2xl font-bold text-xs border border-white/10 shadow-2xl z-[200] animate-in fade-in slide-in-from-top-2';
+    toast.innerText = 'All forms cleared';
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.classList.add('opacity-0', '-translate-y-2');
+      setTimeout(() => toast.remove(), 500);
+    }, 2000);
+  };
 
   const handleEstimateMealCalories = async () => {
     if (!mealDescription.trim() || isEstimatingMealCalories) return;
     setIsEstimatingMealCalories(true);
     try {
-      const estimated = await estimateMealCalories(mealDescription, mealScale);
-      if (estimated > 0) {
-        setMealCalories(Math.round(estimated).toString());
+      const result = await estimateMealCalories(mealDescription, mealScale);
+      if (result.calories > 0) {
+        setMealCalories(Math.ceil(result.calories || 0).toString());
+        setMealProtein(Math.ceil(result.protein || 0));
+        setMealCarbs(Math.ceil(result.carbs || 0));
+        setMealFats(Math.ceil(result.fats || 0));
+        setMealFiber(Math.ceil(result.fiber || 0));
       }
     } catch (error) {
-      console.error('Failed to estimate calories:', error);
+      console.error('Failed to estimate nutrients:', error);
     } finally {
       setIsEstimatingMealCalories(false);
     }
@@ -490,7 +593,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
       );
       
       if (estimated > 0) {
-        setWorkoutCalorieBurn(Math.round(estimated));
+        setWorkoutCalorieBurn(Math.ceil(estimated || 0));
       }
     } catch (error) {
       console.error('Failed to estimate workout calories:', error);
@@ -503,22 +606,30 @@ const LogActivity: React.FC<LogActivityProps> = ({
     e.preventDefault();
     
     let finalCalories = mealCalories ? Math.round(Number(mealCalories)) : 0;
+    let finalProtein = mealProtein;
+    let finalCarbs = mealCarbs;
+    let finalFats = mealFats;
+    let finalFiber = mealFiber;
     
     // If no calories entered, and we have a description, try one last auto-guess
     if (!finalCalories && mealDescription.trim()) {
       setIsEstimatingMealCalories(true);
       try {
-        const est = await estimateMealCalories(mealDescription, mealScale);
-        finalCalories = Math.round(est);
+        const result = await estimateMealCalories(mealDescription, mealScale);
+        finalCalories = Math.ceil(result.calories || 0);
+        finalProtein = Math.ceil(result.protein || 0);
+        finalCarbs = Math.ceil(result.carbs || 0);
+        finalFats = Math.ceil(result.fats || 0);
+        finalFiber = Math.ceil(result.fiber || 0);
       } catch (err) {
-        console.warn('Auto calorie guess failed before save:', err);
+        console.warn('Auto nutrient guess failed before save:', err);
       } finally {
         setIsEstimatingMealCalories(false);
       }
     }
 
     const mealTimestamp = new Date(mealTime).getTime();
-    onLogMeal(mealTimestamp, mealScale, mealDescription, finalCalories, mealProtein, mealCarbs, mealFats, mealFiber);
+    onLogMeal(mealTimestamp, mealScale, mealDescription, finalCalories, finalProtein, finalCarbs, finalFats, finalFiber);
 
     // Check for "with meal" supplements
     const hasWithMealSupps = supplements.some(s => s.preferredTime === 'with-meal');
@@ -574,6 +685,8 @@ const LogActivity: React.FC<LogActivityProps> = ({
       return;
     }
 
+    const source = e.target === fileInputRef.current ? 'camera' : 'gallery';
+    setAnalyzingSource(source);
     setIsAnalyzingImage(true);
     try {
       const reader = new FileReader();
@@ -591,11 +704,11 @@ const LogActivity: React.FC<LogActivityProps> = ({
             if (!mealDescription.trim()) {
               setMealDescription(result.name);
             }
-            setMealCalories(Math.round(result.calories).toString());
-            setMealProtein(result.protein);
-            setMealCarbs(result.carbs);
-            setMealFats(result.fats);
-            setMealFiber(result.fiber);
+            setMealCalories(Math.ceil(result.calories || 0).toString());
+            setMealProtein(Math.ceil(result.protein || 0));
+            setMealCarbs(Math.ceil(result.carbs || 0));
+            setMealFats(Math.ceil(result.fats || 0));
+            setMealFiber(Math.ceil(result.fiber || 0));
             
             // Show success toast
             const toast = document.createElement('div');
@@ -621,12 +734,14 @@ const LogActivity: React.FC<LogActivityProps> = ({
           alert(err.message || 'Failed to analyze image. Please try again.');
         } finally {
           setIsAnalyzingImage(false);
+          setAnalyzingSource(null);
         }
       };
       reader.readAsDataURL(file);
     } catch (err) {
       console.error('File reading error:', err);
       setIsAnalyzingImage(false);
+      setAnalyzingSource(null);
     }
   };
 
@@ -682,6 +797,58 @@ const LogActivity: React.FC<LogActivityProps> = ({
     setIsMoodTimeDirty(false);
   };
 
+  const handleBodyPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const originalBase64 = reader.result as string;
+      // Compress image to ensure it's under 1MB Firestore limit
+      const compressed = await compressImage(originalBase64, 1024, 0.6);
+      setBodyPhoto(compressed);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleLogBodyCheckin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bodyPhoto) return;
+    
+    setIsLoggingBody(true);
+    try {
+      onLogBodyCheckin(new Date(bodyTime).getTime(), bodyPhoto, bodyNote);
+      setBodyPhoto(null);
+      setBodyNote('');
+      setIsBodyTimeDirty(false);
+      
+      const toast = document.createElement('div');
+      toast.className = 'fixed top-24 left-1/2 -translate-x-1/2 bg-primary text-white px-8 py-4 rounded-[2rem] shadow-2xl z-[200] flex flex-col items-center space-y-1 text-center transform transition-all duration-500 ease-out opacity-0 translate-y-4';
+      toast.innerHTML = `
+        <div class="flex items-center space-x-2">
+          <Camera size={14} />
+          <p class="text-[10px] font-bold uppercase tracking-[0.2em]">Body Check-in Logged</p>
+        </div>
+        <p class="text-xs font-black tracking-tight">Progress saved!</p>
+      `;
+      document.body.appendChild(toast);
+      requestAnimationFrame(() => toast.classList.remove('opacity-0', 'translate-y-4'));
+      setTimeout(() => {
+        toast.classList.add('opacity-0', '-translate-y-4');
+        setTimeout(() => toast.remove(), 500);
+      }, 3000);
+    } catch (err) {
+      console.error('Failed to log body check-in:', err);
+    } finally {
+      setIsLoggingBody(false);
+    }
+  };
+
   const filterByDate = <T extends { time?: number; startTime?: number; bedtime?: number; wakeUpTime?: number }>(logs: T[]) => {
     // Determine the sorting field for the logs
     const getSortTime = (log: T) => log.time || log.startTime || log.wakeUpTime || log.bedtime || 0;
@@ -708,6 +875,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
   const filteredWater = ([...filterByDate(water)] as WaterRecord[]).sort((a, b) => b.time - a.time);
   const filteredWeights = ([...filterByDate(weights)] as WeightRecord[]).sort((a, b) => b.time - a.time);
   const filteredMoods = ([...filterByDate(moods)] as MoodRecord[]).sort((a, b) => b.time - a.time);
+  const filteredBodyCheckins = ([...filterByDate(bodyCheckins)] as BodyCheckin[]).sort((a, b) => b.time - a.time);
   const filteredSupplements = ([...filterByDate(supplementLogs)] as SupplementLog[]).sort((a, b) => b.time - a.time);
 
   const handleUpdate = () => {
@@ -809,6 +977,15 @@ const LogActivity: React.FC<LogActivityProps> = ({
             <Heart size={18} />
             <span className="font-bold">Mood</span>
           </button>
+          <button
+            onClick={() => setActiveType('body')}
+            className={`flex-1 flex items-center justify-center space-x-2 py-3 px-4 rounded-xl transition-all whitespace-nowrap ${
+              activeType === 'body' ? 'bg-primary text-white shadow-lg' : 'text-white/40'
+            }`}
+          >
+            <Camera size={18} />
+            <span className="font-bold">Progress</span>
+          </button>
         </div>
 
         <AnimatePresence>
@@ -828,7 +1005,127 @@ const LogActivity: React.FC<LogActivityProps> = ({
       </div>
 
       <AnimatePresence mode="wait">
-        {activeType === 'mood' ? (
+        {activeType === 'body' ? (
+          <motion.form
+            key="body-tab"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            onSubmit={handleLogBodyCheckin}
+            className="bg-card p-6 rounded-3xl border border-white/5 space-y-6"
+          >
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Check-in Time</label>
+                  <button 
+                    type="button"
+                    onClick={() => setIsBodyTimeDirty(false)}
+                    className={cn(
+                      "text-[10px] font-bold uppercase px-2 py-1 rounded-lg transition-all",
+                      !isBodyTimeDirty ? "text-primary bg-primary/10" : "text-white/20 hover:text-white/40"
+                    )}
+                  >
+                    Live
+                  </button>
+                </div>
+                <input
+                  type="datetime-local"
+                  value={bodyTime}
+                  onChange={(e) => {
+                    setBodyTime(e.target.value);
+                    setIsBodyTimeDirty(true);
+                  }}
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              <div className="space-y-4">
+                <label className="text-xs font-bold text-white/40 uppercase tracking-widest block">Progress Photo</label>
+                
+                {bodyPhoto ? (
+                  <div className="relative group">
+                    <img 
+                      src={bodyPhoto} 
+                      alt="Progress" 
+                      className="w-full aspect-[4/3] object-cover rounded-3xl border-2 border-primary/20"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setBodyPhoto(null)}
+                      className="absolute top-4 right-4 w-10 h-10 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/10 hover:bg-red-500 transition-colors"
+                    >
+                      <X size={20} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-4">
+                    <input 
+                      type="file"
+                      ref={bodyPhotoRef}
+                      onChange={handleBodyPhotoUpload}
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                    />
+                    <input 
+                      type="file"
+                      ref={bodyGalleryRef}
+                      onChange={handleBodyPhotoUpload}
+                      accept="image/*"
+                      className="hidden"
+                    />
+                    
+                    <button
+                      type="button"
+                      onClick={() => bodyPhotoRef.current?.click()}
+                      className="flex flex-col items-center justify-center space-y-3 p-8 rounded-3xl bg-white/5 border border-white/10 text-white/60 hover:bg-white/10 hover:text-white transition-all group"
+                    >
+                      <div className="w-12 h-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                        <Camera size={24} />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-widest">Take Photo</span>
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => bodyGalleryRef.current?.click()}
+                      className="flex flex-col items-center justify-center space-y-3 p-8 rounded-3xl bg-white/5 border border-white/10 text-white/60 hover:bg-white/10 hover:text-white transition-all group"
+                    >
+                      <div className="w-12 h-12 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
+                        <Image size={24} />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-widest">Upload</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Note (Optional)</label>
+                <textarea
+                  value={bodyNote}
+                  onChange={(e) => setBodyNote(e.target.value)}
+                  placeholder="How do you feel today? Any physical changes?"
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary min-h-[100px] resize-none"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={!bodyPhoto || isLoggingBody}
+                className="w-full bg-primary text-white py-4 rounded-2xl font-bold flex items-center justify-center space-x-2 hover:bg-primary/90 transition-all active:scale-95 shadow-lg shadow-primary/20 disabled:opacity-50"
+              >
+                {isLoggingBody ? (
+                  <RefreshCw size={20} className="animate-spin" />
+                ) : (
+                  <CheckCircle2 size={20} />
+                )}
+                <span>Log Progress Photo</span>
+              </button>
+            </div>
+          </motion.form>
+        ) : activeType === 'mood' ? (
           <motion.form
             key="mood-tab"
             initial={{ opacity: 0, y: 10 }}
@@ -1123,6 +1420,18 @@ const LogActivity: React.FC<LogActivityProps> = ({
           onSubmit={handleLogMeal}
           className="bg-card p-6 rounded-3xl border border-white/5 space-y-6"
         >
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-sm font-black text-white/40 uppercase tracking-widest">New Meal Log</h3>
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-red-500 transition-colors flex items-center space-x-1"
+            >
+              <RefreshCw size={12} />
+              <span>Clear All</span>
+            </button>
+          </div>
+
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Meal Time</label>
@@ -1195,12 +1504,12 @@ const LogActivity: React.FC<LogActivityProps> = ({
                 animate={{ opacity: 1, height: 'auto' }}
                 className="mb-4"
               >
-                <label className="text-[10px] font-black text-white/20 uppercase tracking-widest block mb-2 px-1">How much did you eat?</label>
+                <label className="text-[10px] font-black text-white/20 uppercase tracking-widest block mb-2 px-1">Additional Details (servings, quantity, etc.)</label>
                 <input 
                   type="text"
                   value={labelAmount}
                   onChange={(e) => setLabelAmount(e.target.value)}
-                  placeholder="e.g. 2 servings, 150g, 1/2 pack..."
+                  placeholder="e.g. 1.5 servings, 200g, half the pack..."
                   className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors text-sm"
                 />
               </motion.div>
@@ -1233,13 +1542,13 @@ const LogActivity: React.FC<LogActivityProps> = ({
                   disabled={isAnalyzingImage}
                   className={cn(
                     "flex flex-col items-center justify-center space-y-2 p-5 rounded-3xl transition-all text-xs font-black uppercase tracking-widest border",
-                    isAnalyzingImage 
+                    analyzingSource === 'camera' 
                       ? "bg-primary border-primary text-white animate-pulse" 
-                      : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border-white/10"
+                      : (isAnalyzingImage ? "opacity-50 bg-white/5 text-white/40 border-white/10" : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border-white/10")
                   )}
                   title="Snap Photo"
                 >
-                  {isAnalyzingImage ? <RefreshCw size={24} className="animate-spin" /> : <Camera size={24} />}
+                  {analyzingSource === 'camera' ? <RefreshCw size={24} className="animate-spin" /> : <Camera size={24} />}
                   <span>Snap</span>
                 </button>
                 
@@ -1248,11 +1557,14 @@ const LogActivity: React.FC<LogActivityProps> = ({
                   onClick={() => galleryInputRef.current?.click()}
                   disabled={isAnalyzingImage}
                   className={cn(
-                    "flex flex-col items-center justify-center space-y-2 p-5 rounded-3xl transition-all text-xs font-black uppercase tracking-widest border bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border-white/10"
+                    "flex flex-col items-center justify-center space-y-2 p-5 rounded-3xl transition-all text-xs font-black uppercase tracking-widest border",
+                    analyzingSource === 'gallery'
+                      ? "bg-primary border-primary text-white animate-pulse"
+                      : (isAnalyzingImage ? "opacity-50 bg-white/5 text-white/40 border-white/10" : "bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border-white/10")
                   )}
                   title="Choose from Gallery"
                 >
-                  <Image size={24} />
+                  {analyzingSource === 'gallery' ? <RefreshCw size={24} className="animate-spin" /> : <Image size={24} />}
                   <span>Upload</span>
                 </button>
 
@@ -1293,13 +1605,13 @@ const LogActivity: React.FC<LogActivityProps> = ({
             )}
           
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Calories (Optional)</label>
+            <div className="flex items-center justify-between bg-primary/5 p-2 rounded-xl mb-1">
+              <label className="text-[10px] font-black text-primary/60 uppercase tracking-widest px-1">Calories (Optional)</label>
               <button 
                 type="button"
                 onClick={handleEstimateMealCalories}
-                disabled={!mealDescription.trim() || isEstimatingMealCalories}
-                className="flex items-center space-x-1 text-primary text-[10px] font-bold uppercase hover:bg-primary/10 px-2 py-1 rounded-lg transition-colors disabled:opacity-30"
+                disabled={isEstimatingMealCalories}
+                className="flex items-center space-x-1 text-primary text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 px-2 py-1 rounded-lg transition-all disabled:opacity-30"
               >
                 {isEstimatingMealCalories ? (
                   <RefreshCw size={12} className="animate-spin" />
@@ -1309,43 +1621,63 @@ const LogActivity: React.FC<LogActivityProps> = ({
                 <span>AI Guess</span>
               </button>
             </div>
-            <div className="relative">
+            <div className="relative pt-1">
               <input
                 type="number"
                 inputMode="decimal"
                 value={mealCalories}
                 onChange={(e) => setMealCalories(e.target.value)}
-                placeholder="0"
-                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-primary transition-all font-bold text-lg"
+                placeholder="e.g. 450"
+                className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-primary transition-all font-bold text-lg text-center"
               />
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20 text-xs font-bold uppercase tracking-widest pointer-events-none">
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-white/20 uppercase tracking-widest pointer-events-none">
                 kcal
               </div>
             </div>
 
             <AnimatePresence>
-              {(mealProtein !== undefined || mealCarbs !== undefined || mealFats !== undefined) && (
+              {(mealProtein !== undefined || mealCarbs !== undefined || mealFats !== undefined || mealFiber !== undefined) && (
                 <motion.div 
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   className="overflow-hidden"
                 >
-                  <div className="grid grid-cols-4 gap-2 pt-2">
-                    <div className="bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
-                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">Prot</p>
-                      <p className="text-sm font-black text-white">{mealProtein || 0}g</p>
+                  <div className="grid grid-cols-4 gap-2 pt-4 border-t border-white/5">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter text-center">Protein (g)</p>
+                      <input 
+                        type="number"
+                        value={mealProtein || ''}
+                        onChange={(e) => setMealProtein(Number(e.target.value))}
+                        className="w-full bg-white/5 border border-white/5 rounded-xl px-2 py-2 text-white focus:outline-none focus:border-primary text-center text-sm font-black"
+                      />
                     </div>
-                    <div className="bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
-                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">Carbs</p>
-                      <p className="text-sm font-black text-white">{mealCarbs || 0}g</p>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter text-center">Carbs (g)</p>
+                      <input 
+                        type="number"
+                        value={mealCarbs || ''}
+                        onChange={(e) => setMealCarbs(Number(e.target.value))}
+                        className="w-full bg-white/5 border border-white/5 rounded-xl px-2 py-2 text-white focus:outline-none focus:border-primary text-center text-sm font-black"
+                      />
                     </div>
-                    <div className="bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
-                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">Fats</p>
-                      <p className="text-sm font-black text-white">{mealFats || 0}g</p>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter text-center">Fats (g)</p>
+                      <input 
+                        type="number"
+                        value={mealFats || ''}
+                        onChange={(e) => setMealFats(Number(e.target.value))}
+                        className="w-full bg-white/5 border border-white/5 rounded-xl px-2 py-2 text-white focus:outline-none focus:border-primary text-center text-sm font-black"
+                      />
                     </div>
-                    <div className="bg-white/5 p-3 rounded-2xl border border-white/5 text-center">
-                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter">Fiber</p>
-                      <p className="text-sm font-black text-white">{mealFiber || 0}g</p>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-white/40 uppercase tracking-tighter text-center">Fiber (g)</p>
+                      <input 
+                        type="number"
+                        value={mealFiber || ''}
+                        onChange={(e) => setMealFiber(Number(e.target.value))}
+                        className="w-full bg-white/5 border border-white/5 rounded-xl px-2 py-2 text-white focus:outline-none focus:border-primary text-center text-sm font-black"
+                      />
                     </div>
                   </div>
                 </motion.div>
@@ -1700,13 +2032,13 @@ const LogActivity: React.FC<LogActivityProps> = ({
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-white/40 uppercase tracking-widest">Calories Burned (optional)</label>
+                <div className="flex items-center justify-between bg-primary/5 p-2 rounded-xl mb-1">
+                  <label className="text-[10px] font-black text-primary/60 uppercase tracking-widest px-1">Calories Burned (Optional)</label>
                   <button 
                     type="button"
                     onClick={handleEstimateWorkoutCalories}
                     disabled={isEstimatingWorkoutCalories}
-                    className="flex items-center space-x-1 text-primary text-[10px] font-bold uppercase hover:bg-primary/10 px-2 py-1 rounded-lg transition-colors disabled:opacity-30"
+                    className="flex items-center space-x-1 text-primary text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 px-2 py-1 rounded-lg transition-all disabled:opacity-30"
                   >
                     {isEstimatingWorkoutCalories ? (
                       <RefreshCw size={12} className="animate-spin" />
@@ -1716,15 +2048,15 @@ const LogActivity: React.FC<LogActivityProps> = ({
                     <span>AI Guess</span>
                   </button>
                 </div>
-                <div className="relative">
+                <div className="relative pt-1">
                   <input
                     type="number"
                     value={workoutCalorieBurn || ''}
                     onChange={(e) => setWorkoutCalorieBurn(e.target.value ? Number(e.target.value) : undefined)}
                     placeholder="e.g. 350"
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-white focus:outline-none focus:border-primary transition-colors text-center font-bold"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white focus:outline-none focus:border-primary transition-all font-bold text-lg text-center"
                   />
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-white/20 uppercase">
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-bold text-white/20 uppercase tracking-widest pointer-events-none">
                     kcal
                   </div>
                 </div>
@@ -2079,6 +2411,39 @@ const LogActivity: React.FC<LogActivityProps> = ({
             ) : (
               <p className="text-center text-white/20 py-8 italic">No mood logs found</p>
             )
+          ) : activeType === 'body' ? (
+            filteredBodyCheckins.length > 0 ? (
+              <div className="grid grid-cols-2 gap-4">
+                {filteredBodyCheckins.map((checkin) => (
+                  <div 
+                    key={checkin.id} 
+                    onClick={() => setSelectedLog({ type: 'body', data: checkin })}
+                    className="group relative aspect-[4/3] rounded-2xl overflow-hidden border border-white/10 cursor-pointer"
+                  >
+                    <img 
+                      src={checkin.photoUrl} 
+                      alt="Body check-in" 
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex flex-col justify-end p-3">
+                      <p className="text-[10px] font-black text-white/90 truncate">{formatDate(checkin.time)}</p>
+                      <p className="text-[9px] text-white/60">{formatTime(checkin.time)}</p>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteBodyCheckin(checkin.id);
+                      }}
+                      className="absolute top-2 right-2 p-1.5 bg-black/40 backdrop-blur-md rounded-full text-white/40 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-white/20 py-8 italic">No progress photos yet</p>
+            )
           ) : null}
         </div>
       </div>
@@ -2145,6 +2510,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                       selectedLog.type === 'weight' && "bg-emerald-500/20 text-emerald-500",
                       selectedLog.type === 'supplement' && "bg-violet-500/20 text-violet-500",
                       selectedLog.type === 'mood' && "bg-pink-500/20 text-pink-500",
+                      selectedLog.type === 'body' && "bg-primary/20 text-primary",
                     )}>
                       {selectedLog.type === 'meal' && <Utensils size={32} />}
                       {selectedLog.type === 'workout' && <Dumbbell size={32} />}
@@ -2153,6 +2519,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                       {selectedLog.type === 'weight' && <Scale size={32} />}
                       {selectedLog.type === 'supplement' && <Pill size={32} />}
                       {selectedLog.type === 'mood' && <Heart size={32} />}
+                      {selectedLog.type === 'body' && <Camera size={32} />}
                     </div>
                     <div>
                       <h4 className="text-2xl font-black text-white capitalize">
@@ -2165,6 +2532,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                             {selectedLog.type === 'weight' && 'Weight Check'}
                             {selectedLog.type === 'supplement' && (supplements.find(s => s.id === selectedLog.data.supplementId)?.name || 'Supplement')}
                             {selectedLog.type === 'mood' && 'Mood & Energy Log'}
+                            {selectedLog.type === 'body' && 'Daily Progress Photo'}
                           </>
                         )}
                       </h4>
@@ -2431,6 +2799,18 @@ const LogActivity: React.FC<LogActivityProps> = ({
                         </div>
                       )}
 
+                      {selectedLog.type === 'body' && (
+                        <div className="space-y-4">
+                          <div className="aspect-[4/3] rounded-3xl overflow-hidden border border-white/10">
+                            <img 
+                              src={selectedLog.data.photoUrl} 
+                              alt="Body progress" 
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        </div>
+                      )}
+
                       {(selectedLog.data.description || selectedLog.data.note) && (
                         <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
                           <p className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-2">Description</p>
@@ -2448,6 +2828,7 @@ const LogActivity: React.FC<LogActivityProps> = ({
                           if (selectedLog.type === 'water') onDeleteWater(selectedLog.data.id);
                           if (selectedLog.type === 'weight') onDeleteWeight(selectedLog.data.id);
                           if (selectedLog.type === 'supplement') onDeleteSupplementLog(selectedLog.data.id);
+                          if (selectedLog.type === 'body') onDeleteBodyCheckin(selectedLog.data.id);
                           setSelectedLog(null);
                         }}
                         className="w-full bg-red-500/10 hover:bg-red-500 text-red-500 hover:text-white py-4 rounded-2xl font-bold transition-all flex items-center justify-center space-x-2 border border-red-500/20"

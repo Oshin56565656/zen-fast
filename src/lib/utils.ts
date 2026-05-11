@@ -34,3 +34,30 @@ export function formatDate(timestamp: number): string {
     year: 'numeric'
   });
 }
+
+export async function compressImage(base64: string, maxWidth = 1024, quality = 0.7): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = base64;
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let width = img.width;
+      let height = img.height;
+
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(img, 0, 0, width, height);
+      
+      // Use jpeg for better compression of photos
+      const result = canvas.toDataURL('image/jpeg', quality);
+      resolve(result);
+    };
+  });
+}

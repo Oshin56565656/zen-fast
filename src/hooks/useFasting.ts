@@ -3,7 +3,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { formatDurationShort } from '../lib/utils';
 import { format } from 'date-fns';
 import { getFastingInsights } from '../services/aiService';
-import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutType, WorkoutIntensity, DailySummary, AIInsightsSync, Supplement, SupplementLog, MoodRecord, MoodScore, EnergyLevel, MuscularityLevel } from '../types';
+import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, BodyCheckin, WorkoutType, WorkoutIntensity, DailySummary, AIInsightsSync, Supplement, SupplementLog, MoodRecord, MoodScore, EnergyLevel, MuscularityLevel } from '../types';
 import { 
   auth, 
   db, 
@@ -67,6 +67,7 @@ export function useFasting() {
   const [supplements, setSupplements] = useState<Supplement[]>([]);
   const [supplementLogs, setSupplementLogs] = useState<SupplementLog[]>([]);
   const [moods, setMoods] = useState<MoodRecord[]>([]);
+  const [bodyCheckins, setBodyCheckins] = useState<BodyCheckin[]>([]);
   const [aiInsights, setAiInsights] = useState<AIInsightsSync | null>(null);
   const [hasNotifiedTarget, setHasNotifiedTarget] = useState(false);
   const [lastWaterReminder, setLastWaterReminder] = useState<number>(() => {
@@ -91,6 +92,7 @@ export function useFasting() {
   const [isWeightsLoaded, setIsWeightsLoaded] = useState(false);
   const [isDailySummariesLoaded, setIsDailySummariesLoaded] = useState(false);
   const [isMoodsLoaded, setIsMoodsLoaded] = useState(false);
+  const [isBodyCheckinsLoaded, setIsBodyCheckinsLoaded] = useState(false);
   const [isSupplementsLoaded, setIsSupplementsLoaded] = useState(false);
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
   const [firestoreError, setFirestoreError] = useState<string | null>(null);
@@ -430,6 +432,25 @@ export function useFasting() {
     }, (error) => {
       handleFirestoreError(error, 'list', `users/${user.uid}/moods`);
       setIsMoodsLoaded(true);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  // Sync body check-ins with Firestore
+  useEffect(() => {
+    if (!user) return;
+    const checkinsRef = collection(db, 'users', user.uid, 'bodyCheckins');
+    const q = query(checkinsRef);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const records: BodyCheckin[] = [];
+      snapshot.forEach((doc) => {
+        records.push({ id: doc.id, ...doc.data() } as BodyCheckin);
+      });
+      setBodyCheckins(records.sort((a, b) => b.time - a.time));
+      setIsBodyCheckinsLoaded(true);
+    }, (error) => {
+      handleFirestoreError(error, 'list', `users/${user.uid}/bodyCheckins`);
+      setIsBodyCheckinsLoaded(true);
     });
     return () => unsubscribe();
   }, [user]);
@@ -1307,6 +1328,41 @@ export function useFasting() {
     }
   };
 
+  const logBodyCheckin = async (time: number, photoUrl: string, note?: string) => {
+    if (!user) return;
+    const checkinsRef = collection(db, 'users', user.uid, 'bodyCheckins');
+    const data = {
+      time,
+      photoUrl,
+      note: note || '',
+      createdAt: Timestamp.now()
+    };
+    try {
+      await addDoc(checkinsRef, cleanObj(data));
+    } catch (error) {
+      handleFirestoreError(error, 'write', `users/${user.uid}/bodyCheckins`);
+    }
+  };
+
+  const deleteBodyCheckin = async (id: string) => {
+    if (!user) return;
+    try {
+      await deleteDoc(doc(db, 'users', user.uid, 'bodyCheckins', id));
+    } catch (error) {
+      handleFirestoreError(error, 'delete', `users/${user.uid}/bodyCheckins/${id}`);
+    }
+  };
+
+  const updateBodyCheckin = async (id: string, updates: Partial<BodyCheckin>) => {
+    if (!user) return;
+    const docRef = doc(db, 'users', user.uid, 'bodyCheckins', id);
+    try {
+      await updateDoc(docRef, cleanObj(updates));
+    } catch (error) {
+      handleFirestoreError(error, 'update', `users/${user.uid}/bodyCheckins/${id}`);
+    }
+  };
+
   const testNotification = async () => {
     await requestPermission();
     await sendNotification("Test Notification!", {
@@ -1399,6 +1455,10 @@ export function useFasting() {
     updateWater,
     updateWeight,
     updateMood,
+    bodyCheckins,
+    logBodyCheckin,
+    deleteBodyCheckin,
+    updateBodyCheckin,
     parseWorkoutText,
     setHeight: (height: number) => updateState({ height }),
     setWeight: (weight: number) => updateState({ weight }),

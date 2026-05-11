@@ -77,6 +77,10 @@ export default function App() {
     logMood,
     deleteMood,
     updateMood,
+    bodyCheckins,
+    logBodyCheckin,
+    deleteBodyCheckin,
+    updateBodyCheckin,
     supplements,
     supplementLogs,
     addSupplement,
@@ -141,6 +145,8 @@ export default function App() {
             weights={weights} 
             workouts={workouts} 
             moods={moods}
+            bodyCheckins={bodyCheckins}
+            onDeleteBodyCheckin={deleteBodyCheckin}
             waterGoal={state.waterGoal} 
             dailySummaries={dailySummaries}
           />
@@ -179,6 +185,7 @@ export default function App() {
             supplements={supplements}
             supplementLogs={supplementLogs}
             moods={moods}
+            bodyCheckins={bodyCheckins}
             waterGoal={state.waterGoal}
             waterPresets={state.waterPresets}
             onLogMeal={logMeal} 
@@ -187,6 +194,7 @@ export default function App() {
             onLogWater={logWater}
             onLogWeight={logWeight}
             onLogMood={logMood}
+            onLogBodyCheckin={logBodyCheckin}
             onAddSupplement={addSupplement}
             onUpdateSupplement={updateSupplement}
             onDeleteSupplement={deleteSupplement}
@@ -198,6 +206,7 @@ export default function App() {
             onDeleteWater={deleteWater}
             onDeleteWeight={deleteWeight}
             onDeleteMood={deleteMood}
+            onDeleteBodyCheckin={deleteBodyCheckin}
             onUpdateMeal={updateMeal}
             onUpdateWorkout={updateWorkout}
             onUpdateSleep={updateSleep}

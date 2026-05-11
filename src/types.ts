@@ -102,6 +102,14 @@ export interface MoodRecord {
   createdAt?: any;
 }
 
+export interface BodyCheckin {
+  id: string;
+  time: number;
+  photoUrl: string;
+  note?: string;
+  createdAt?: any;
+}
+
 export interface Supplement {
   id: string;
   name: string;

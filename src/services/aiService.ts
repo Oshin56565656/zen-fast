@@ -443,17 +443,17 @@ export async function analyzeNutritionLabel(base64Image: string, mimeType: strin
   
   const prompt = `
     Analyze this image of a nutrition facts label.
-    Extract the "per serving" or "per 100g" values and then calculate the total nutrients for the amount the user consumed.
+    Extract the "per serving" or "per 100g" values and then calculate the total nutrients based on the additional details provided by the user about their consumption.
     
-    User Consumed: "${consumedAmount}"
+    Additional Details: "${consumedAmount}"
     
     Return a JSON object with:
     1. name: A short, concise name for the product (3-5 words max). Do NOT include explanation here.
-    2. calories: Calculated total calories (rounded to nearest integer).
-    3. protein: Calculated total protein (number).
-    4. carbs: Calculated total carbohydrates (number).
-    5. fats: Calculated total fats (number).
-    6. fiber: Calculated total dietary fiber (number).
+    2. calories: Calculated total calories (round up to nearest integer).
+    3. protein: Calculated total protein (number, round up to nearest integer).
+    4. carbs: Calculated total carbohydrates (number, round up to nearest integer).
+    5. fats: Calculated total fats (number, round up to nearest integer).
+    6. fiber: Calculated total dietary fiber (number, round up to nearest integer).
     7. perServingInfo: A brief string explaining the serving size used for calculation.
     8. reasoning: An internal explanation of calculation (will be hidden from main UI).
   `;
@@ -511,11 +511,11 @@ export async function estimateMealFromImage(base64Image: string, mimeType: strin
     
     Return a JSON object with:
     1. name: A short, concise name for the meal (3-5 words max).
-    2. calories: Total calories (rounded to nearest integer).
-    3. protein: Grams of protein (number).
-    4. carbs: Grams of carbohydrates (number).
-    5. fats: Grams of fats (number).
-    6. fiber: Grams of dietary fiber (number).
+    2. calories: Total calories (round up to nearest integer).
+    3. protein: Grams of protein (number, round up to nearest integer).
+    4. carbs: Grams of carbohydrates (number, round up to nearest integer).
+    5. fats: Grams of fats (number, round up to nearest integer).
+    6. fiber: Grams of dietary fiber (number, round up to nearest integer).
     7. reasoning: Internal identified components.
   `;
 
@@ -567,12 +567,18 @@ export async function estimateMealCalories(description: string, scale: string) {
   const ai = getAIInstance();
   
   const prompt = `
-    Estimate the calories for the following meal description and size.
+    Estimate the calories and macronutrients (protein, carbs, fats, fiber) for the following meal description and size.
     Description: "${description}"
     Size/Scale: "${scale}"
     
-    Provide the most accurate estimate possible for total calories.
-    Response must be a JSON object with only the field: "calories" (number).
+    Provide the most accurate estimate possible for total calories and macros.
+    Always round up any calculated calories or macronutrients to the nearest integer.
+    Response must be a JSON object with: 
+    - "calories" (number)
+    - "protein" (number, grams)
+    - "carbs" (number, grams)
+    - "fats" (number, grams)
+    - "fiber" (number, grams)
   `;
 
   try {
@@ -580,23 +586,27 @@ export async function estimateMealCalories(description: string, scale: string) {
       model: "gemini-3-flash-preview",
       contents: prompt,
       config: {
-        systemInstruction: "You are a nutrition expert. Estimate calories based on meal descriptions. Return JSON.",
+        systemInstruction: "You are a nutrition expert. Estimate calories and macros based on meal descriptions. Return JSON.",
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            calories: { type: Type.NUMBER }
+            calories: { type: Type.NUMBER },
+            protein: { type: Type.NUMBER },
+            carbs: { type: Type.NUMBER },
+            fats: { type: Type.NUMBER },
+            fiber: { type: Type.NUMBER }
           },
-          required: ["calories"]
+          required: ["calories", "protein", "carbs", "fats", "fiber"]
         }
       }
     });
 
     const result = JSON.parse(response.text || "{}");
-    return result.calories || 0;
+    return result;
   } catch (error) {
-    console.error("Estimate Meal Calories Error:", error);
-    return 0;
+    console.error("Estimate Meal Nutrients Error:", error);
+    return { calories: 0, protein: 0, carbs: 0, fats: 0, fiber: 0 };
   }
 }
 

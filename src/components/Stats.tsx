@@ -1,8 +1,8 @@
 import React, { FC, ReactNode } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from 'recharts';
-import { FastRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutRecord, DailySummary, MoodRecord, MealRecord } from '../types';
+import { FastRecord, SleepRecord, WaterRecord, WeightRecord, WorkoutRecord, DailySummary, MoodRecord, MealRecord, BodyCheckin } from '../types';
 import { format, subDays, isSameDay, startOfDay, eachDayOfInterval, startOfMonth, endOfMonth, startOfWeek, endOfWeek, isSameMonth, addMonths, isPast, startOfToday } from 'date-fns';
-import { Trophy, Clock, Flame, Target, Moon, Zap, Star, Droplets, Scale, TrendingDown, TrendingUp, Minus, Calendar, Award, CheckCircle2, XCircle, ChevronLeft, ChevronRight, X, Heart } from 'lucide-react';
+import { Trophy, Clock, Flame, Target, Moon, Zap, Star, Droplets, Scale, TrendingDown, TrendingUp, Minus, Calendar, Award, CheckCircle2, XCircle, ChevronLeft, ChevronRight, X, Heart, Camera, Trash2 } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Milestones } from './Milestones';
@@ -16,12 +16,15 @@ interface StatsProps {
   weights: WeightRecord[];
   workouts: WorkoutRecord[];
   moods: MoodRecord[];
+  bodyCheckins: BodyCheckin[];
   waterGoal?: number;
   dailySummaries?: DailySummary[];
+  onDeleteBodyCheckin?: (id: string) => void;
 }
 
-export const Stats: FC<StatsProps> = ({ history, meals, sleep, water, weights, workouts, moods, waterGoal = 2000, dailySummaries = [] }) => {
-  const [activeTab, setActiveTab] = React.useState<'fasting' | 'sleep' | 'water' | 'weight' | 'mood' | 'milestones' | 'review' | 'consistency'>('fasting');
+export const Stats: FC<StatsProps> = ({ history, meals, sleep, water, weights, workouts, moods, bodyCheckins, waterGoal = 2000, dailySummaries = [], onDeleteBodyCheckin }) => {
+  const [activeTab, setActiveTab] = React.useState<'fasting' | 'sleep' | 'water' | 'weight' | 'mood' | 'progress' | 'milestones' | 'review' | 'consistency'>('fasting');
+  const [selectedCheckin, setSelectedCheckin] = React.useState<BodyCheckin | null>(null);
   const [currentMonth, setCurrentMonth] = React.useState(new Date());
   const [moodView, setMoodView] = React.useState<'weekly' | 'daily'>('weekly');
 
@@ -294,6 +297,15 @@ export const Stats: FC<StatsProps> = ({ history, meals, sleep, water, weights, w
                 title="Mood"
               >
                 <Heart size={18} />
+              </button>
+              <button
+                onClick={() => setActiveTab('progress')}
+                className={`px-5 py-2 rounded-lg transition-all flex-shrink-0 ${
+                  activeTab === 'progress' ? 'bg-primary text-white shadow-lg' : 'text-white/40 hover:text-white/60'
+                }`}
+                title="Progress"
+              >
+                <Camera size={18} />
               </button>
               <button
                 onClick={() => setActiveTab('milestones')}
@@ -734,6 +746,113 @@ export const Stats: FC<StatsProps> = ({ history, meals, sleep, water, weights, w
               * Calorie deficit data is tracked based on your AI Coach insights.
             </p>
           </div>
+        </div>
+      ) : activeTab === 'progress' ? (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-bold">Body Check-ins</h3>
+            <p className="text-xs text-white/40 font-medium">{bodyCheckins.length} photos logged</p>
+          </div>
+
+          {bodyCheckins.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {[...bodyCheckins].sort((a, b) => b.time - a.time).map((checkin) => (
+                <motion.div
+                  key={checkin.id}
+                  layoutId={checkin.id}
+                  onClick={() => setSelectedCheckin(checkin)}
+                  className="aspect-[3/4] relative rounded-2xl overflow-hidden bg-white/5 border border-white/10 group cursor-pointer"
+                >
+                  <img 
+                    src={checkin.photoUrl} 
+                    alt="Body progress" 
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-4 flex flex-col justify-end">
+                    <p className="text-[10px] font-black text-white/90 truncate">{format(new Date(checkin.time), 'MMM d, yyyy')}</p>
+                    <p className="text-[9px] text-white/60">{format(new Date(checkin.time), 'HH:mm')}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-card p-12 rounded-3xl border border-white/5 flex flex-col items-center justify-center space-y-4 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center text-white/20">
+                <Camera size={32} />
+              </div>
+              <div>
+                <p className="font-bold text-white/60">No progress photos yet</p>
+                <p className="text-xs text-white/30">Log your first check-in from the Log tab</p>
+              </div>
+            </div>
+          )}
+
+          <AnimatePresence>
+            {selectedCheckin && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-black/95 backdrop-blur-xl z-[200] flex items-center justify-center p-4"
+                onClick={() => setSelectedCheckin(null)}
+              >
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  onClick={() => setSelectedCheckin(null)}
+                  className="absolute top-6 right-6 w-12 h-12 bg-white/10 rounded-full flex items-center justify-center text-white z-10 hover:bg-white/20 transition-all"
+                >
+                  <X size={24} />
+                </motion.button>
+
+                <div className="max-w-2xl w-full flex flex-col space-y-6" onClick={(e) => e.stopPropagation()}>
+                  <motion.div 
+                    layoutId={selectedCheckin.id}
+                    className="aspect-[3/4] sm:aspect-[4/5] rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl relative"
+                  >
+                    <img 
+                      src={selectedCheckin.photoUrl} 
+                      alt="Full progress" 
+                      className="w-full h-full object-cover"
+                    />
+                  </motion.div>
+
+                  <div className="space-y-4 px-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-2xl font-black text-white">
+                          {format(new Date(selectedCheckin.time), 'MMMM d, yyyy')}
+                        </h4>
+                        <p className="text-white/40 font-medium">{format(new Date(selectedCheckin.time), 'HH:mm')}</p>
+                      </div>
+                      
+                      {onDeleteBodyCheckin && (
+                        <button
+                          onClick={() => {
+                            if (window.confirm('Are you sure you want to delete this progress photo?')) {
+                              onDeleteBodyCheckin(selectedCheckin.id);
+                              setSelectedCheckin(null);
+                            }
+                          }}
+                          className="w-12 h-12 bg-red-500/10 text-red-500 rounded-2xl flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-lg shadow-red-500/10"
+                        >
+                          <Trash2 size={24} />
+                        </button>
+                      )}
+                    </div>
+
+                    {selectedCheckin.note && (
+                      <div className="bg-white/5 p-6 rounded-3xl border border-white/5">
+                        <p className="text-white/80 leading-relaxed text-sm italic">
+                          "{selectedCheckin.note}"
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       ) : activeTab === 'milestones' ? (
         <Milestones water={water} weights={weights} sleep={sleep} workouts={workouts} dailySummaries={dailySummaries} />

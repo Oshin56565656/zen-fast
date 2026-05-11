@@ -181,6 +181,15 @@ service cloud.firestore {
              data.createdAt is timestamp;
     }
 
+    function isValidBodyCheckin(data) {
+      return hasRequiredFields(['time', 'photoUrl', 'createdAt']) &&
+             hasOnlyAllowedFields(['time', 'photoUrl', 'note', 'createdAt']) &&
+             data.time is number &&
+             data.photoUrl is string &&
+             (!('note' in data) || data.note is string) &&
+             data.createdAt is timestamp;
+    }
+
     function isValidAIInsights(data) {
       return hasRequiredFields(['insights', 'createdAt']) &&
              hasOnlyAllowedFields(['insights', 'calorieGuess', 'caloriesBurned', 'lastRefreshed', 'createdAt']) &&
@@ -254,6 +263,12 @@ service cloud.firestore {
       match /moods/{moodId} {
         allow read: if request.auth.uid == userId || isAdmin();
         allow create, update: if (request.auth.uid == userId || isAdmin()) && isValidMood(request.resource.data);
+        allow delete: if request.auth.uid == userId || isAdmin();
+      }
+      
+      match /bodyCheckins/{checkinId} {
+        allow read: if request.auth.uid == userId || isAdmin();
+        allow create, update: if (request.auth.uid == userId || isAdmin()) && isValidBodyCheckin(request.resource.data);
         allow delete: if request.auth.uid == userId || isAdmin();
       }
 
