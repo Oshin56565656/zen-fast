@@ -118,6 +118,11 @@ export interface Supplement {
   preferredTime: 'any' | 'morning' | 'evening' | 'with-meal' | 'before-bed';
   reminderEnabled: boolean;
   reminderTime?: string; // HH:mm
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fats?: number;
+  fiber?: number;
   createdAt?: any;
 }
 

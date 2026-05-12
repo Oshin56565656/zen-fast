@@ -135,6 +135,13 @@ export async function getFastingInsights(
   const supplementData = supplements.map(s => ({
     name: s.name,
     dosage: s.dosage,
+    macros: {
+      calories: s.calories || 0,
+      protein: s.protein || 0,
+      carbs: s.carbs || 0,
+      fats: s.fats || 0,
+      fiber: s.fiber || 0
+    },
     preferredTime: s.preferredTime,
     lastTaken: supplementLogs
       .filter(l => l.supplementId === s.id)
@@ -166,7 +173,9 @@ export async function getFastingInsights(
     - Today's Activity Level (non-workout movement): ${activityLevel || 'Average'}
     
     Analyze this user's health data and provide 3-4 concise, personalized insights.
-    If any meals or workouts have 'calories' or 'calorieBurn' values listed, treat them as the primary source of truth for your summary calculations. Do not recalculate them unless you are specifically spotting a massive discrepancy that warrants a coaching tip.
+    If any meals, workouts, or supplements (that have been taken today) have 'calories' or macros listed, treat them as the primary source of truth for your summary calculations. Do not recalculate them unless you are specifically spotting a massive discrepancy that warrants a coaching tip.
+    
+    IMPORTANT: Supplements taken today MUST be included in the total 'calorieGuess' and macro counts. Check the 'Regimen' data for macros and 'Recent History' (implied in supplement logs or regimen timing) to see if they were taken.
     
     Focus on:
     1. The relationship between fasting windows, sleep quality, and energy levels.

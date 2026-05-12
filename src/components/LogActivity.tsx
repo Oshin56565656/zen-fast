@@ -487,7 +487,6 @@ const LogActivity: React.FC<LogActivityProps> = ({
     setAnalysisMode('meal');
     setLabelAmount('1 serving');
     setIsMealTimeDirty(false);
-    setMealTime(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
     setIsEstimatingMealCalories(false);
     setIsAnalyzingImage(false);
     setAnalyzingSource(null);
@@ -1605,18 +1604,18 @@ const LogActivity: React.FC<LogActivityProps> = ({
             )}
           
           <div className="space-y-2">
-            <div className="flex items-center justify-between bg-primary/5 p-2 rounded-xl mb-1">
-              <label className="text-[10px] font-black text-primary/60 uppercase tracking-widest px-1">Calories (Optional)</label>
+            <div className="flex items-center justify-between bg-primary/10 p-2 rounded-xl mb-1 border border-primary/20">
+              <label className="text-[10px] font-black text-primary uppercase tracking-widest px-1">Calories (Optional)</label>
               <button 
                 type="button"
                 onClick={handleEstimateMealCalories}
                 disabled={isEstimatingMealCalories}
-                className="flex items-center space-x-1 text-primary text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 px-2 py-1 rounded-lg transition-all disabled:opacity-30"
+                className="flex items-center space-x-1.5 text-primary text-[10px] font-black uppercase tracking-widest bg-primary/20 hover:bg-primary/30 px-3 py-1.5 rounded-lg transition-all"
               >
                 {isEstimatingMealCalories ? (
                   <RefreshCw size={12} className="animate-spin" />
                 ) : (
-                  <Sparkles size={12} />
+                  <Sparkles size={12} className="fill-current" />
                 )}
                 <span>AI Guess</span>
               </button>
@@ -2032,18 +2031,18 @@ const LogActivity: React.FC<LogActivityProps> = ({
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between bg-primary/5 p-2 rounded-xl mb-1">
-                  <label className="text-[10px] font-black text-primary/60 uppercase tracking-widest px-1">Calories Burned (Optional)</label>
+                <div className="flex items-center justify-between bg-primary/10 p-2 rounded-xl mb-1 border border-primary/20">
+                  <label className="text-[10px] font-black text-primary uppercase tracking-widest px-1">Calories Burned (Optional)</label>
                   <button 
                     type="button"
                     onClick={handleEstimateWorkoutCalories}
                     disabled={isEstimatingWorkoutCalories}
-                    className="flex items-center space-x-1 text-primary text-[10px] font-black uppercase tracking-widest hover:bg-primary/10 px-2 py-1 rounded-lg transition-all disabled:opacity-30"
+                    className="flex items-center space-x-1.5 text-primary text-[10px] font-black uppercase tracking-widest bg-primary/20 hover:bg-primary/30 px-3 py-1.5 rounded-lg transition-all"
                   >
                     {isEstimatingWorkoutCalories ? (
                       <RefreshCw size={12} className="animate-spin" />
                     ) : (
-                      <Sparkles size={12} />
+                      <Sparkles size={12} className="fill-current" />
                     )}
                     <span>AI Guess</span>
                   </button>

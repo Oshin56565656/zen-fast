@@ -35,6 +35,11 @@ export function Supplements({
   const [preferredTime, setPreferredTime] = useState<'any' | 'morning' | 'evening' | 'with-meal' | 'before-bed'>('any');
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [reminderTime, setReminderTime] = useState('08:00');
+  const [calories, setCalories] = useState('');
+  const [protein, setProtein] = useState('');
+  const [carbs, setCarbs] = useState('');
+  const [fats, setFats] = useState('');
+  const [fiber, setFiber] = useState('');
 
   const todayLogs = useMemo(() => {
     const today = startOfDay(new Date());
@@ -50,7 +55,12 @@ export function Supplements({
       frequency,
       preferredTime,
       reminderEnabled,
-      reminderTime: reminderEnabled ? reminderTime : undefined
+      reminderTime: reminderEnabled ? reminderTime : undefined,
+      calories: calories ? Number(calories) : undefined,
+      protein: protein ? Number(protein) : undefined,
+      carbs: carbs ? Number(carbs) : undefined,
+      fats: fats ? Number(fats) : undefined,
+      fiber: fiber ? Number(fiber) : undefined
     };
 
     if (editingId) {
@@ -71,6 +81,11 @@ export function Supplements({
     setPreferredTime('any');
     setReminderEnabled(false);
     setReminderTime('08:00');
+    setCalories('');
+    setProtein('');
+    setCarbs('');
+    setFats('');
+    setFiber('');
   };
 
   const startEdit = (s: Supplement) => {
@@ -80,6 +95,11 @@ export function Supplements({
     setPreferredTime(s.preferredTime);
     setReminderEnabled(s.reminderEnabled);
     setReminderTime(s.reminderTime || '08:00');
+    setCalories(s.calories?.toString() || '');
+    setProtein(s.protein?.toString() || '');
+    setCarbs(s.carbs?.toString() || '');
+    setFats(s.fats?.toString() || '');
+    setFiber(s.fiber?.toString() || '');
     setEditingId(s.id);
     setIsAdding(true);
   };
@@ -151,7 +171,21 @@ export function Supplements({
                       </div>
                       <div>
                         <p className={cn("text-xs font-bold", isTaken && "text-primary")}>{s.name}</p>
-                        <p className="text-[10px] opacity-40">{s.dosage}</p>
+                        <div className="flex items-center space-x-2">
+                          <p className="text-[10px] opacity-40">{s.dosage}</p>
+                          {(s.calories || s.protein || s.carbs || s.fats) && (
+                            <>
+                              <span className="w-0.5 h-0.5 rounded-full bg-white/20" />
+                              <p className="text-[9px] font-medium opacity-30 italic">
+                                {[
+                                  s.calories ? `${s.calories}kcal` : null,
+                                  s.protein ? `${s.protein}g P` : null,
+                                  s.fiber ? `${s.fiber}g Fib` : null
+                                ].filter(Boolean).join(' • ')}
+                              </p>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                     
@@ -214,6 +248,62 @@ export function Supplements({
                       placeholder="e.g. 5g, 1 capsule..."
                       className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:border-primary outline-none"
                     />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-white/30 uppercase">Macros (Optional per Dosage)</label>
+                    <div className="grid grid-cols-5 gap-1.5">
+                      <div className="space-y-1">
+                        <label className="text-[8px] text-white/20 uppercase text-center block">Kcal</label>
+                        <input 
+                          type="number"
+                          value={calories}
+                          onChange={e => setCalories(e.target.value)}
+                          placeholder="0"
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-1 py-1.5 text-[10px] text-white text-center focus:border-primary outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[8px] text-white/20 uppercase text-center block">P (g)</label>
+                        <input 
+                          type="number"
+                          value={protein}
+                          onChange={e => setProtein(e.target.value)}
+                          placeholder="0"
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-1 py-1.5 text-[10px] text-white text-center focus:border-primary outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[8px] text-white/20 uppercase text-center block">C (g)</label>
+                        <input 
+                          type="number"
+                          value={carbs}
+                          onChange={e => setCarbs(e.target.value)}
+                          placeholder="0"
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-1 py-1.5 text-[10px] text-white text-center focus:border-primary outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[8px] text-white/20 uppercase text-center block">F (g)</label>
+                        <input 
+                          type="number"
+                          value={fats}
+                          onChange={e => setFats(e.target.value)}
+                          placeholder="0"
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-1 py-1.5 text-[10px] text-white text-center focus:border-primary outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[8px] text-white/20 uppercase text-center block">Fib (g)</label>
+                        <input 
+                          type="number"
+                          value={fiber}
+                          onChange={e => setFiber(e.target.value)}
+                          placeholder="0"
+                          className="w-full bg-white/5 border border-white/10 rounded-lg px-1 py-1.5 text-[10px] text-white text-center focus:border-primary outline-none"
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-3">
@@ -313,6 +403,18 @@ export function Supplements({
                             <span className="text-[10px] text-white/30">{s.dosage}</span>
                             <span className="w-1 h-1 rounded-full bg-white/10" />
                             <span className="text-[10px] text-white/30 uppercase tracking-widest">{s.frequency}</span>
+                            {(s.calories || s.protein) && (
+                              <>
+                                <span className="w-1 h-1 rounded-full bg-white/10" />
+                                <span className="text-[9px] text-primary/50 font-bold italic truncate max-w-[80px]">
+                                  {[
+                                    s.calories ? `${s.calories}kcal` : null,
+                                    s.protein ? `${s.protein}g P` : null,
+                                    s.fiber ? `${s.fiber}g Fib` : null
+                                  ].filter(Boolean).join(' • ')}
+                                </span>
+                              </>
+                            )}
                           </div>
                         </div>
                       </div>
