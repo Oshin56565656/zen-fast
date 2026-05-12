@@ -142,6 +142,7 @@ export async function getFastingInsights(
       fats: s.fats || 0,
       fiber: s.fiber || 0
     },
+    isPaused: s.isPaused || false,
     preferredTime: s.preferredTime,
     lastTaken: supplementLogs
       .filter(l => l.supplementId === s.id)
@@ -175,7 +176,7 @@ export async function getFastingInsights(
     Analyze this user's health data and provide 3-4 concise, personalized insights.
     If any meals, workouts, or supplements (that have been taken today) have 'calories' or macros listed, treat them as the primary source of truth for your summary calculations. Do not recalculate them unless you are specifically spotting a massive discrepancy that warrants a coaching tip.
     
-    IMPORTANT: Supplements taken today MUST be included in the total 'calorieGuess' and macro counts. Check the 'Regimen' data for macros and 'Recent History' (implied in supplement logs or regimen timing) to see if they were taken.
+    IMPORTANT: Supplements taken today MUST be included in the total 'calorieGuess' and macro counts. Check the 'Regimen' data for macros and 'Recent History' (implied in supplement logs or regimen timing) to see if they were taken. Paused supplements (isPaused: true) are currently unavailable or stopped; do not recommend taking them if they are paused.
     
     Focus on:
     1. The relationship between fasting windows, sleep quality, and energy levels.

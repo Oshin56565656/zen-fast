@@ -123,6 +123,7 @@ export interface Supplement {
   carbs?: number;
   fats?: number;
   fiber?: number;
+  isPaused?: boolean;
   createdAt?: any;
 }
 

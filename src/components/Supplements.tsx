@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Pill, Plus, Trash2, Edit2, CheckCircle2, Circle, Clock, Info, AlertCircle, X, Save, Calendar } from 'lucide-react';
+import { Pill, Plus, Trash2, Edit2, CheckCircle2, Circle, Clock, Info, AlertCircle, X, Save, Calendar, Play, Pause } from 'lucide-react';
 import { Supplement, SupplementLog } from '../types';
 import { cn } from '../lib/utils';
 import { format, isSameDay, startOfDay } from 'date-fns';
@@ -40,6 +40,7 @@ export function Supplements({
   const [carbs, setCarbs] = useState('');
   const [fats, setFats] = useState('');
   const [fiber, setFiber] = useState('');
+  const [isPaused, setIsPaused] = useState(false);
 
   const todayLogs = useMemo(() => {
     const today = startOfDay(new Date());
@@ -60,7 +61,8 @@ export function Supplements({
       protein: protein ? Number(protein) : undefined,
       carbs: carbs ? Number(carbs) : undefined,
       fats: fats ? Number(fats) : undefined,
-      fiber: fiber ? Number(fiber) : undefined
+      fiber: fiber ? Number(fiber) : undefined,
+      isPaused
     };
 
     if (editingId) {
@@ -86,6 +88,7 @@ export function Supplements({
     setCarbs('');
     setFats('');
     setFiber('');
+    setIsPaused(false);
   };
 
   const startEdit = (s: Supplement) => {
@@ -100,6 +103,7 @@ export function Supplements({
     setCarbs(s.carbs?.toString() || '');
     setFats(s.fats?.toString() || '');
     setFiber(s.fiber?.toString() || '');
+    setIsPaused(s.isPaused || false);
     setEditingId(s.id);
     setIsAdding(true);
   };
@@ -137,19 +141,23 @@ export function Supplements({
             exit={{ opacity: 0, y: -10 }}
             className="grid grid-cols-1 gap-2"
           >
-            {supplements.length === 0 ? (
+            {supplements.length === 0 || supplements.every(s => s.isPaused) ? (
               <div className="bg-white/5 border border-dashed border-white/10 rounded-2xl p-6 text-center">
                 <Pill className="mx-auto h-8 w-8 text-white/10 mb-2" />
-                <p className="text-xs text-white/40 mb-3">No supplements added yet</p>
+                <p className="text-xs text-white/40 mb-3">
+                  {supplements.length === 0 ? "No supplements added yet" : "All supplements currently paused"}
+                </p>
                 <button 
                   onClick={() => setShowManager(true)}
                   className="text-xs font-bold text-primary hover:underline"
                 >
-                  Create your list →
+                  {supplements.length === 0 ? "Create your list →" : "Manage list →"}
                 </button>
               </div>
             ) : (
-              supplements.map(s => {
+              supplements
+                .filter(s => !s.isPaused)
+                .map(s => {
                 const isTaken = todayLogs.some(l => l.supplementId === s.id);
                 return (
                   <motion.button
@@ -337,6 +345,26 @@ export function Supplements({
 
                   <div className="pt-2">
                     <button
+                      onClick={() => setIsPaused(!isPaused)}
+                      className={cn(
+                        "w-full flex items-center justify-between p-3 rounded-xl border transition-all",
+                        isPaused ? "bg-amber-500/10 border-amber-500/30 text-amber-500" : "bg-white/5 border-white/10 text-white/40"
+                      )}
+                    >
+                      <div className="flex items-center space-x-2">
+                        {isPaused ? <Play size={14} /> : <Pause size={14} />}
+                        <span className="text-xs font-bold uppercase tracking-wider">
+                          {isPaused ? 'Resume Tracking' : 'Pause Tracking'}
+                        </span>
+                      </div>
+                      <div className={cn("w-10 h-5 rounded-full relative transition-all", isPaused ? "bg-amber-500" : "bg-white/10")}>
+                        <div className={cn("absolute top-1 w-3 h-3 rounded-full bg-white transition-all", isPaused ? "left-6" : "left-1")} />
+                      </div>
+                    </button>
+                  </div>
+
+                  <div className="pt-2">
+                    <button
                       onClick={() => setReminderEnabled(!reminderEnabled)}
                       className={cn(
                         "w-full flex items-center justify-between p-3 rounded-xl border transition-all",
@@ -392,13 +420,26 @@ export function Supplements({
 
                 <div className="grid grid-cols-1 gap-2">
                   {supplements.map(s => (
-                    <div key={s.id} className="bg-white/5 border border-white/5 rounded-2xl p-4 flex items-center justify-between">
+                    <div key={s.id} className={cn(
+                      "bg-white/5 border border-white/5 rounded-2xl p-4 flex items-center justify-between transition-all",
+                      s.isPaused && "opacity-50 grayscale-[0.5]"
+                    )}>
                       <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-violet-500">
-                          <Pill size={18} />
+                        <div className={cn(
+                          "w-10 h-10 rounded-xl flex items-center justify-center",
+                          s.isPaused ? "bg-amber-500/10 text-amber-500" : "bg-white/5 text-violet-500"
+                        )}>
+                          {s.isPaused ? <Pause size={18} /> : <Pill size={18} />}
                         </div>
                         <div>
-                          <p className="text-xs font-bold text-white">{s.name}</p>
+                          <div className="flex items-center space-x-2">
+                            <p className="text-xs font-bold text-white">{s.name}</p>
+                            {s.isPaused && (
+                              <span className="text-[8px] font-black uppercase tracking-tighter bg-amber-500/20 text-amber-500 px-1.5 py-0.5 rounded">
+                                Paused
+                              </span>
+                            )}
+                          </div>
                           <div className="flex items-center space-x-2">
                             <span className="text-[10px] text-white/30">{s.dosage}</span>
                             <span className="w-1 h-1 rounded-full bg-white/10" />
