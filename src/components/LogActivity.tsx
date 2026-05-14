@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Image, Droplets, LineChart, Mic, MicOff, Sparkles, MapPin, Play, X, RefreshCw, Pill, Heart, Zap, Smile, Frown, Meh, Sun, CloudRain, ChevronLeft, ChevronRight, CheckCircle2 } from 'lucide-react';
+import { Utensils, Dumbbell, Plus, Trash2, Clock, Scale, Moon, Camera, Image, Droplets, LineChart, Mic, MicOff, Sparkles, MapPin, Play, X, RefreshCw, Pill, Heart, Zap, Smile, Frown, Meh, Sun, CloudRain, ChevronLeft, ChevronRight, CheckCircle2, Copy } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { formatTime, formatDate, formatDurationShort, compressImage } from '../lib/utils';
 import { format, subHours, addMinutes, isSameDay } from 'date-fns';
@@ -889,6 +889,36 @@ const LogActivity: React.FC<LogActivityProps> = ({
     if (selectedLog.type === 'mood') onUpdateMood(id, editingData);
     setSelectedLog(null);
     setIsEditing(false);
+  };
+
+  const handleDuplicateMeal = (meal: MealRecord) => {
+    setMealDescription(meal.description || '');
+    setMealScale(meal.scale);
+    setMealCalories(meal.calories?.toString() || '');
+    setMealProtein(meal.protein);
+    setMealCarbs(meal.carbs);
+    setMealFats(meal.fats);
+    setMealFiber(meal.fiber);
+    
+    // Set time to now
+    setMealTime(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+    setIsMealTimeDirty(false);
+
+    // Scroll to form
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Toast
+    const toast = document.createElement('div');
+    toast.className = 'fixed top-24 left-1/2 -translate-x-1/2 bg-primary text-white px-8 py-4 rounded-[2rem] shadow-2xl z-[200] flex items-center space-x-2 text-center transform transition-all duration-500 ease-out';
+    toast.innerHTML = `
+      <Copy size={16} />
+      <p class="text-xs font-black uppercase tracking-widest">Meal Data Copied</p>
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.classList.add('opacity-0', '-translate-y-4');
+      setTimeout(() => toast.remove(), 500);
+    }, 2000);
   };
 
   return (
@@ -2187,7 +2217,17 @@ const LogActivity: React.FC<LogActivityProps> = ({
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDuplicateMeal(meal);
+                      }}
+                      className="p-2 text-white/20 hover:text-primary transition-colors"
+                      title="Duplicate Meal"
+                    >
+                      <Copy size={18} />
+                    </button>
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
