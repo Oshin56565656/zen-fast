@@ -788,7 +788,14 @@ export const Settings: FC<SettingsProps> = ({
             <div className="p-3 bg-green-500/5 border border-green-500/10 rounded-xl flex items-start space-x-3">
               <Info className="text-green-500 shrink-0 mt-0.5" size={14} />
               <div className="space-y-1">
-                <p className="text-[10px] text-green-500 font-bold uppercase tracking-wider">Android Troubleshooting</p>
+                <p className="text-[10px] text-green-500 font-bold uppercase tracking-wider">Background Notifications</p>
+                <p className="text-[10px] text-green-500/80 leading-relaxed">
+                  To receive reminders even when the app is closed:<br />
+                  1. <strong>Install</strong> this app (Add to Home Screen).<br />
+                  2. Ensure <strong>Background Data</strong> is enabled.<br />
+                  3. If notifications still don't appear, keep the tab open in the background.
+                </p>
+                <p className="text-[10px] text-green-500 font-bold uppercase tracking-wider mt-2">Android Troubleshooting</p>
                 <p className="text-[10px] text-green-500/80 leading-relaxed">
                   If notifications still don't appear: <br />
                   1. Check <strong>Android Settings &gt; Apps &gt; Chrome &gt; Notifications</strong>.<br />

@@ -900,7 +900,67 @@ export function useFasting() {
     return () => clearInterval(interval);
   }, [state.status, state.startTime, state.totalPausedTime, state.targetHours, state.targetEndTime, hasNotifiedTarget, endFast]);
 
-  // Water reminder logic
+  // Sync water settings with Service Worker for background reminders
+  useEffect(() => {
+    if (!isAuthReady || !isWaterLoaded) return;
+
+    const syncWithSW = async () => {
+      if ('serviceWorker' in navigator) {
+        const registration = await navigator.serviceWorker.ready;
+        
+        // 1. Send sync message
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        const todayTotal = water
+          .filter(w => w.time >= startOfToday.getTime())
+          .reduce((acc, curr) => acc + curr.amount, 0);
+
+        if (registration.active) {
+          registration.active.postMessage({
+            type: 'SYNC_WATER_SETTINGS',
+            payload: {
+              enabled: state.notificationsEnabled && state.waterReminderEnabled,
+              interval: state.waterReminderInterval || 1,
+              startHour: state.waterReminderStartHour !== undefined ? state.waterReminderStartHour : 8,
+              endHour: state.waterReminderEndHour !== undefined ? state.waterReminderEndHour : 23,
+              lastReminder: lastWaterReminder,
+              waterGoal: state.waterGoal || 2000,
+              todayTotal
+            }
+          });
+        }
+
+        // 2. Request Periodic Sync (optional but good for background)
+        try {
+          const status = await (navigator as any).permissions.query({
+            name: 'periodic-background-sync',
+          });
+          if (status.state === 'granted') {
+            await (registration as any).periodicSync.register('water-reminder', {
+              minInterval: (state.waterReminderInterval || 1) * 3600 * 1000,
+            });
+          }
+        } catch (e) {
+          // Periodic Sync not supported or rejected
+        }
+      }
+    };
+
+    syncWithSW();
+  }, [
+    water, 
+    state.notificationsEnabled, 
+    state.waterReminderEnabled, 
+    state.waterReminderInterval, 
+    state.waterReminderStartHour, 
+    state.waterReminderEndHour,
+    state.waterGoal,
+    lastWaterReminder,
+    isAuthReady,
+    isWaterLoaded
+  ]);
+
+  // Existing Water reminder logic (runs when app is open)
   useEffect(() => {
     if (!isAuthReady || !isWaterLoaded) return;
 
