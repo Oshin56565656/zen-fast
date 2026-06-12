@@ -20,24 +20,40 @@ export const History: FC<HistoryProps> = ({ history, meals, onDelete, onManualLo
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const sortedMeals = [...meals].sort((a, b) => b.time - a.time);
-  const lastMeal = sortedMeals[0];
-  const secondLastMeal = sortedMeals[1];
+  const [meal1Id, setMeal1Id] = useState<string>('');
+  const [meal2Id, setMeal2Id] = useState<string>('');
 
-  const handleQuickLog = () => {
-    if (!lastMeal || !secondLastMeal) return;
+  const sortedMeals = [...meals].sort((a, b) => b.time - a.time);
+
+  const selectedMeal1 = meals.find(m => m.id === meal1Id);
+  const selectedMeal2 = meals.find(m => m.id === meal2Id);
+
+  const updateFastingFromMeals = (id1: string, id2: string) => {
+    if (!id1 || !id2) return;
+    const m1 = meals.find(m => m.id === id1);
+    const m2 = meals.find(m => m.id === id2);
+    if (!m1 || !m2 || m1.id === m2.id) return;
+
+    // Sort chronologically
+    const [earlier, later] = [m1, m2].sort((a, b) => a.time - b.time);
     
-    // Fast is between the end of second last meal and start of last meal
-    // Assuming start of last meal as the end of fast
-    // and time of second last meal as the start of fast
-    setStartTime(format(new Date(secondLastMeal.time), "yyyy-MM-dd'T'HH:mm"));
-    setEndTime(format(new Date(lastMeal.time), "yyyy-MM-dd'T'HH:mm"));
+    setStartTime(format(new Date(earlier.time), "yyyy-MM-dd'T'HH:mm"));
+    setEndTime(format(new Date(later.time), "yyyy-MM-dd'T'HH:mm"));
     
-    // Optionally adjust target based on the gap
-    const hours = differenceInHours(new Date(lastMeal.time), new Date(secondLastMeal.time));
+    const hours = differenceInHours(new Date(later.time), new Date(earlier.time));
     if (hours > 0 && hours <= 48) {
       setTargetHours(hours);
+    } else if (hours > 48) {
+      setTargetHours(48);
+    } else {
+      setTargetHours(16);
     }
+  };
+
+  const closeLogging = () => {
+    setIsLogging(false);
+    setMeal1Id('');
+    setMeal2Id('');
   };
 
   const handleManualLog = async (e: React.FormEvent) => {
@@ -54,7 +70,7 @@ export const History: FC<HistoryProps> = ({ history, meals, onDelete, onManualLo
     setIsSubmitting(true);
     try {
       await onManualLog(start, end, targetHours);
-      setIsLogging(false);
+      closeLogging();
     } catch (error) {
       console.error("Failed to log fast manual:", error);
     } finally {
@@ -118,34 +134,79 @@ export const History: FC<HistoryProps> = ({ history, meals, onDelete, onManualLo
             >
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-lg font-bold">Manual Log</h3>
-                <button onClick={() => setIsLogging(false)} className="text-white/40 hover:text-white">
+                <button onClick={closeLogging} className="text-white/40 hover:text-white">
                    <X size={24} />
                 </button>
               </div>
 
-              {secondLastMeal && lastMeal && (
-                <button
-                  type="button"
-                  onClick={handleQuickLog}
-                  className="w-full mb-6 flex items-center justify-between p-4 bg-primary/10 border border-primary/20 rounded-2xl group hover:bg-primary/20 transition-all active:scale-95 text-left"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
-                      <Utensils size={20} />
+              {meals.length >= 2 ? (
+                <div className="mb-6 p-4 bg-white/5 border border-white/10 rounded-2xl space-y-3">
+                  <div className="flex items-center space-x-2 text-primary font-bold">
+                    <Utensils size={18} />
+                    <span className="text-xs uppercase tracking-wider">Auto-fill from Selected Meals</span>
+                  </div>
+                  <p className="text-[10px] text-white/40 leading-relaxed font-sans">
+                    Select any two meals. We will automatically calculate and fill the fasting interval between them.
+                  </p>
+                  <div className="grid grid-cols-1 gap-2.5">
+                    <div className="space-y-1">
+                      <label className="text-[9px] text-white/30 uppercase font-black tracking-widest block font-sans">First Meal</label>
+                      <select
+                        value={meal1Id}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setMeal1Id(val);
+                          updateFastingFromMeals(val, meal2Id);
+                        }}
+                        className="w-full bg-neutral-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-primary transition-colors cursor-pointer"
+                      >
+                        <option value="" className="text-white/40 bg-neutral-900">Select first meal...</option>
+                        {sortedMeals.map((m) => (
+                          <option key={m.id} value={m.id} className="bg-neutral-900">
+                            {m.description || `${m.scale.toUpperCase()} Meal`} ({formatTime(m.time)} - {formatDate(m.time)})
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                    <div>
-                      <p className="text-sm font-bold text-primary">Auto-fill from Meals</p>
-                      <p className="text-[10px] text-primary/60 font-medium">Between your last 2 meals</p>
+
+                    <div className="space-y-1">
+                      <label className="text-[9px] text-white/30 uppercase font-black tracking-widest block font-sans">Second Meal</label>
+                      <select
+                        value={meal2Id}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setMeal2Id(val);
+                          updateFastingFromMeals(meal1Id, val);
+                        }}
+                        className="w-full bg-neutral-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-primary transition-colors cursor-pointer"
+                      >
+                        <option value="" className="text-white/40 bg-neutral-900">Select second meal...</option>
+                        {sortedMeals.map((m) => (
+                          <option key={m.id} value={m.id} className="bg-neutral-900">
+                            {m.description || `${m.scale.toUpperCase()} Meal`} ({formatTime(m.time)} - {formatDate(m.time)})
+                          </option>
+                        ))}
+                      </select>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs font-black text-primary">
-                      {differenceInHours(new Date(lastMeal.time), new Date(secondLastMeal.time))}h
-                    </p>
-                    <p className="text-[8px] text-primary/40 uppercase font-bold tracking-tighter">Fast Gap</p>
-                  </div>
-                </button>
-              )}
+
+                  {selectedMeal1 && selectedMeal2 && selectedMeal1.id !== selectedMeal2.id && (
+                    <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[11px] font-medium text-primary">
+                      <span>Calculated Gap:</span>
+                      <span className="font-bold bg-primary/10 px-2 py-0.5 rounded">
+                        {(() => {
+                          const [earlier, later] = [selectedMeal1, selectedMeal2].sort((a, b) => a.time - b.time);
+                          return differenceInHours(new Date(later.time), new Date(earlier.time));
+                        })()}h fast
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : meals.length === 1 ? (
+                <div className="mb-6 p-4 bg-white/5 border border-dashed border-white/10 rounded-2xl text-center">
+                  <p className="text-[10px] text-white/45 font-sans">You need to log at least 2 meals to use the automatic fast calculator.</p>
+                </div>
+              ) : null}
 
               <form onSubmit={handleManualLog} className="space-y-4">
                 <div className="space-y-2">

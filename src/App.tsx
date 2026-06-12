@@ -13,6 +13,7 @@ import { auth, signOut } from './firebase';
 import { cn } from './lib/utils';
 
 import { MilestoneNotifier } from './components/MilestoneNotifier';
+import { UndoPopup } from './components/UndoPopup';
 
 type Tab = 'timer' | 'history' | 'stats' | 'coach' | 'log' | 'settings';
 
@@ -90,6 +91,9 @@ export default function App() {
     deleteSupplementLog,
     updateSupplementLog,
     isDataLoaded,
+    undoItem,
+    triggerUndo,
+    clearUndo,
   } = useFasting();
 
   useEffect(() => {
@@ -442,6 +446,11 @@ export default function App() {
         workouts={workouts} 
         dailySummaries={dailySummaries}
         isLoaded={isDataLoaded}
+      />
+      <UndoPopup 
+        undoItem={undoItem} 
+        onUndo={triggerUndo} 
+        onDismiss={clearUndo} 
       />
     </div>
   );

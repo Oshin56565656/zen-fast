@@ -196,3 +196,10 @@ export interface AIInsightsSync {
   caloriesBurned: CaloriesBurned | null;
   lastRefreshed: number | null;
 }
+
+export interface UndoItem {
+  id: string;
+  type: 'meal' | 'workout' | 'sleep' | 'water' | 'weight' | 'supplement' | 'supplementLog' | 'mood' | 'bodyCheckin' | 'history';
+  data: any;
+  message: string;
+}

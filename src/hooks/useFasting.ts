@@ -3,7 +3,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { formatDurationShort } from '../lib/utils';
 import { format } from 'date-fns';
 import { getFastingInsights } from '../services/aiService';
-import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, BodyCheckin, WorkoutType, WorkoutIntensity, DailySummary, AIInsightsSync, Supplement, SupplementLog, MoodRecord, MoodScore, EnergyLevel, MuscularityLevel } from '../types';
+import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, BodyCheckin, WorkoutType, WorkoutIntensity, DailySummary, AIInsightsSync, Supplement, SupplementLog, MoodRecord, MoodScore, EnergyLevel, MuscularityLevel, UndoItem } from '../types';
 import { 
   auth, 
   db, 
@@ -69,6 +69,62 @@ export function useFasting() {
   const [moods, setMoods] = useState<MoodRecord[]>([]);
   const [bodyCheckins, setBodyCheckins] = useState<BodyCheckin[]>([]);
   const [aiInsights, setAiInsights] = useState<AIInsightsSync | null>(null);
+  const [undoItem, setUndoItem] = useState<UndoItem | null>(null);
+  const undoTimeoutRef = useRef<any>(null);
+
+  const clearUndo = useCallback(() => {
+    if (undoTimeoutRef.current) {
+      clearTimeout(undoTimeoutRef.current);
+    }
+    setUndoItem(null);
+  }, []);
+
+  const triggerUndo = useCallback(async () => {
+    if (!user || !undoItem) return;
+    const { type, id, data } = undoItem;
+    if (undoTimeoutRef.current) {
+      clearTimeout(undoTimeoutRef.current);
+    }
+    try {
+      let collectionName = '';
+      switch (type) {
+        case 'meal': collectionName = 'meals'; break;
+        case 'workout': collectionName = 'workouts'; break;
+        case 'sleep': collectionName = 'sleep'; break;
+        case 'water': collectionName = 'water'; break;
+        case 'weight': collectionName = 'weights'; break;
+        case 'supplement': collectionName = 'supplements'; break;
+        case 'supplementLog': collectionName = 'supplementLogs'; break;
+        case 'mood': collectionName = 'moods'; break;
+        case 'bodyCheckin': collectionName = 'bodyCheckins'; break;
+        case 'history': collectionName = 'history'; break;
+      }
+      if (collectionName) {
+        const { id: _, ...rest } = data;
+        await setDoc(doc(db, 'users', user.uid, collectionName, id), rest);
+      }
+      setUndoItem(null);
+    } catch (error) {
+      console.error("Failed to restore deleted item:", error);
+    }
+  }, [user, undoItem]);
+
+  useEffect(() => {
+    if (undoItem) {
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
+      }
+      undoTimeoutRef.current = setTimeout(() => {
+        setUndoItem(null);
+      }, 6000);
+    }
+    return () => {
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
+      }
+    };
+  }, [undoItem]);
+
   const [hasNotifiedTarget, setHasNotifiedTarget] = useState(false);
   const [lastWaterReminder, setLastWaterReminder] = useState<number>(() => {
     if (typeof window !== 'undefined') {
@@ -793,8 +849,16 @@ export function useFasting() {
 
   const deleteRecord = async (id: string) => {
     if (!user) return;
+    const record = history.find(r => r.id === id);
+    if (!record) return;
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'history', id));
+      setUndoItem({
+        id,
+        type: 'history',
+        data: record,
+        message: 'Fasting history record deleted.'
+      });
     } catch (error) {
       handleFirestoreError(error, 'delete', `users/${user.uid}/history/${id}`);
     }
@@ -1138,8 +1202,16 @@ export function useFasting() {
 
   const deleteMeal = async (id: string) => {
     if (!user) return;
+    const record = meals.find(r => r.id === id);
+    if (!record) return;
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'meals', id));
+      setUndoItem({
+        id,
+        type: 'meal',
+        data: record,
+        message: `Meal "${record.description || 'Meal'}" deleted.`
+      });
     } catch (error) {
       handleFirestoreError(error, 'delete', `users/${user.uid}/meals/${id}`);
     }
@@ -1157,8 +1229,16 @@ export function useFasting() {
 
   const deleteWorkout = async (id: string) => {
     if (!user) return;
+    const record = workouts.find(r => r.id === id);
+    if (!record) return;
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'workouts', id));
+      setUndoItem({
+        id,
+        type: 'workout',
+        data: record,
+        message: `Workout "${record.description || record.type}" deleted.`
+      });
     } catch (error) {
       handleFirestoreError(error, 'delete', `users/${user.uid}/workouts/${id}`);
     }
@@ -1200,8 +1280,16 @@ export function useFasting() {
 
   const deleteSleep = async (id: string) => {
     if (!user) return;
+    const record = sleep.find(r => r.id === id);
+    if (!record) return;
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'sleep', id));
+      setUndoItem({
+        id,
+        type: 'sleep',
+        data: record,
+        message: 'Sleep record deleted.'
+      });
     } catch (error) {
       handleFirestoreError(error, 'delete', `users/${user.uid}/sleep/${id}`);
     }
@@ -1246,8 +1334,16 @@ export function useFasting() {
 
   const deleteWater = async (id: string) => {
     if (!user) return;
+    const record = water.find(r => r.id === id);
+    if (!record) return;
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'water', id));
+      setUndoItem({
+        id,
+        type: 'water',
+        data: record,
+        message: `Water record (${record.amount}ml) deleted.`
+      });
     } catch (error) {
       handleFirestoreError(error, 'delete', `users/${user.uid}/water/${id}`);
     }
@@ -1284,8 +1380,16 @@ export function useFasting() {
 
   const deleteWeight = async (id: string) => {
     if (!user) return;
+    const record = weights.find(r => r.id === id);
+    if (!record) return;
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'weights', id));
+      setUndoItem({
+        id,
+        type: 'weight',
+        data: record,
+        message: `Weight entry (${record.weight}kg) deleted.`
+      });
     } catch (error) {
       handleFirestoreError(error, 'delete', `users/${user.uid}/weights/${id}`);
     }
@@ -1314,8 +1418,16 @@ export function useFasting() {
 
   const deleteSupplement = async (id: string) => {
     if (!user) return;
+    const record = supplements.find(r => r.id === id);
+    if (!record) return;
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'supplements', id));
+      setUndoItem({
+        id,
+        type: 'supplement',
+        data: record,
+        message: `Supplement "${record.name}" deleted.`
+      });
     } catch (error) {
       handleFirestoreError(error, 'delete', `users/${user.uid}/supplements/${id}`);
     }
@@ -1337,8 +1449,17 @@ export function useFasting() {
 
   const deleteSupplementLog = async (id: string) => {
     if (!user) return;
+    const record = supplementLogs.find(r => r.id === id);
+    if (!record) return;
+    const targetSupplement = supplements.find(s => s.id === record.supplementId);
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'supplementLogs', id));
+      setUndoItem({
+        id,
+        type: 'supplementLog',
+        data: record,
+        message: `Supplement intake log "${targetSupplement?.name || 'Log'}" deleted.`
+      });
     } catch (error) {
       handleFirestoreError(error, 'delete', `users/${user.uid}/supplementLogs/${id}`);
     }
@@ -1371,8 +1492,16 @@ export function useFasting() {
 
   const deleteMood = async (id: string) => {
     if (!user) return;
+    const record = moods.find(r => r.id === id);
+    if (!record) return;
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'moods', id));
+      setUndoItem({
+        id,
+        type: 'mood',
+        data: record,
+        message: 'Mood check-in deleted.'
+      });
     } catch (error) {
       handleFirestoreError(error, 'delete', `users/${user.uid}/moods/${id}`);
     }
@@ -1406,8 +1535,16 @@ export function useFasting() {
 
   const deleteBodyCheckin = async (id: string) => {
     if (!user) return;
+    const record = bodyCheckins.find(r => r.id === id);
+    if (!record) return;
     try {
       await deleteDoc(doc(db, 'users', user.uid, 'bodyCheckins', id));
+      setUndoItem({
+        id,
+        type: 'bodyCheckin',
+        data: record,
+        message: 'Body check-in photo deleted.'
+      });
     } catch (error) {
       handleFirestoreError(error, 'delete', `users/${user.uid}/bodyCheckins/${id}`);
     }
@@ -1558,6 +1695,9 @@ export function useFasting() {
     deleteSupplementLog,
     updateSupplementLog,
     firestoreError,
+    undoItem,
+    triggerUndo,
+    clearUndo,
     isDataLoaded: isHistoryLoaded && isMealsLoaded && isWorkoutsLoaded && isSleepLoaded && isWaterLoaded && isWeightsLoaded && isDailySummariesLoaded && isMoodsLoaded && isSupplementsLoaded && isSettingsLoaded
   };
 }
