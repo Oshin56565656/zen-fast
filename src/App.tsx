@@ -261,6 +261,7 @@ export default function App() {
               workouts={workouts}
               sleep={sleep}
               dailySummaries={dailySummaries}
+              bodyCheckins={bodyCheckins}
             />
             <div className="px-6">
               <button

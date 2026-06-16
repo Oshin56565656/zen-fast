@@ -1,8 +1,9 @@
 import React, { FC, useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { cn, formatDurationShort } from '../lib/utils';
-import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info, Download, ChevronDown, User, Target, Settings as SettingsIcon, Database, Brain, Plus, Clock, RefreshCw } from 'lucide-react';
-import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, MuscularityLevel } from '../types';
+import { Sparkles, CheckCircle2, AlertCircle, Bell, BellOff, Info, Download, ChevronDown, User, Target, Settings as SettingsIcon, Database, Brain, Plus, Clock, RefreshCw, Image, Loader2 } from 'lucide-react';
+import { FastRecord, MealRecord, WorkoutRecord, SleepRecord, MuscularityLevel, BodyCheckin } from '../types';
+import JSZip from 'jszip';
 
 interface SettingsProps {
   targetHours: number;
@@ -42,6 +43,7 @@ interface SettingsProps {
   workouts: WorkoutRecord[];
   sleep: SleepRecord[];
   dailySummaries?: any[];
+  bodyCheckins?: BodyCheckin[];
 }
 
 interface CollapsibleSectionProps {
@@ -145,7 +147,8 @@ export const Settings: FC<SettingsProps> = ({
   meals,
   workouts,
   sleep,
-  dailySummaries = []
+  dailySummaries = [],
+  bodyCheckins = []
 }) => {
   const [hasKey, setHasKey] = useState(false);
   const [manualKey, setManualKey] = useState('');
@@ -164,6 +167,75 @@ export const Settings: FC<SettingsProps> = ({
   });
 
   const [newPreset, setNewPreset] = useState<string>('');
+  const [isZipping, setIsZipping] = useState(false);
+  const [zipError, setZipError] = useState<string | null>(null);
+
+  const downloadProgressPics = async () => {
+    if (!bodyCheckins || bodyCheckins.length === 0) return;
+    setIsZipping(true);
+    setZipError(null);
+    try {
+      const zip = new JSZip();
+      let addedCount = 0;
+      
+      bodyCheckins.forEach((checkin, index) => {
+        if (!checkin.photoUrl) return;
+        
+        // Handle Base64 URL format
+        const match = checkin.photoUrl.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+        
+        let fileData: string;
+        let ext = 'jpg';
+        
+        if (match) {
+          const mimeType = match[1];
+          fileData = match[2];
+          ext = mimeType.split('/')[1] || 'jpg';
+        } else {
+          // Fallback if not matching precisely
+          return;
+        }
+        
+        const dateObj = new Date(checkin.time);
+        const year = dateObj.getFullYear();
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const hours = String(dateObj.getHours()).padStart(2, '0');
+        const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+        
+        const timestampStr = `${year}-${month}-${day}_${hours}${minutes}`;
+        const noteSlug = checkin.note 
+          ? `_${checkin.note.replace(/[^a-z0-9]/gi, '_').toLowerCase().slice(0, 15)}` 
+          : '';
+        const filename = `progress_${timestampStr}${noteSlug}_${index + 1}.${ext}`;
+        
+        zip.file(filename, fileData, { base64: true });
+        addedCount++;
+      });
+      
+      if (addedCount === 0) {
+        throw new Error("No progress pictures found to archive.");
+      }
+      
+      const content = await zip.generateAsync({ type: 'blob' });
+      const dateStr = new Date().toISOString().split('T')[0];
+      const filename = `allround_progress_pics_${dateStr}.zip`;
+      
+      const url = URL.createObjectURL(content);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      console.error("Failed to generate ZIP", err);
+      setZipError(err?.message || "Could not pack your pictures.");
+    } finally {
+      setIsZipping(false);
+    }
+  };
 
   const toggleSection = (section: string) => {
     setExpandedSections(prev => ({
@@ -1042,6 +1114,30 @@ export const Settings: FC<SettingsProps> = ({
               <Download size={20} />
               <span>Download All Data</span>
             </button>
+
+            {bodyCheckins && bodyCheckins.length > 0 ? (
+              <button
+                onClick={downloadProgressPics}
+                disabled={isZipping}
+                className="w-full py-4 bg-white/5 hover:bg-white/10 text-white rounded-2xl font-bold flex items-center justify-center space-x-3 transition-all active:scale-95 border border-white/10 cursor-pointer disabled:cursor-not-allowed"
+              >
+                {isZipping ? (
+                  <Loader2 size={20} className="animate-spin text-primary" />
+                ) : (
+                  <Image size={20} className="text-primary" />
+                )}
+                <span>{isZipping ? "Creating ZIP Archive..." : `Download All Progress Pics (${bodyCheckins.length})`}</span>
+              </button>
+            ) : (
+              <div className="w-full py-3 px-4 bg-white/2 border border-white/5 rounded-2xl flex items-center justify-center space-x-2 text-white/40 text-xs">
+                <Image size={16} />
+                <span>No progress pictures logged yet</span>
+              </div>
+            )}
+
+            {zipError && (
+              <p className="text-[11px] text-red-500 font-medium text-center">{zipError}</p>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               <button
