@@ -1159,7 +1159,7 @@ export function useFasting() {
 
       const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.5-flash",
         contents: `Parse the following workout text and extract structured information. 
         Identify the exercise names, the total duration in minutes (look for patterns like "30m" at the end), 
         and estimate the total calories burned based on the volume (sets, reps, weights) and duration.

@@ -53,7 +53,7 @@ export async function getFastingInsights(
 
   const ai = getAIInstance();
   const now = new Date();
-  const fourDaysAgo = now.getTime() - (4 * 24 * 60 * 60 * 1000);
+  const limitDaysAgo = now.getTime() - (3 * 24 * 60 * 60 * 1000); // Only past 3 days of logs as requested
   
   const formatLocalTime = (timestamp: number) => {
     return new Date(timestamp).toLocaleString('en-US', {
@@ -67,7 +67,7 @@ export async function getFastingInsights(
   };
 
   const historyData = history
-    .filter(h => h.startTime >= fourDaysAgo)
+    .filter(h => h.startTime >= limitDaysAgo)
     .slice(0, 10)
     .map(h => ({
       localTime: formatLocalTime(h.startTime),
@@ -79,7 +79,7 @@ export async function getFastingInsights(
     }));
 
   const mealData = meals
-    .filter(m => m.time >= fourDaysAgo)
+    .filter(m => m.time >= limitDaysAgo)
     .slice(0, 15)
     .map(m => ({
       localTime: formatLocalTime(m.time),
@@ -96,7 +96,7 @@ export async function getFastingInsights(
     }));
 
   const workoutData = workouts
-    .filter(w => w.startTime >= fourDaysAgo)
+    .filter(w => w.startTime >= limitDaysAgo)
     .slice(0, 10)
     .map(w => ({
       localTime: formatLocalTime(w.startTime),
@@ -111,7 +111,7 @@ export async function getFastingInsights(
     }));
 
   const sleepData = sleep
-    .filter(s => s.wakeUpTime >= fourDaysAgo)
+    .filter(s => s.wakeUpTime >= limitDaysAgo)
     .slice(0, 7)
     .map(s => {
       return {
@@ -124,7 +124,7 @@ export async function getFastingInsights(
     });
 
   const waterData = water
-    .filter(w => w.time >= fourDaysAgo)
+    .filter(w => w.time >= limitDaysAgo)
     .slice(0, 20)
     .map(w => ({
       localTime: formatLocalTime(w.time),
@@ -150,7 +150,7 @@ export async function getFastingInsights(
   }));
 
   const moodData = moods
-    .filter(m => m.time >= fourDaysAgo)
+    .filter(m => m.time >= limitDaysAgo)
     .slice(0, 20)
     .map(m => ({
       localTime: formatLocalTime(m.time),
@@ -243,7 +243,7 @@ export async function getFastingInsights(
   try {
     const response = await withTimeout(
       ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-3.5-flash",
         contents: prompt,
         config: {
           systemInstruction: "You are an expert fasting and fitness coach. Provide data-driven, structured insights based on the user's history and physical profile. IMPORTANT: 1. Use the EXACT calorie values provided in the logs for meals and workouts without any further reduction or inflation. 2. Calculate BMR and NEAT separately and include them in the response. Understate BMR and NEAT by exactly 10% below your raw calculation for a FULL 24-HOUR projection. 3. Total burn amount must be the sum of these adjusted BMR/NEAT and logged workouts. NEVER hallucinate data. ALWAYS use 12-hour time format and include 'asOfTime'.",
@@ -401,7 +401,7 @@ User Question: ${userMessage}` }]
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.5-flash",
       contents: contents,
       config: {
         systemInstruction: "You are an expert fasting and fitness coach. A user is asking you a question about a specific insight you previously provided. Answer their question concisely and accurately based on the context of that insight and their physical profile. Be supportive and data-driven. Keep responses under 3 sentences if possible."
@@ -434,7 +434,7 @@ export async function getPeriodicReview(
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         systemInstruction: "You are an expert health and fitness coach providing a high-level periodic review. Be concise, data-driven, and motivating."
@@ -470,7 +470,7 @@ export async function analyzeNutritionLabel(base64Image: string, mimeType: strin
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.5-flash",
       contents: [
         {
           role: "user",
@@ -531,7 +531,7 @@ export async function estimateMealFromImage(base64Image: string, mimeType: strin
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.5-flash",
       contents: [
         {
           role: "user",
@@ -593,7 +593,7 @@ export async function estimateMealCalories(description: string, scale: string) {
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         systemInstruction: "You are a nutrition expert. Estimate calories and macros based on meal descriptions. Return JSON.",
@@ -636,7 +636,7 @@ export async function estimateWorkoutCalories(type: string, intensity: string, d
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         systemInstruction: "You are a fitness expert. Estimate calories burned based on workout details. Return JSON.",
@@ -683,7 +683,7 @@ export async function parseWorkoutText(text: string) {
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         systemInstruction: "You are a fitness data parser. Extract structured data from workout logs. Be precise with durations and times.",
