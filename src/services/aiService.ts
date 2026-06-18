@@ -31,13 +31,13 @@ interface GeminiCallParams {
 async function callGeminiAPI(ai: any, params: GeminiCallParams): Promise<GenerateContentResponse> {
   const primaryModel = params.model || "gemini-3.5-flash";
   
-  // Set up sequential models to try
+  // Set up sequential models to try from permitted models (avoiding deprecated/prohibited ones like gemini-1.5-flash)
   const modelsToTry = [primaryModel];
-  if (primaryModel !== "gemini-2.5-flash") {
-    modelsToTry.push("gemini-2.5-flash");
+  if (primaryModel !== "gemini-3.1-flash-lite") {
+    modelsToTry.push("gemini-3.1-flash-lite");
   }
-  if (primaryModel !== "gemini-1.5-flash" && primaryModel !== "gemini-2.5-flash") {
-    modelsToTry.push("gemini-1.5-flash");
+  if (primaryModel !== "gemini-flash-latest" && primaryModel !== "gemini-3.1-flash-lite") {
+    modelsToTry.push("gemini-flash-latest");
   }
 
   let lastError: any = null;
@@ -84,11 +84,25 @@ async function callGeminiAPI(ai: any, params: GeminiCallParams): Promise<Generat
 }
 
 const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
+  let timeoutId: NodeJS.Timeout | undefined;
+
+  // Prevent background promise rejections from causing unhandledRejection crashes on Node.js after the timeout has fired
+  promise.catch((err) => {
+    console.warn("Background promise rejected after timeout or resolution:", err?.message || err);
+  });
+
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(errorMessage));
+    }, timeoutMs);
+  });
+
   return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => 
-      setTimeout(() => reject(new Error(errorMessage)), timeoutMs)
-    )
+    promise.then((val) => {
+      if (timeoutId) clearTimeout(timeoutId);
+      return val;
+    }),
+    timeoutPromise
   ]);
 };
 
