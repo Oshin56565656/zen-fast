@@ -51,6 +51,22 @@ export async function getFastingInsights(
     return [];
   }
 
+  // Client-side delegation to avoid leaks and direct browser instantiation of Gemini API Key
+  if (typeof window !== 'undefined' && !localStorage.getItem('FT_GEMINI_API_KEY')) {
+    const response = await fetch('/api/ai/getFastingInsights', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        history, meals, workouts, sleep, water, userLocalTime, height, weight, sex, age, supplements, supplementLogs, moods, muscularity, activityLevel
+      })
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get fasting insights');
+    }
+    return response.json();
+  }
+
   const ai = getAIInstance();
   const now = new Date();
   const limitDaysAgo = now.getTime() - (3 * 24 * 60 * 60 * 1000); // Only past 3 days of logs as requested
@@ -360,6 +376,22 @@ export async function chatWithCoach(
   muscularity?: string,
   activityLevel?: string
 ) {
+  // Client-side delegation
+  if (typeof window !== 'undefined' && !localStorage.getItem('FT_GEMINI_API_KEY')) {
+    const response = await fetch('/api/ai/chatWithCoach', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        insight, userMessage, chatHistory, height, weight, sex, age, muscularity, activityLevel
+      })
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to chat with coach');
+    }
+    return response.json();
+  }
+
   const ai = getAIInstance();
   
   const historyParts = chatHistory.map(msg => ({
@@ -419,6 +451,20 @@ export async function getPeriodicReview(
   data: any[],
   type: 'monthly' | 'yearly'
 ) {
+  // Client-side delegation
+  if (typeof window !== 'undefined' && !localStorage.getItem('FT_GEMINI_API_KEY')) {
+    const response = await fetch('/api/ai/getPeriodicReview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data, type })
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to get periodic review');
+    }
+    return response.json();
+  }
+
   const ai = getAIInstance();
   const prompt = `
     Analyze the following ${type} health data and provide a concise, motivating summary of the user's progress.
@@ -449,6 +495,20 @@ export async function getPeriodicReview(
 }
 
 export async function analyzeNutritionLabel(base64Image: string, mimeType: string, consumedAmount: string) {
+  // Client-side delegation
+  if (typeof window !== 'undefined' && !localStorage.getItem('FT_GEMINI_API_KEY')) {
+    const response = await fetch('/api/ai/analyzeNutritionLabel', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base64Image, mimeType, consumedAmount })
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to analyze nutrition label');
+    }
+    return response.json();
+  }
+
   const ai = getAIInstance();
   
   const prompt = `
@@ -514,6 +574,20 @@ export async function analyzeNutritionLabel(base64Image: string, mimeType: strin
 }
 
 export async function estimateMealFromImage(base64Image: string, mimeType: string) {
+  // Client-side delegation
+  if (typeof window !== 'undefined' && !localStorage.getItem('FT_GEMINI_API_KEY')) {
+    const response = await fetch('/api/ai/estimateMealFromImage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base64Image, mimeType })
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to estimate meal from image');
+    }
+    return response.json();
+  }
+
   const ai = getAIInstance();
   
   const prompt = `
@@ -574,6 +648,20 @@ export async function estimateMealFromImage(base64Image: string, mimeType: strin
 }
 
 export async function estimateMealCalories(description: string, scale: string) {
+  // Client-side delegation
+  if (typeof window !== 'undefined' && !localStorage.getItem('FT_GEMINI_API_KEY')) {
+    const response = await fetch('/api/ai/estimateMealCalories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description, scale })
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to estimate meal calories');
+    }
+    return response.json();
+  }
+
   const ai = getAIInstance();
   
   const prompt = `
@@ -621,6 +709,20 @@ export async function estimateMealCalories(description: string, scale: string) {
 }
 
 export async function estimateWorkoutCalories(type: string, intensity: string, durationMinutes: number, description?: string) {
+  // Client-side delegation
+  if (typeof window !== 'undefined' && !localStorage.getItem('FT_GEMINI_API_KEY')) {
+    const response = await fetch('/api/ai/estimateWorkoutCalories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, intensity, durationMinutes, description })
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to estimate workout calories');
+    }
+    return response.json();
+  }
+
   const ai = getAIInstance();
   
   const prompt = `
@@ -661,6 +763,20 @@ export async function estimateWorkoutCalories(type: string, intensity: string, d
 }
 
 export async function parseWorkoutText(text: string) {
+  // Client-side delegation
+  if (typeof window !== 'undefined' && !localStorage.getItem('FT_GEMINI_API_KEY')) {
+    const response = await fetch('/api/ai/parseWorkoutText', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text })
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || 'Failed to parse workout text');
+    }
+    return response.json();
+  }
+
   const ai = getAIInstance();
   const now = new Date();
   

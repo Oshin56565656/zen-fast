@@ -1,8 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { GoogleGenAI, Type } from "@google/genai";
 import { formatDurationShort } from '../lib/utils';
 import { format } from 'date-fns';
-import { getFastingInsights } from '../services/aiService';
+import { getFastingInsights, parseWorkoutText as parseWorkoutTextService } from '../services/aiService';
 import { CurrentFastState, FastRecord, MealRecord, WorkoutRecord, SleepRecord, WaterRecord, WeightRecord, BodyCheckin, WorkoutType, WorkoutIntensity, DailySummary, AIInsightsSync, Supplement, SupplementLog, MoodRecord, MoodScore, EnergyLevel, MuscularityLevel, UndoItem } from '../types';
 import { 
   auth, 
@@ -1154,46 +1153,7 @@ export function useFasting() {
 
   const parseWorkoutText = async (text: string) => {
     try {
-      const apiKey = process.env.GEMINI_API_KEY || localStorage.getItem('FT_GEMINI_API_KEY');
-      if (!apiKey) throw new Error('Gemini API key is required for parsing');
-
-      const ai = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: `Parse the following workout text and extract structured information. 
-        Identify the exercise names, the total duration in minutes (look for patterns like "30m" at the end), 
-        and estimate the total calories burned based on the volume (sets, reps, weights) and duration.
-        
-        Workout Text:
-        ${text}
-        
-        Response Format:
-        JSON object with fields:
-        "duration": number (minutes),
-        "intensity": "low" | "moderate" | "high",
-        "type": "strength" | "cardio" | "football" | ... (select best fit),
-        "calorieBurn": number,
-        "exercises": string[] (just the names),
-        "startTime": string (ISO format if found, otherwise null)
-        `,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              duration: { type: Type.NUMBER },
-              intensity: { type: Type.STRING, enum: ["low", "moderate", "high"] },
-              type: { type: Type.STRING },
-              calorieBurn: { type: Type.NUMBER },
-              exercises: { type: Type.ARRAY, items: { type: Type.STRING } },
-              startTime: { type: Type.STRING, nullable: true }
-            },
-            required: ["duration", "intensity", "type", "calorieBurn", "exercises"]
-          }
-        }
-      });
-
-      return JSON.parse(response.text);
+      return await parseWorkoutTextService(text);
     } catch (error) {
       console.error('Failed to parse workout text:', error);
       throw error;
