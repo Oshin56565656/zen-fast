@@ -790,7 +790,7 @@ export async function parseWorkoutText(text: string) {
     
     Rules:
     - title: Short descriptive title.
-    - startTime: If date/time is mentioned (like "Friday, April 17, 2026, 6:14 PM"), parse it to ISO format. If only time is mentioned, use today's date.
+    - startTime: If date/time is mentioned (like "Friday, April 17, 2026, 6:14 PM"), parse it to ISO format. If only time is mentioned, use today's date. If absolutely no date or time information is mentioned in the text, return null.
     - duration: Total duration in minutes (look for "30m", "1h", etc.).
     - intensity: "low", "moderate", or "high" based on the volume and type of exercises.
     - type: Choose the best fit from: cardio, strength, running, walking, swimming, cycling, football, home, custom.
@@ -808,7 +808,7 @@ export async function parseWorkoutText(text: string) {
           type: Type.OBJECT,
           properties: {
             title: { type: Type.STRING },
-            startTime: { type: Type.STRING, description: "ISO 8601 string" },
+            startTime: { type: Type.STRING, nullable: true, description: "ISO 8601 string or null if not mentioned" },
             duration: { type: Type.NUMBER, description: "Minutes" },
             intensity: { type: Type.STRING, enum: ["low", "moderate", "high"] },
             type: { type: Type.STRING, enum: ["cardio", "strength", "running", "walking", "swimming", "cycling", "football", "home", "custom"] },
@@ -816,7 +816,7 @@ export async function parseWorkoutText(text: string) {
             exercises: { type: Type.ARRAY, items: { type: Type.STRING }, description: "List of exercise names" },
             summary: { type: Type.STRING }
           },
-          required: ["title", "startTime", "duration", "intensity", "type", "summary", "calorieBurn", "exercises"]
+          required: ["title", "duration", "intensity", "type", "summary", "calorieBurn", "exercises"]
         }
       }
     });
