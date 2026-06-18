@@ -192,7 +192,9 @@ const LogActivity: React.FC<LogActivityProps> = ({
       if (typeof window !== 'undefined' && window.aistudio) {
         // @ts-ignore
         const selected = await window.aistudio.hasSelectedApiKey();
-        setHasAIKey(selected || !!process.env.GEMINI_API_KEY || !!process.env.API_KEY);
+        setHasAIKey(selected || true);
+      } else {
+        setHasAIKey(true);
       }
     };
     checkKey();

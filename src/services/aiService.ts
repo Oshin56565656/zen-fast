@@ -12,8 +12,76 @@ const getAIInstance = () => {
   if (!apiKey) {
     console.warn("No API Key found. AI features will not work.");
   }
-  return new GoogleGenAI({ apiKey: apiKey || "" });
+  return new GoogleGenAI({ 
+    apiKey: apiKey || "",
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
+      }
+    }
+  });
 };
+
+interface GeminiCallParams {
+  model?: string;
+  contents: any;
+  config?: any;
+}
+
+async function callGeminiAPI(ai: any, params: GeminiCallParams): Promise<GenerateContentResponse> {
+  const primaryModel = params.model || "gemini-3.5-flash";
+  
+  // Set up sequential models to try
+  const modelsToTry = [primaryModel];
+  if (primaryModel !== "gemini-2.5-flash") {
+    modelsToTry.push("gemini-2.5-flash");
+  }
+  if (primaryModel !== "gemini-1.5-flash" && primaryModel !== "gemini-2.5-flash") {
+    modelsToTry.push("gemini-1.5-flash");
+  }
+
+  let lastError: any = null;
+
+  for (const modelName of modelsToTry) {
+    // Retry primary model once on transient failure, fail over to fallback models immediately
+    const maxRetries = modelName === primaryModel ? 1 : 0;
+    
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const response = await ai.models.generateContent({
+          ...params,
+          model: modelName,
+        }) as GenerateContentResponse;
+        return response;
+      } catch (error: any) {
+        lastError = error;
+        const errMsg = error?.message || "";
+        const isTransient = errMsg.includes("503") || 
+                            errMsg.includes("504") ||
+                            errMsg.includes("UNAVAILABLE") || 
+                            errMsg.includes("high demand") ||
+                            errMsg.includes("temporary") ||
+                            (error?.status && error.status >= 500);
+                            
+        if (isTransient) {
+          if (attempt < maxRetries) {
+            const delay = (attempt + 1) * 600;
+            console.warn(`Gemini call to ${modelName} has high transient load. Re-trying in ${delay}ms... (Attempt ${attempt + 1}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+          } else {
+            console.warn(`Gemini call to ${modelName} finished matches. Trying next fallback option...`);
+          }
+        } else {
+          // Non-transient errors (like invalid api key or schema matching issue) should fail fast and not proceed
+          throw error;
+        }
+      }
+    }
+  }
+
+  throw lastError;
+}
 
 const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, errorMessage: string): Promise<T> => {
   return Promise.race([
@@ -258,7 +326,7 @@ export async function getFastingInsights(
 
   try {
     const response = await withTimeout(
-      ai.models.generateContent({
+      callGeminiAPI(ai, {
         model: "gemini-3.5-flash",
         contents: prompt,
         config: {
@@ -432,7 +500,7 @@ User Question: ${userMessage}` }]
   ];
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await callGeminiAPI(ai, {
       model: "gemini-3.5-flash",
       contents: contents,
       config: {
@@ -479,7 +547,7 @@ export async function getPeriodicReview(
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await callGeminiAPI(ai, {
       model: "gemini-3.5-flash",
       contents: prompt,
       config: {
@@ -529,7 +597,7 @@ export async function analyzeNutritionLabel(base64Image: string, mimeType: strin
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await callGeminiAPI(ai, {
       model: "gemini-3.5-flash",
       contents: [
         {
@@ -604,7 +672,7 @@ export async function estimateMealFromImage(base64Image: string, mimeType: strin
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await callGeminiAPI(ai, {
       model: "gemini-3.5-flash",
       contents: [
         {
@@ -680,7 +748,7 @@ export async function estimateMealCalories(description: string, scale: string) {
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await callGeminiAPI(ai, {
       model: "gemini-3.5-flash",
       contents: prompt,
       config: {
@@ -737,7 +805,7 @@ export async function estimateWorkoutCalories(type: string, intensity: string, d
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await callGeminiAPI(ai, {
       model: "gemini-3.5-flash",
       contents: prompt,
       config: {
@@ -798,7 +866,7 @@ export async function parseWorkoutText(text: string) {
   `;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await callGeminiAPI(ai, {
       model: "gemini-3.5-flash",
       contents: prompt,
       config: {

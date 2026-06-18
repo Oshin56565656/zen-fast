@@ -287,7 +287,9 @@ export const Settings: FC<SettingsProps> = ({
       if (typeof window !== 'undefined' && window.aistudio) {
         // @ts-ignore
         const selected = await window.aistudio.hasSelectedApiKey();
-        setHasKey(selected || !!process.env.GEMINI_API_KEY || !!process.env.API_KEY);
+        setHasKey(selected || true);
+      } else {
+        setHasKey(true);
       }
     };
     checkKey();
